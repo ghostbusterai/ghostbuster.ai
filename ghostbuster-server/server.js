@@ -2,24 +2,16 @@ const express = require("express")
 const cors = require("cors")
 require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
-const { isSupabaseEnabled } = require("./supabaseAdmin")
-const { requireUser } = require("./authMiddleware")
-
 const app = express()
 const PORT = process.env.PORT || 3001
 
-const store = isSupabaseEnabled() ? require("./dbStore") : require("./fileStore")
+const store = require("./fileStore")
 
 const apiKey = process.env.ANTHROPIC_API_KEY
 const anthropic = apiKey ? new Anthropic.default({ apiKey }) : null
 
 app.use(cors())
 app.use(express.json())
-app.use("/api", requireUser)
-
-function uid(req) {
-  return req.userId
-}
 
 function extractAssistantText(content) {
   if (!Array.isArray(content)) return ""
@@ -53,7 +45,7 @@ function parseId(param) {
 // —— Contacts ——
 app.get("/api/contacts", async (req, res) => {
   try {
-    const { contacts } = await store.getContacts(uid(req))
+    const { contacts } = await store.getContacts(null)
     res.json({ contacts })
   } catch (e) {
     console.error(e)
@@ -67,7 +59,7 @@ app.post("/api/contacts", async (req, res) => {
     return res.status(400).json({ error: "Name is required" })
   }
   try {
-    const { contact } = await store.createContact(uid(req), {
+    const { contact } = await store.createContact(null, {
       name,
       email,
       phone,
@@ -89,7 +81,7 @@ app.put("/api/contacts/:id", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
-    const out = await store.updateContact(uid(req), id, req.body || {})
+    const out = await store.updateContact(null, id, req.body || {})
     if (out == null) {
       return res.status(404).json({ error: "Contact not found" })
     }
@@ -107,7 +99,7 @@ app.delete("/api/contacts/:id", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
-    const ok = await store.deleteContact(uid(req), id)
+    const ok = await store.deleteContact(null, id)
     if (!ok) return res.status(404).json({ error: "Contact not found" })
     res.status(204).end()
   } catch (e) {
@@ -119,7 +111,7 @@ app.delete("/api/contacts/:id", async (req, res) => {
 // —— Reminders ——
 app.get("/api/reminders", async (req, res) => {
   try {
-    const { reminders } = await store.getReminders(uid(req))
+    const { reminders } = await store.getReminders(null)
     res.json({ reminders })
   } catch (e) {
     console.error(e)
@@ -133,7 +125,7 @@ app.post("/api/reminders", async (req, res) => {
     return res.status(400).json({ error: "Contact name is required" })
   }
   try {
-    const { reminder } = await store.createReminder(uid(req), {
+    const { reminder } = await store.createReminder(null, {
       contactName,
       reason,
       dueDate,
@@ -151,7 +143,7 @@ app.patch("/api/reminders/:id", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
-    const out = await store.patchReminder(uid(req), id, req.body || {})
+    const out = await store.patchReminder(null, id, req.body || {})
     if (out == null) return res.status(404).json({ error: "Reminder not found" })
     res.json(out)
   } catch (e) {
@@ -164,7 +156,7 @@ app.delete("/api/reminders/:id", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
-    const ok = await store.deleteReminder(uid(req), id)
+    const ok = await store.deleteReminder(null, id)
     if (!ok) return res.status(404).json({ error: "Reminder not found" })
     res.status(204).end()
   } catch (e) {
@@ -176,7 +168,7 @@ app.delete("/api/reminders/:id", async (req, res) => {
 // —— Profile ——
 app.get("/api/profile", async (req, res) => {
   try {
-    const out = await store.getProfile(uid(req))
+    const out = await store.getProfile(null)
     res.json(out)
   } catch (e) {
     console.error(e)
@@ -186,7 +178,7 @@ app.get("/api/profile", async (req, res) => {
 
 app.patch("/api/profile", async (req, res) => {
   try {
-    const out = await store.patchProfile(uid(req), req.body || {})
+    const out = await store.patchProfile(null, req.body || {})
     res.json(out)
   } catch (e) {
     console.error(e)
@@ -197,7 +189,7 @@ app.patch("/api/profile", async (req, res) => {
 // —— Résumé updates ——
 app.get("/api/resume-updates", async (req, res) => {
   try {
-    const { updates } = await store.getResumeUpdates(uid(req))
+    const { updates } = await store.getResumeUpdates(null)
     res.json({ updates })
   } catch (e) {
     console.error(e)
@@ -217,7 +209,7 @@ app.post("/api/resume-updates", async (req, res) => {
     })
   }
   try {
-    const out = await store.createResumeUpdate(uid(req), { title, details, effectiveDate })
+    const out = await store.createResumeUpdate(null, { title, details, effectiveDate })
     res.status(201).json(out)
   } catch (e) {
     console.error(e)
@@ -229,7 +221,7 @@ app.delete("/api/resume-updates/:id", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
-    const ok = await store.deleteResumeUpdate(uid(req), id)
+    const ok = await store.deleteResumeUpdate(null, id)
     if (!ok) return res.status(404).json({ error: "Update not found" })
     res.status(204).end()
   } catch (e) {
@@ -244,7 +236,7 @@ app.get("/api/outreach-logs", async (req, res) => {
     const q = req.query.contactId
     const contactId =
       q !== undefined && q !== "" ? q : undefined
-    const { logs } = await store.getOutreachLogs(uid(req), contactId)
+    const { logs } = await store.getOutreachLogs(null, contactId)
     res.json({ logs })
   } catch (e) {
     console.error(e)
@@ -254,7 +246,7 @@ app.get("/api/outreach-logs", async (req, res) => {
 
 app.post("/api/outreach-logs", async (req, res) => {
   try {
-    const out = await store.createOutreachLog(uid(req), req.body || {})
+    const out = await store.createOutreachLog(null, req.body || {})
     if (out === null) return res.status(404).json({ error: "Contact not found" })
     res.status(201).json(out)
   } catch (e) {
@@ -273,7 +265,7 @@ app.delete("/api/outreach-logs/:id", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
-    const ok = await store.deleteOutreachLog(uid(req), id)
+    const ok = await store.deleteOutreachLog(null, id)
     if (!ok) return res.status(404).json({ error: "Log not found" })
     res.status(204).end()
   } catch (e) {
@@ -283,7 +275,7 @@ app.delete("/api/outreach-logs/:id", async (req, res) => {
 })
 
 // —— AI compose ——
-app.post("/compose", requireUser, async (req, res) => {
+app.post("/compose", async (req, res) => {
   if (!anthropic) {
     return res.status(503).json({ error: "AI compose is not configured (missing ANTHROPIC_API_KEY)" })
   }
@@ -396,7 +388,7 @@ Do not add any explanation, just the email.`
 app.get("/", (req, res) => {
   res.json({
     status: "GhostBuster server running",
-    auth: isSupabaseEnabled() ? "supabase-jwt" : "off (file store)",
+    storage: "local-json",
     endpoints: [
       "/api/contacts",
       "/api/reminders",
@@ -413,11 +405,7 @@ const server = app.listen(PORT, HOST, () => {
   console.log("GhostBuster API is running — keep this terminal open (Ctrl+C to stop).")
   console.log(`  Local:   http://127.0.0.1:${PORT}/`)
   console.log(`  Network: http://localhost:${PORT}/`)
-  console.log(
-    isSupabaseEnabled()
-      ? "  Data:   Supabase Postgres (JWT required on /api and /compose)"
-      : "  Data:   Local JSON file (no sign-in)"
-  )
+  console.log("  Data:   ghostbuster-server/data/app-data.json")
   if (!apiKey) console.warn("ANTHROPIC_API_KEY is not set — /compose will return 503")
 })
 

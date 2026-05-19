@@ -5,8 +5,6 @@ import Reminders from "./components/Reminders"
 import MessageComposer from "./components/MessageComposer"
 import Tracker from "./components/Tracker"
 import Updates from "./components/Updates"
-import AuthScreen from "./components/AuthScreen"
-import { useSession } from "./SessionContext"
 import { font, accentNeon } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
 
@@ -20,32 +18,8 @@ const NAV = [
 ]
 
 export default function App() {
-  const { isSupabaseConfigured, session, loading, supabase } = useSession()
   const [page, setPage] = useState("dashboard")
   const [composePrefill, setComposePrefill] = useState(null)
-
-  if (isSupabaseConfigured && loading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#0a0a0f",
-          color: "rgba(240,240,245,0.6)",
-          fontFamily: font.body,
-          fontSize: 15,
-        }}
-      >
-        Loading…
-      </div>
-    )
-  }
-
-  if (isSupabaseConfigured && !session) {
-    return <AuthScreen />
-  }
 
   return (
     <div
@@ -154,54 +128,6 @@ export default function App() {
             })}
           </nav>
 
-          {isSupabaseConfigured && session && supabase ? (
-            <div
-              style={{
-                marginLeft: "auto",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                flexShrink: 0,
-              }}
-            >
-              {session.user?.email ? (
-                <span
-                  title={session.user.email}
-                  style={{
-                    fontSize: 11,
-                    fontFamily: font.mono,
-                    color: "rgba(240,240,245,0.45)",
-                    maxWidth: 200,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {session.user.email}
-                </span>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => supabase.auth.signOut()}
-                style={{
-                  padding: "8px 12px",
-                  margin: 0,
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.22)",
-                  background: "transparent",
-                  color: "#f0f0f5",
-                  fontFamily: font.mono,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
-              >
-                Sign out
-              </button>
-            </div>
-          ) : null}
         </div>
       </header>
 

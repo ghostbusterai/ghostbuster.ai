@@ -13,17 +13,8 @@ function apiBase() {
 
 const BASE = apiBase()
 
-let getAccessToken = async () => null
-
-/** Register how to read the Supabase access token (or pass null to clear). */
-export function setApiAuthTokenGetter(fn) {
-  getAccessToken = typeof fn === "function" ? fn : async () => null
-}
-
 async function request(path, options = {}) {
-  const token = await getAccessToken()
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) }
-  if (token) headers.Authorization = `Bearer ${token}`
   let r
   try {
     r = await fetch(`${BASE}${path}`, {

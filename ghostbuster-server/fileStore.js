@@ -1,6 +1,6 @@
 const { read, write } = require("./store")
 
-/** Legacy single-tenant file store (no user id). Matches dbStore method names for server routing. */
+/** Single-tenant JSON file store (no user id). */
 
 exports.getContacts = async () => {
   const data = read()
