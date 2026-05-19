@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Secrets & local env
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+
+# Local / runtime data
+ghostbuster-server/data/
+.DS_Store
