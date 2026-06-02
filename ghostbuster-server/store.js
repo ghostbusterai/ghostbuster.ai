@@ -10,7 +10,14 @@ function ensureFile() {
     fs.writeFileSync(
       DATA_FILE,
       JSON.stringify(
-        { contacts: [], reminders: [], outreachLogs: [], resumeUpdates: [], profile: { lastResumeUpdate: "" } },
+        {
+          contacts: [],
+          reminders: [],
+          outreachLogs: [],
+          resumeUpdates: [],
+          fullResume: null,
+          profile: { lastResumeUpdate: "" },
+        },
         null,
         2
       )
@@ -26,6 +33,14 @@ function read() {
     reminders: Array.isArray(raw.reminders) ? raw.reminders : [],
     outreachLogs: Array.isArray(raw.outreachLogs) ? raw.outreachLogs : [],
     resumeUpdates: Array.isArray(raw.resumeUpdates) ? raw.resumeUpdates : [],
+    fullResume:
+      raw.fullResume && typeof raw.fullResume === "object" && typeof raw.fullResume.text === "string"
+        ? {
+            text: raw.fullResume.text,
+            fileName: typeof raw.fullResume.fileName === "string" ? raw.fullResume.fileName : "",
+            uploadedAt: typeof raw.fullResume.uploadedAt === "string" ? raw.fullResume.uploadedAt : "",
+          }
+        : null,
     profile:
       raw.profile && typeof raw.profile === "object"
         ? { lastResumeUpdate: raw.profile.lastResumeUpdate || "" }

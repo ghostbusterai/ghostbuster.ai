@@ -35,6 +35,23 @@ async function request(path, options = {}) {
   return data
 }
 
+async function uploadRequest(path, formData) {
+  let r
+  try {
+    r = await fetch(`${BASE}${path}`, { method: "POST", body: formData })
+  } catch {
+    const hint =
+      BASE === ""
+        ? " (Vite dev proxy → port 3001). Run: cd ghostbuster-server && npm start"
+        : `: ${BASE}. Run the API or fix VITE_API_BASE`
+    throw new Error(`Can't reach API${hint}`)
+  }
+  const text = await r.text()
+  const data = text ? JSON.parse(text) : {}
+  if (!r.ok) throw new Error(data.error || r.statusText || `Request failed (${r.status})`)
+  return data
+}
+
 export const api = {
   getContacts: () => request("/api/contacts"),
   createContact: (body) => request("/api/contacts", { method: "POST", body: JSON.stringify(body) }),
@@ -58,6 +75,14 @@ export const api = {
   createResumeUpdate: (body) =>
     request("/api/resume-updates", { method: "POST", body: JSON.stringify(body) }),
   deleteResumeUpdate: (id) => request(`/api/resume-updates/${id}`, { method: "DELETE" }),
+  getFullResume: () => request("/api/resume"),
+  saveFullResume: (body) => request("/api/resume", { method: "POST", body: JSON.stringify(body) }),
+  uploadFullResume: (file) => {
+    const form = new FormData()
+    form.append("file", file)
+    return uploadRequest("/api/resume/upload", form)
+  },
+  deleteFullResume: () => request("/api/resume", { method: "DELETE" }),
 }
 
 export { BASE }

@@ -12,7 +12,7 @@ const NAV = [
   { id: "dashboard", label: "Home" },
   { id: "contacts", label: "Contacts" },
   { id: "tracker", label: "Tracker" },
-  { id: "updates", label: "Resume updates" },
+  { id: "updates", label: "Resume" },
   { id: "reminders", label: "Reminders" },
   { id: "compose", label: "Compose" },
 ]

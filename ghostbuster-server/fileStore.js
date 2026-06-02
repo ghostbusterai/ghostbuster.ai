@@ -159,6 +159,34 @@ exports.createResumeUpdate = async (_userId, body) => {
   return { update, relevance }
 }
 
+exports.getFullResume = async () => {
+  const data = read()
+  return { resume: data.fullResume || null }
+}
+
+exports.saveFullResume = async (_userId, body) => {
+  const { text, fileName } = body || {}
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("empty")
+  }
+  const data = read()
+  data.fullResume = {
+    text: text.trim(),
+    fileName: typeof fileName === "string" ? fileName.trim() : "",
+    uploadedAt: new Date().toISOString(),
+  }
+  write(data)
+  return { resume: data.fullResume }
+}
+
+exports.deleteFullResume = async () => {
+  const data = read()
+  if (!data.fullResume) return false
+  data.fullResume = null
+  write(data)
+  return true
+}
+
 exports.deleteResumeUpdate = async (_userId, id) => {
   const data = read()
   if (!Array.isArray(data.resumeUpdates)) data.resumeUpdates = []

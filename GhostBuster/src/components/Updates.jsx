@@ -5,6 +5,9 @@ import { font } from "../theme"
 
 const LS_UPDATES = "gb_resume_updates"
 const LS_PROFILE = "gb_profile"
+const LS_FULL_RESUME = "gb_full_resume"
+
+const ACCEPT_RESUME = ".pdf,.docx,.txt,.md,.text"
 
 const inputStyle = {
   background: "#0a0a0f",
@@ -31,6 +34,28 @@ function mergeProfileLastResume(effectiveDate) {
   }
 }
 
+function readLocalFullResume() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_FULL_RESUME) || "null")
+    if (raw && typeof raw.text === "string" && raw.text.trim()) return raw
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+function saveLocalFullResume(resume) {
+  localStorage.setItem(LS_FULL_RESUME, JSON.stringify(resume))
+}
+
+async function readTextFileLocally(file) {
+  const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase()
+  if (![".txt", ".md", ".text"].includes(ext)) {
+    throw new Error("Offline mode supports TXT and MD only — start the server for PDF/DOCX.")
+  }
+  return file.text()
+}
+
 export default function Updates({ setPage, setComposePrefill }) {
   const [updates, setUpdates] = useState([])
   const [contacts, setContacts] = useState([])
@@ -42,22 +67,30 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [relevanceModal, setRelevanceModal] = useState(null)
+  const [fullResume, setFullResume] = useState(null)
+  const [resumeUploading, setResumeUploading] = useState(false)
+  const [resumeExpanded, setResumeExpanded] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
 
   const load = useCallback(async () => {
     setLoadError(null)
     try {
-      const [{ updates: u }, { contacts: c }] = await Promise.all([
+      const [{ updates: u }, { contacts: c }, resumeOut] = await Promise.all([
         api.getResumeUpdates(),
         api.getContacts(),
+        api.getFullResume(),
       ])
       setUpdates(u || [])
       setContacts(c || [])
+      setFullResume(resumeOut?.resume || null)
       localStorage.setItem(LS_UPDATES, JSON.stringify(u || []))
       localStorage.setItem("gb_contacts", JSON.stringify(c || []))
+      if (resumeOut?.resume) saveLocalFullResume(resumeOut.resume)
     } catch (e) {
       setLoadError(e.message)
       setUpdates(JSON.parse(localStorage.getItem(LS_UPDATES) || "[]"))
       setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
+      setFullResume(readLocalFullResume())
     } finally {
       setLoading(false)
     }
@@ -127,6 +160,67 @@ export default function Updates({ setPage, setComposePrefill }) {
     setSaving(false)
   }
 
+  async function handleResumeFile(file) {
+    if (!file) return
+    setActionError(null)
+    setResumeUploading(true)
+    try {
+      const { resume } = await api.uploadFullResume(file)
+      setFullResume(resume)
+      saveLocalFullResume(resume)
+      setResumeExpanded(false)
+    } catch (err) {
+      if (loadError) {
+        try {
+          const text = await readTextFileLocally(file)
+          if (!text.trim()) throw new Error("File is empty")
+          const resume = {
+            text: text.trim(),
+            fileName: file.name,
+            uploadedAt: new Date().toISOString(),
+          }
+          setFullResume(resume)
+          saveLocalFullResume(resume)
+          setResumeExpanded(false)
+        } catch (localErr) {
+          setActionError(localErr.message)
+        }
+      } else {
+        setActionError(err.message)
+      }
+    }
+    setResumeUploading(false)
+  }
+
+  function onResumeInputChange(e) {
+    const file = e.target.files?.[0]
+    if (file) handleResumeFile(file)
+    e.target.value = ""
+  }
+
+  function onResumeDrop(e) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleResumeFile(file)
+  }
+
+  async function removeFullResume() {
+    setActionError(null)
+    try {
+      await api.deleteFullResume()
+      setFullResume(null)
+      localStorage.removeItem(LS_FULL_RESUME)
+    } catch (err) {
+      if (loadError) {
+        setFullResume(null)
+        localStorage.removeItem(LS_FULL_RESUME)
+      } else {
+        setActionError(err.message)
+      }
+    }
+  }
+
   async function remove(id) {
     setActionError(null)
     try {
@@ -171,7 +265,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             marginBottom: 8,
           }}
         >
-          Résumé updates
+          Resume
         </div>
         <h1
           style={{
@@ -182,7 +276,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             marginBottom: 8,
           }}
         >
-          Resume updates
+          Resume
         </h1>
         <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, maxWidth: 680, lineHeight: 1.55, fontFamily: font.body }}>
           Log résumé or career changes here. We scan your text against contact cards (company, role, notes, website)
@@ -194,6 +288,155 @@ export default function Updates({ setPage, setComposePrefill }) {
           </p>
         )}
         {actionError && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>}
+      </div>
+
+      <div
+        style={{
+          background: "#111118",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 16,
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+          Full résumé
+        </div>
+        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 16, lineHeight: 1.5, maxWidth: 680 }}>
+          Upload your complete résumé (PDF, DOCX, or plain text). We extract the text so it stays searchable alongside your updates.
+        </p>
+
+        {fullResume ? (
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 12,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>
+                  {fullResume.fileName || "Résumé on file"}
+                </div>
+                <div style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(184,255,87,0.65)", marginTop: 4 }}>
+                  Uploaded {fullResume.uploadedAt ? new Date(fullResume.uploadedAt).toLocaleString() : "—"}
+                  {" · "}
+                  {fullResume.text.length.toLocaleString()} characters
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <label
+                  style={{
+                    background: "rgba(184,255,87,0.12)",
+                    border: "1px solid rgba(184,255,87,0.35)",
+                    color: "#b8ff57",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    cursor: resumeUploading ? "not-allowed" : "pointer",
+                    opacity: resumeUploading ? 0.5 : 1,
+                  }}
+                >
+                  Replace
+                  <input
+                    type="file"
+                    accept={ACCEPT_RESUME}
+                    onChange={onResumeInputChange}
+                    disabled={resumeUploading}
+                    style={{ display: "none" }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={removeFullResume}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(255,107,107,0.35)",
+                    color: "#ff6b6b",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    boxShadow: "none",
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: 14,
+                color: "rgba(240,240,245,0.55)",
+                lineHeight: 1.55,
+                whiteSpace: "pre-wrap",
+                maxHeight: resumeExpanded ? "none" : 120,
+                overflow: resumeExpanded ? "visible" : "hidden",
+                position: "relative",
+              }}
+            >
+              {fullResume.text}
+            </div>
+            {fullResume.text.length > 400 && (
+              <button
+                type="button"
+                onClick={() => setResumeExpanded((v) => !v)}
+                style={{
+                  marginTop: 10,
+                  background: "transparent",
+                  border: "none",
+                  color: "#b8ff57",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: 0,
+                  boxShadow: "none",
+                }}
+              >
+                {resumeExpanded ? "Show less" : "Show full text"}
+              </button>
+            )}
+          </div>
+        ) : (
+          <label
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDragOver(true)
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onResumeDrop}
+            style={{
+              display: "block",
+              border: dragOver
+                ? "2px dashed rgba(184,255,87,0.55)"
+                : "2px dashed rgba(255,255,255,0.12)",
+              borderRadius: 12,
+              padding: "32px 20px",
+              textAlign: "center",
+              cursor: resumeUploading ? "not-allowed" : "pointer",
+              background: dragOver ? "rgba(184,255,87,0.04)" : "rgba(255,255,255,0.02)",
+              transition: "border-color 0.15s, background 0.15s",
+            }}
+          >
+            <input
+              type="file"
+              accept={ACCEPT_RESUME}
+              onChange={onResumeInputChange}
+              disabled={resumeUploading}
+              style={{ display: "none" }}
+            />
+            <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.5 }}>↑</div>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>
+              {resumeUploading ? "Processing…" : "Drop your résumé here or click to browse"}
+            </div>
+            <div style={{ fontSize: 13, color: "rgba(240,240,245,0.4)" }}>
+              PDF, DOCX, TXT, or MD · max 5 MB
+            </div>
+          </label>
+        )}
       </div>
 
       <div

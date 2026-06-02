@@ -1,11 +1,18 @@
 const express = require("express")
 const cors = require("cors")
+const multer = require("multer")
 require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
 const app = express()
 const PORT = process.env.PORT || 3001
 
 const store = require("./fileStore")
+const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES },
+})
 
 const apiKey = process.env.ANTHROPIC_API_KEY
 const anthropic = apiKey ? new Anthropic.default({ apiKey }) : null
@@ -230,6 +237,67 @@ app.delete("/api/resume-updates/:id", async (req, res) => {
   }
 })
 
+// —— Full résumé ——
+app.get("/api/resume", async (req, res) => {
+  try {
+    const out = await store.getFullResume(null)
+    res.json(out)
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to load résumé" })
+  }
+})
+
+app.post("/api/resume", async (req, res) => {
+  const { text, fileName } = req.body || {}
+  if (typeof text !== "string" || !text.trim()) {
+    return res.status(400).json({ error: "Résumé text is required" })
+  }
+  try {
+    const out = await store.saveFullResume(null, { text, fileName })
+    res.status(201).json(out)
+  } catch (e) {
+    if (e.message === "empty") {
+      return res.status(400).json({ error: "Résumé text is required" })
+    }
+    console.error(e)
+    res.status(500).json({ error: "Failed to save résumé" })
+  }
+})
+
+app.post("/api/resume/upload", upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" })
+  }
+  try {
+    const text = await extractResumeText(req.file.buffer, req.file.originalname)
+    if (!text.trim()) {
+      return res.status(400).json({ error: "Could not extract text from that file" })
+    }
+    const out = await store.saveFullResume(null, {
+      text,
+      fileName: req.file.originalname,
+    })
+    res.status(201).json(out)
+  } catch (e) {
+    const msg = typeof e.message === "string" ? e.message : "Failed to process file"
+    const status = /too large|unsupported|empty/i.test(msg) ? 400 : 500
+    if (status === 500) console.error(e)
+    res.status(status).json({ error: msg })
+  }
+})
+
+app.delete("/api/resume", async (req, res) => {
+  try {
+    const ok = await store.deleteFullResume(null)
+    if (!ok) return res.status(404).json({ error: "No résumé on file" })
+    res.status(204).end()
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to delete résumé" })
+  }
+})
+
 // —— Outreach logs ——
 app.get("/api/outreach-logs", async (req, res) => {
   try {
@@ -395,6 +463,7 @@ app.get("/", (req, res) => {
       "/api/profile",
       "/api/outreach-logs",
       "/api/resume-updates",
+      "/api/resume",
       "/compose",
     ],
   })
