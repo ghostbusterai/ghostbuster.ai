@@ -8,7 +8,8 @@ function apiBase() {
     return String(fromEnv).replace(/\/$/, "")
   }
   if (import.meta.env.DEV) return ""
-  return "http://localhost:3001"
+  // Production: same origin when UI is served by the API (e.g. Render). Set VITE_API_BASE if API is elsewhere.
+  return ""
 }
 
 const BASE = apiBase()

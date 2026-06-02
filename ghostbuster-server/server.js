@@ -1,6 +1,8 @@
 const express = require("express")
 const cors = require("cors")
 const multer = require("multer")
+const path = require("path")
+const fs = require("fs")
 require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
 const app = express()
@@ -453,7 +455,7 @@ Do not add any explanation, just the email.`
   }
 })
 
-app.get("/", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({
     status: "GhostBuster server running",
     storage: "local-json",
@@ -468,6 +470,26 @@ app.get("/", (req, res) => {
     ],
   })
 })
+
+const frontendDir = path.join(__dirname, "..", "GhostBuster", "dist")
+const hasFrontend = fs.existsSync(path.join(frontendDir, "index.html"))
+
+if (hasFrontend) {
+  app.use(express.static(frontendDir))
+  app.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next()
+    if (req.path.startsWith("/api") || req.path === "/compose") return next()
+    res.sendFile(path.join(frontendDir, "index.html"))
+  })
+} else {
+  app.get("/", (req, res) => {
+    res.json({
+      status: "GhostBuster API running (no UI build found)",
+      hint: "Run: cd GhostBuster && npm run build — or visit /api/health",
+      storage: "local-json",
+    })
+  })
+}
 
 const HOST = process.env.HOST || "0.0.0.0"
 const server = app.listen(PORT, HOST, () => {

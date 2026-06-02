@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ghostbuster
+    runtime: node
+    rootDir: ghostbuster-server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: "20"
