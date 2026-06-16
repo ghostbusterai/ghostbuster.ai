@@ -1,4 +1,4 @@
-const pdfParse = require("pdf-parse")
+const { PDFParse } = require("pdf-parse")
 const mammoth = require("mammoth")
 
 const MAX_BYTES = 5 * 1024 * 1024
@@ -10,6 +10,16 @@ const DOCX_EXT = new Set([".docx"])
 function extOf(name) {
   const i = String(name || "").lastIndexOf(".")
   return i === -1 ? "" : String(name).slice(i).toLowerCase()
+}
+
+async function extractPdfText(buffer) {
+  const parser = new PDFParse({ data: buffer })
+  try {
+    const result = await parser.getText()
+    return typeof result.text === "string" ? result.text : ""
+  } finally {
+    await parser.destroy()
+  }
 }
 
 async function extractResumeText(buffer, originalName) {
@@ -27,8 +37,7 @@ async function extractResumeText(buffer, originalName) {
   }
 
   if (PDF_EXT.has(ext)) {
-    const parsed = await pdfParse(buffer)
-    return typeof parsed.text === "string" ? parsed.text : ""
+    return extractPdfText(buffer)
   }
 
   if (DOCX_EXT.has(ext)) {
