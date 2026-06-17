@@ -16,7 +16,7 @@ function ensureFile() {
           outreachLogs: [],
           resumeUpdates: [],
           fullResume: null,
-          profile: { lastResumeUpdate: "" },
+          profile: { name: "", careerGoals: "", lastResumeUpdate: "" },
         },
         null,
         2
@@ -43,8 +43,12 @@ function read() {
         : null,
     profile:
       raw.profile && typeof raw.profile === "object"
-        ? { lastResumeUpdate: raw.profile.lastResumeUpdate || "" }
-        : { lastResumeUpdate: "" },
+        ? {
+            name: typeof raw.profile.name === "string" ? raw.profile.name : "",
+            careerGoals: typeof raw.profile.careerGoals === "string" ? raw.profile.careerGoals : "",
+            lastResumeUpdate: raw.profile.lastResumeUpdate || "",
+          }
+        : { name: "", careerGoals: "", lastResumeUpdate: "" },
   }
 }
 

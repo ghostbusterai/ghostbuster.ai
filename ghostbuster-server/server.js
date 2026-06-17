@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3001
 
 const store = require("./fileStore")
 const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
+const { buildPrompt, parseSuggestionsJson } = require("./resumeSuggestions")
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -297,6 +298,58 @@ app.delete("/api/resume", async (req, res) => {
   } catch (e) {
     console.error(e)
     res.status(500).json({ error: "Failed to delete résumé" })
+  }
+})
+
+app.post("/api/resume/suggestions", async (req, res) => {
+  if (!anthropic) {
+    return res.status(503).json({ error: "AI suggestions require ANTHROPIC_API_KEY on the server" })
+  }
+
+  try {
+    const [{ profile }, { resume }] = await Promise.all([
+      store.getProfile(null),
+      store.getFullResume(null),
+    ])
+    const careerGoals = typeof profile?.careerGoals === "string" ? profile.careerGoals.trim() : ""
+    const resumeText = typeof resume?.text === "string" ? resume.text.trim() : ""
+
+    if (!careerGoals) {
+      return res.status(400).json({
+        error: "Add career goals in your profile first (profile icon, top right).",
+      })
+    }
+    if (!resumeText) {
+      return res.status(400).json({ error: "Upload your full résumé before requesting suggestions." })
+    }
+
+    const userName = typeof profile?.name === "string" ? profile.name.trim() : ""
+    const prompt = buildPrompt(careerGoals, resumeText, userName)
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2500,
+      messages: [{ role: "user", content: prompt }],
+    })
+
+    const text = extractAssistantText(message.content)
+    const suggestions = parseSuggestionsJson(text)
+    if (suggestions.length === 0) {
+      return res.status(502).json({ error: "No suggestions returned — try again" })
+    }
+
+    res.json({ suggestions })
+  } catch (err) {
+    console.error(err)
+    const msg = formatAnthropicError(err)
+    const lowCredits =
+      /credit balance|billing|Plans & Billing/i.test(msg) || /too low to access/i.test(msg)
+    const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
+    const body =
+      status === 500 && /JSON|format|Empty response/i.test(msg)
+        ? "Could not parse AI suggestions — try again"
+        : msg || "Failed to generate suggestions"
+    res.status(status).json({ error: body })
   }
 })
 

@@ -84,6 +84,8 @@ export const api = {
     return uploadRequest("/api/resume/upload", form)
   },
   deleteFullResume: () => request("/api/resume", { method: "DELETE" }),
+  getResumeSuggestions: () =>
+    request("/api/resume/suggestions", { method: "POST", body: JSON.stringify({}) }),
 }
 
 export { BASE }

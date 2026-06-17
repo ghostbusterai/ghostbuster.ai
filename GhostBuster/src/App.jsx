@@ -5,6 +5,7 @@ import Reminders from "./components/Reminders"
 import MessageComposer from "./components/MessageComposer"
 import Tracker from "./components/Tracker"
 import Updates from "./components/Updates"
+import ProfileMenu from "./components/ProfileMenu"
 import { font, accentNeon } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
 
@@ -128,6 +129,7 @@ export default function App() {
             })}
           </nav>
 
+          <ProfileMenu />
         </div>
       </header>
 

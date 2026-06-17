@@ -2,12 +2,22 @@ import React, { useState, useEffect, useCallback } from "react"
 import { api } from "../api"
 import { suggestContactsForUpdate } from "../updateRelevance"
 import { font } from "../theme"
+import { readLocalProfile } from "../profile"
 
 const LS_UPDATES = "gb_resume_updates"
 const LS_PROFILE = "gb_profile"
 const LS_FULL_RESUME = "gb_full_resume"
 
 const ACCEPT_RESUME = ".pdf,.docx,.txt,.md,.text"
+
+const SUGGESTION_TYPES = {
+  reword: { label: "Reword", color: "#5be4d8", bg: "rgba(91,228,216,0.12)" },
+  replace: { label: "Replace activity", color: "#ffc96b", bg: "rgba(255,201,107,0.12)" },
+  add_metrics: { label: "Add data", color: "#b8ff57", bg: "rgba(184,255,87,0.12)" },
+  add: { label: "Add", color: "#b482ff", bg: "rgba(180,130,255,0.12)" },
+  remove: { label: "Remove", color: "#ff6b6b", bg: "rgba(255,107,107,0.12)" },
+  highlight: { label: "Highlight", color: "#f0f0f5", bg: "rgba(255,255,255,0.1)" },
+}
 
 const inputStyle = {
   background: "#0a0a0f",
@@ -71,18 +81,24 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [resumeUploading, setResumeUploading] = useState(false)
   const [resumeExpanded, setResumeExpanded] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [careerGoals, setCareerGoals] = useState("")
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [suggestionsError, setSuggestionsError] = useState(null)
 
   const load = useCallback(async () => {
     setLoadError(null)
     try {
-      const [{ updates: u }, { contacts: c }, resumeOut] = await Promise.all([
+      const [{ updates: u }, { contacts: c }, resumeOut, profileOut] = await Promise.all([
         api.getResumeUpdates(),
         api.getContacts(),
         api.getFullResume(),
+        api.getProfile(),
       ])
       setUpdates(u || [])
       setContacts(c || [])
       setFullResume(resumeOut?.resume || null)
+      setCareerGoals(profileOut?.profile?.careerGoals?.trim() || "")
       localStorage.setItem(LS_UPDATES, JSON.stringify(u || []))
       localStorage.setItem("gb_contacts", JSON.stringify(c || []))
       if (resumeOut?.resume) saveLocalFullResume(resumeOut.resume)
@@ -91,6 +107,7 @@ export default function Updates({ setPage, setComposePrefill }) {
       setUpdates(JSON.parse(localStorage.getItem(LS_UPDATES) || "[]"))
       setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
       setFullResume(readLocalFullResume())
+      setCareerGoals(readLocalProfile().careerGoals?.trim() || "")
     } finally {
       setLoading(false)
     }
@@ -192,6 +209,19 @@ export default function Updates({ setPage, setComposePrefill }) {
     setResumeUploading(false)
   }
 
+  async function fetchSuggestions() {
+    setSuggestionsLoading(true)
+    setSuggestionsError(null)
+    try {
+      const { suggestions: list } = await api.getResumeSuggestions()
+      setSuggestions(Array.isArray(list) ? list : [])
+    } catch (err) {
+      setSuggestions([])
+      setSuggestionsError(err.message)
+    }
+    setSuggestionsLoading(false)
+  }
+
   function onResumeInputChange(e) {
     const file = e.target.files?.[0]
     if (file) handleResumeFile(file)
@@ -210,10 +240,14 @@ export default function Updates({ setPage, setComposePrefill }) {
     try {
       await api.deleteFullResume()
       setFullResume(null)
+      setSuggestions([])
+      setSuggestionsError(null)
       localStorage.removeItem(LS_FULL_RESUME)
     } catch (err) {
       if (loadError) {
         setFullResume(null)
+        setSuggestions([])
+        setSuggestionsError(null)
         localStorage.removeItem(LS_FULL_RESUME)
       } else {
         setActionError(err.message)
@@ -436,6 +470,196 @@ export default function Updates({ setPage, setComposePrefill }) {
               PDF, DOCX, TXT, or MD · max 5 MB
             </div>
           </label>
+        )}
+      </div>
+
+      <div
+        style={{
+          background: "#111118",
+          border: "1px solid rgba(91,228,216,0.2)",
+          borderRadius: 16,
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 16,
+            flexWrap: "wrap",
+            marginBottom: 12,
+          }}
+        >
+          <div>
+            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 6 }}>
+              Suggested improvements
+            </div>
+            <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, lineHeight: 1.5, maxWidth: 620, margin: 0 }}>
+              AI feedback tailored to your career goals — rewording, stronger activities, metrics, and more.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={fetchSuggestions}
+            disabled={suggestionsLoading || !fullResume?.text?.trim() || !careerGoals}
+            style={{
+              flexShrink: 0,
+              background:
+                suggestionsLoading || !fullResume?.text?.trim() || !careerGoals
+                  ? "rgba(91,228,216,0.15)"
+                  : "rgba(91,228,216,0.2)",
+              border: "1px solid rgba(91,228,216,0.4)",
+              color:
+                suggestionsLoading || !fullResume?.text?.trim() || !careerGoals
+                  ? "rgba(91,228,216,0.4)"
+                  : "#5be4d8",
+              padding: "9px 16px",
+              borderRadius: 9,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor:
+                suggestionsLoading || !fullResume?.text?.trim() || !careerGoals
+                  ? "not-allowed"
+                  : "pointer",
+              boxShadow: "none",
+            }}
+          >
+            {suggestionsLoading ? "Analyzing…" : suggestions.length ? "Refresh" : "Get suggestions"}
+          </button>
+        </div>
+
+        {!careerGoals && (
+          <p style={{ color: "#ffc96b", fontSize: 13, margin: "0 0 8px" }}>
+            Set career goals in your profile (top-right icon) to unlock suggestions.
+          </p>
+        )}
+        {careerGoals && !fullResume?.text?.trim() && (
+          <p style={{ color: "#ffc96b", fontSize: 13, margin: "0 0 8px" }}>
+            Upload your full résumé above to get tailored feedback.
+          </p>
+        )}
+        {careerGoals && fullResume?.text?.trim() && (
+          <div
+            style={{
+              fontSize: 12,
+              fontFamily: font.mono,
+              color: "rgba(184,255,87,0.65)",
+              marginBottom: suggestions.length || suggestionsError ? 14 : 0,
+            }}
+          >
+            Goals: {careerGoals.length > 120 ? `${careerGoals.slice(0, 120)}…` : careerGoals}
+          </div>
+        )}
+
+        {suggestionsError && (
+          <p style={{ color: "#ff6b6b", fontSize: 13, margin: "8px 0 0" }}>{suggestionsError}</p>
+        )}
+
+        {suggestions.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+            {suggestions.map((s) => {
+              const meta = SUGGESTION_TYPES[s.type] || SUGGESTION_TYPES.reword
+              return (
+                <div
+                  key={s.id}
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 12,
+                    padding: "16px 18px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      flexWrap: "wrap",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontFamily: font.mono,
+                        fontWeight: 600,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: meta.color,
+                        background: meta.bg,
+                        padding: "4px 8px",
+                        borderRadius: 6,
+                      }}
+                    >
+                      {meta.label}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(240,240,245,0.85)" }}>
+                      {s.section}
+                    </span>
+                  </div>
+                  {s.original && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          fontFamily: font.mono,
+                          color: "rgba(240,240,245,0.35)",
+                          marginBottom: 4,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        Current
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "rgba(240,240,245,0.45)",
+                          lineHeight: 1.5,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        {s.original}
+                      </div>
+                    </div>
+                  )}
+                  {s.suggested && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          fontFamily: font.mono,
+                          color: "rgba(184,255,87,0.55)",
+                          marginBottom: 4,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        Suggested
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: "rgba(240,240,245,0.85)",
+                          lineHeight: 1.55,
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {s.suggested}
+                      </div>
+                    </div>
+                  )}
+                  {s.rationale && (
+                    <div style={{ fontSize: 13, color: "rgba(240,240,245,0.5)", lineHeight: 1.5 }}>
+                      {s.rationale}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 

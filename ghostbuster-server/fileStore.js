@@ -109,12 +109,25 @@ exports.deleteReminder = async (_userId, id) => {
 
 exports.getProfile = async () => {
   const data = read()
-  return { profile: data.profile || { lastResumeUpdate: "" } }
+  const p = data.profile || {}
+  return {
+    profile: {
+      name: typeof p.name === "string" ? p.name : "",
+      careerGoals: typeof p.careerGoals === "string" ? p.careerGoals : "",
+      lastResumeUpdate: typeof p.lastResumeUpdate === "string" ? p.lastResumeUpdate : "",
+    },
+  }
 }
 
 exports.patchProfile = async (_userId, body) => {
   const data = read()
-  if (!data.profile) data.profile = { lastResumeUpdate: "" }
+  if (!data.profile) data.profile = { name: "", careerGoals: "", lastResumeUpdate: "" }
+  if (body.name !== undefined) {
+    data.profile.name = typeof body.name === "string" ? body.name.trim() : ""
+  }
+  if (body.careerGoals !== undefined) {
+    data.profile.careerGoals = typeof body.careerGoals === "string" ? body.careerGoals : ""
+  }
   if (body.lastResumeUpdate !== undefined) {
     data.profile.lastResumeUpdate =
       typeof body.lastResumeUpdate === "string" ? body.lastResumeUpdate : ""
@@ -150,7 +163,7 @@ exports.createResumeUpdate = async (_userId, body) => {
   }
   if (!Array.isArray(data.resumeUpdates)) data.resumeUpdates = []
   data.resumeUpdates.unshift(update)
-  if (!data.profile) data.profile = { lastResumeUpdate: "" }
+  if (!data.profile) data.profile = { name: "", careerGoals: "", lastResumeUpdate: "" }
   const prev = data.profile.lastResumeUpdate || ""
   if (!prev || effective > prev) {
     data.profile.lastResumeUpdate = effective
