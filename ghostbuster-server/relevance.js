@@ -1,6 +1,6 @@
 /**
- * Heuristic: which contacts might care about this résumé/career update text.
- * Keep in sync with GhostBuster/src/updateRelevance.js
+ * Legacy keyword-in-text heuristic (superseded by contactRelevance.js).
+ * Kept for reference; not used in the main update flow.
  */
 
 function tokenize(text) {

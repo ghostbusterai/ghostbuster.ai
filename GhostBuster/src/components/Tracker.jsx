@@ -130,7 +130,7 @@ function needsResumeNudge(contactId, contact, logs, lastResumeUpdate) {
 export default function Tracker({ setPage, setComposePrefill }) {
   const [contacts, setContacts] = useState([])
   const [logs, setLogs] = useState([])
-  const [profile, setProfile] = useState({ lastResumeUpdate: "" })
+  const [lastResumeUpdate, setLastResumeUpdate] = useState("")
   const [filterContactId, setFilterContactId] = useState("")
   const [sortBy, setSortBy] = useState("warmth")
   const [loadError, setLoadError] = useState(null)
@@ -142,9 +142,6 @@ export default function Tracker({ setPage, setComposePrefill }) {
   const [logChannel, setLogChannel] = useState(CHANNELS[0])
   const [logNote, setLogNote] = useState("")
   const [savingLog, setSavingLog] = useState(false)
-
-  const [resumeDate, setResumeDate] = useState("")
-  const [savingResume, setSavingResume] = useState(false)
 
   /** When set, show full-screen timeline for this contact's logged touchpoints */
   const [timelineContactId, setTimelineContactId] = useState(null)
@@ -159,8 +156,7 @@ export default function Tracker({ setPage, setComposePrefill }) {
       ])
       setContacts(c)
       setLogs(lg)
-      setProfile(p || { lastResumeUpdate: "" })
-      setResumeDate((p && p.lastResumeUpdate) || "")
+      setLastResumeUpdate((p && p.lastResumeUpdate) || "")
       localStorage.setItem(LS_LOGS, JSON.stringify(lg))
       localStorage.setItem(LS_PROFILE, JSON.stringify(p || { lastResumeUpdate: "" }))
     } catch (e) {
@@ -168,9 +164,7 @@ export default function Tracker({ setPage, setComposePrefill }) {
       setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
       setLogs(JSON.parse(localStorage.getItem(LS_LOGS) || "[]"))
       const pr = JSON.parse(localStorage.getItem(LS_PROFILE) || "{}")
-      const prof = { lastResumeUpdate: pr.lastResumeUpdate || "" }
-      setProfile(prof)
-      setResumeDate(prof.lastResumeUpdate)
+      setLastResumeUpdate(pr.lastResumeUpdate || "")
     } finally {
       setLoading(false)
     }
@@ -236,25 +230,6 @@ export default function Tracker({ setPage, setComposePrefill }) {
     if (timelineContactId == null) return
     if (!contacts.some((c) => c.id === timelineContactId)) setTimelineContactId(null)
   }, [contacts, timelineContactId])
-
-  async function saveResumeDate() {
-    setActionError(null)
-    setSavingResume(true)
-    try {
-      const { profile: p } = await api.patchProfile({ lastResumeUpdate: resumeDate })
-      setProfile(p)
-      localStorage.setItem(LS_PROFILE, JSON.stringify(p))
-    } catch (err) {
-      if (loadError) {
-        const p = { lastResumeUpdate: resumeDate }
-        setProfile(p)
-        localStorage.setItem(LS_PROFILE, JSON.stringify(p))
-      } else {
-        setActionError(err.message)
-      }
-    }
-    setSavingResume(false)
-  }
 
   async function saveLog(e) {
     e.preventDefault()
@@ -326,7 +301,7 @@ export default function Tracker({ setPage, setComposePrefill }) {
   }
 
   function openResumeCompose(contact) {
-    const resume = profile.lastResumeUpdate || resumeDate || ""
+    const resume = lastResumeUpdate || ""
     const resumeLine = resume
       ? `I last updated my résumé on ${resume}.`
       : "I recently refreshed my résumé."
@@ -381,9 +356,8 @@ export default function Tracker({ setPage, setComposePrefill }) {
         </h1>
         <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, maxWidth: 720, lineHeight: 1.55, fontFamily: font.body }}>
           Filter by contact to focus on one relationship, or view everyone sorted by how “warm” the connection is.
-          Colors show time since your last touch; the strip is the last 12 weeks of logged outreach. After you save a
-          résumé update date, contacts you have not messaged since then get a nudge — open Compose to generate a
-          professional note to share your update.
+          Colors show time since your last touch; the strip is the last 12 weeks of logged outreach. Set your
+          résumé last updated date on the Resume tab — contacts you have not messaged since then get a nudge here.
         </p>
         {loadError && (
           <p style={{ color: "#ffc96b", fontSize: 13, marginTop: 10 }}>
@@ -391,46 +365,6 @@ export default function Tracker({ setPage, setComposePrefill }) {
           </p>
         )}
         {actionError && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>}
-      </div>
-
-      {/* Resume update — manual date; drives “share update” prompts */}
-      <div
-        style={{
-          background: "#111118",
-          border: "1px solid rgba(184,255,87,0.2)",
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 28,
-        }}
-      >
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
-          Résumé last updated
-        </div>
-        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", marginBottom: 14, lineHeight: 1.55, fontFamily: font.body }}>
-          When you refresh your résumé, set the date here. We can’t read your files automatically — this date
-          highlights contacts who have not heard from you since then and opens Compose with a tailored “sharing my
-          update” draft.
-        </p>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <input type="date" value={resumeDate} onChange={(e) => setResumeDate(e.target.value)} style={{ ...inputStyle, width: "auto" }} />
-          <button
-            type="button"
-            onClick={saveResumeDate}
-            disabled={savingResume}
-            style={{
-              background: "#b8ff57",
-              color: "#0a0f09",
-              border: "1px solid rgba(10,15,9,0.22)",
-              boxShadow: "none",
-              padding: "10px 20px",
-              borderRadius: 9,
-              fontWeight: 700,
-              cursor: savingResume ? "wait" : "pointer",
-            }}
-          >
-            {savingResume ? "Saving…" : "Save date"}
-          </button>
-        </div>
       </div>
 
       {/* Warmth legend */}
@@ -607,7 +541,7 @@ export default function Tracker({ setPage, setComposePrefill }) {
             const n90 = countInWindow(logs, c.id, 90)
             const avgGap = avgDaysBetweenTouches(logs, c.id)
             const weeks = weekTouchFlags(logs, c.id, 12)
-            const resumeNudge = needsResumeNudge(c.id, c, logs, profile.lastResumeUpdate)
+            const resumeNudge = needsResumeNudge(c.id, c, logs, lastResumeUpdate)
             return (
               <div
                 key={c.id}

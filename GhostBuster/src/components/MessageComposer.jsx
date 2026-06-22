@@ -62,6 +62,11 @@ export default function MessageComposer({ composePrefill = null, onConsumePrefil
     if (p.extraContext !== undefined) setExtraContext(p.extraContext ?? "")
     if (p.yourBackground !== undefined) setYourBackground(p.yourBackground ?? "")
     if (p.previousCommunication !== undefined) setPreviousCommunication(p.previousCommunication ?? "")
+    if (p.preGeneratedResult) {
+      setResult(p.preGeneratedResult)
+      setError(null)
+      setLoading(false)
+    }
     onConsumePrefill?.()
   }, [composePrefill, onConsumePrefill])
 

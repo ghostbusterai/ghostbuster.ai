@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react"
-import { api } from "../api"
+import { getReminderDueStatus, isReminderOverdue } from "../reminderUtils"
 import { font, accentNeon, neonAlpha } from "../theme"
 
 const LS_LOGS = "gb_outreach_logs"
@@ -38,10 +38,15 @@ function contactRecencyMs(c) {
   return Math.max(idT, lc)
 }
 
-function hasPendingReminderForContact(contact, reminders) {
+function contactReminderBadge(contact, reminders) {
   const n = contact.name?.trim().toLowerCase()
-  if (!n) return false
-  return reminders.some((r) => !r.done && String(r.contactName || "").trim().toLowerCase() === n)
+  if (!n) return null
+  const pending = reminders.filter(
+    (r) => !r.done && String(r.contactName || "").trim().toLowerCase() === n
+  )
+  if (!pending.length) return null
+  if (pending.some((r) => isReminderOverdue(r))) return "overdue"
+  return "pending"
 }
 
 function formatFeedTime(ts) {
@@ -93,6 +98,7 @@ export default function Dashboard({ setPage }) {
   }, [])
 
   const dueReminders = reminders.filter((r) => !r.done)
+  const overdueReminders = reminders.filter((r) => isReminderOverdue(r))
 
   const stats = [
     {
@@ -105,9 +111,10 @@ export default function Dashboard({ setPage }) {
     {
       label: "Pending Reminders",
       value: dueReminders.length,
+      sub: overdueReminders.length > 0 ? `${overdueReminders.length} overdue` : null,
       icon: "🔔",
-      color: "#ffc96b",
-      rgb: "255, 201, 107",
+      color: overdueReminders.length > 0 ? "#ff6b6b" : "#ffc96b",
+      rgb: overdueReminders.length > 0 ? "255, 107, 107" : "255, 201, 107",
     },
     {
       label: "Companies",
@@ -172,13 +179,14 @@ export default function Dashboard({ setPage }) {
       const due = r.dueDate ? parseDay(r.dueDate) : 0
       const ts = due || Number(r.id) || 0
       const reason = (r.customReason || r.reason || "Reminder")?.replace(/\s+/g, " ").trim()
+      const status = getReminderDueStatus(r)
       items.push({
         id: `rem-${r.id}`,
         kind: "reminder",
         ts,
-        accent: "#ffc96b",
+        accent: status.overdue ? "#ff6b6b" : "#ffc96b",
         title: `Reminder · ${r.contactName || "Contact"}`,
-        detail: reason,
+        detail: status.overdue ? `Overdue · ${reason}` : reason,
         page: "reminders",
       })
     }
@@ -270,6 +278,11 @@ export default function Dashboard({ setPage }) {
               >
                 {s.value}
               </div>
+              {s.sub && (
+                <div style={{ marginTop: 8, fontSize: 12, fontFamily: font.mono, color: s.color, opacity: 0.85 }}>
+                  {s.sub}
+                </div>
+              )}
             </div>
           )
         })}
@@ -432,7 +445,7 @@ export default function Dashboard({ setPage }) {
               {recentContacts.map((c) => {
                 const d = daysSinceLastTouch(c)
                 const warm = warmthPill(d)
-                const reminderDue = hasPendingReminderForContact(c, reminders)
+                const reminderBadge = contactReminderBadge(c, reminders)
                 return (
                   <div
                     key={c.id}
@@ -488,7 +501,7 @@ export default function Dashboard({ setPage }) {
                         >
                           {warm.label}
                         </span>
-                        {reminderDue ? (
+                        {reminderBadge ? (
                           <span
                             style={{
                               display: "inline-flex",
@@ -500,12 +513,18 @@ export default function Dashboard({ setPage }) {
                               textTransform: "uppercase",
                               padding: "4px 10px",
                               borderRadius: 20,
-                              color: "#ffc96b",
-                              background: "rgba(255,201,107,0.1)",
-                              border: "1px solid rgba(255,201,107,0.28)",
+                              color: reminderBadge === "overdue" ? "#ff6b6b" : "#ffc96b",
+                              background:
+                                reminderBadge === "overdue"
+                                  ? "rgba(255,107,107,0.1)"
+                                  : "rgba(255,201,107,0.1)",
+                              border:
+                                reminderBadge === "overdue"
+                                  ? "1px solid rgba(255,107,107,0.35)"
+                                  : "1px solid rgba(255,201,107,0.28)",
                             }}
                           >
-                            Reminder set
+                            {reminderBadge === "overdue" ? "Reminder overdue" : "Reminder set"}
                           </span>
                         ) : null}
                       </div>

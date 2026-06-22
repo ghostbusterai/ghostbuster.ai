@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { api } from "../api"
 import { suggestContactsForUpdate } from "../updateRelevance"
+import {
+  buildResumeUpdateComposePayload,
+  generateResumeUpdateOutreachMessage,
+} from "../outreachMessage"
 import { font } from "../theme"
-import { readLocalProfile } from "../profile"
+import { readLocalProfile, saveLocalProfile } from "../profile"
 
 const LS_UPDATES = "gb_resume_updates"
 const LS_PROFILE = "gb_profile"
@@ -77,6 +81,9 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [relevanceModal, setRelevanceModal] = useState(null)
+  const [outreachByContact, setOutreachByContact] = useState({})
+  const [copiedContactId, setCopiedContactId] = useState(null)
+  const [profileName, setProfileName] = useState("")
   const [fullResume, setFullResume] = useState(null)
   const [resumeUploading, setResumeUploading] = useState(false)
   const [resumeExpanded, setResumeExpanded] = useState(false)
@@ -85,6 +92,8 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [suggestions, setSuggestions] = useState([])
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [suggestionsError, setSuggestionsError] = useState(null)
+  const [resumeDate, setResumeDate] = useState("")
+  const [savingResumeDate, setSavingResumeDate] = useState(false)
 
   const load = useCallback(async () => {
     setLoadError(null)
@@ -99,6 +108,9 @@ export default function Updates({ setPage, setComposePrefill }) {
       setContacts(c || [])
       setFullResume(resumeOut?.resume || null)
       setCareerGoals(profileOut?.profile?.careerGoals?.trim() || "")
+      setProfileName(profileOut?.profile?.name?.trim() || "")
+      setResumeDate(profileOut?.profile?.lastResumeUpdate || "")
+      if (profileOut?.profile) saveLocalProfile(profileOut.profile)
       localStorage.setItem(LS_UPDATES, JSON.stringify(u || []))
       localStorage.setItem("gb_contacts", JSON.stringify(c || []))
       if (resumeOut?.resume) saveLocalFullResume(resumeOut.resume)
@@ -107,7 +119,10 @@ export default function Updates({ setPage, setComposePrefill }) {
       setUpdates(JSON.parse(localStorage.getItem(LS_UPDATES) || "[]"))
       setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
       setFullResume(readLocalFullResume())
-      setCareerGoals(readLocalProfile().careerGoals?.trim() || "")
+      const localProfile = readLocalProfile()
+      setCareerGoals(localProfile.careerGoals?.trim() || "")
+      setProfileName(localProfile.name?.trim() || "")
+      setResumeDate(localProfile.lastResumeUpdate || "")
     } finally {
       setLoading(false)
     }
@@ -126,6 +141,84 @@ export default function Updates({ setPage, setComposePrefill }) {
     return () => window.removeEventListener("keydown", onKey)
   }, [relevanceModal])
 
+  useEffect(() => {
+    if (!relevanceModal) {
+      setOutreachByContact({})
+      setCopiedContactId(null)
+      return
+    }
+
+    let cancelled = false
+    const { update, relevance } = relevanceModal
+    if (!relevance.length) return
+    const initial = {}
+    for (const row of relevance) {
+      initial[row.contactId] = { loading: true, message: null, source: null, error: null }
+    }
+    setOutreachByContact(initial)
+
+    for (const row of relevance) {
+      const contact = contacts.find((c) => c.id === row.contactId) || row
+      ;(async () => {
+        try {
+          const { message, source } = await generateResumeUpdateOutreachMessage({
+            contact,
+            update,
+            reasons: row.reasons,
+            senderName: profileName,
+            composeFn: (body) => api.compose(body),
+          })
+          if (cancelled) return
+          setOutreachByContact((prev) => ({
+            ...prev,
+            [row.contactId]: { loading: false, message, source, error: null },
+          }))
+        } catch (err) {
+          if (cancelled) return
+          setOutreachByContact((prev) => ({
+            ...prev,
+            [row.contactId]: {
+              loading: false,
+              message: null,
+              source: null,
+              error: err.message || "Could not generate message",
+            },
+          }))
+        }
+      })()
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [relevanceModal, contacts, profileName])
+
+  async function saveResumeDate() {
+    setActionError(null)
+    setSavingResumeDate(true)
+    try {
+      const { profile: p } = await api.patchProfile({ lastResumeUpdate: resumeDate })
+      saveLocalProfile(p)
+      setResumeDate(p.lastResumeUpdate || resumeDate)
+    } catch (err) {
+      if (loadError) {
+        const p = { ...readLocalProfile(), lastResumeUpdate: resumeDate }
+        saveLocalProfile(p)
+      } else {
+        setActionError(err.message)
+      }
+    }
+    setSavingResumeDate(false)
+  }
+
+  function openSaveResultModal(update, relevance, contactList) {
+    const list = contactList ?? contacts
+    let notice = null
+    if (list.length === 0) notice = "no_contacts"
+    else if (!relevance || relevance.length === 0) notice = "no_matches"
+    setRelevanceModal({ update, relevance: relevance || [], notice })
+  }
+
   async function saveUpdate(e) {
     e.preventDefault()
     if (!title.trim() || !details.trim()) return
@@ -136,22 +229,23 @@ export default function Updates({ setPage, setComposePrefill }) {
       details: details.trim(),
       effectiveDate,
     }
-    const haystack = `${payload.title}\n${payload.details}`
 
     try {
       const { update, relevance } = await api.createResumeUpdate(payload)
+      const { contacts: latestContacts } = await api.getContacts()
+      setContacts(latestContacts || [])
+      localStorage.setItem("gb_contacts", JSON.stringify(latestContacts || []))
       setUpdates((prev) => {
         const next = [update, ...prev]
         localStorage.setItem(LS_UPDATES, JSON.stringify(next))
         return next
       })
       mergeProfileLastResume(update.effectiveDate)
+      setResumeDate(readLocalProfile().lastResumeUpdate || update.effectiveDate)
       setTitle("")
       setDetails("")
       setEffectiveDate(new Date().toISOString().slice(0, 10))
-      if (relevance && relevance.length > 0) {
-        setRelevanceModal({ update, relevance })
-      }
+      openSaveResultModal(update, relevance, latestContacts)
     } catch (err) {
       if (loadError) {
         const update = {
@@ -161,15 +255,19 @@ export default function Updates({ setPage, setComposePrefill }) {
           effectiveDate: payload.effectiveDate,
           createdAt: new Date().toISOString(),
         }
-        const relevance = suggestContactsForUpdate(contacts, haystack)
+        const relevance = suggestContactsForUpdate(contacts, payload, {
+          careerGoals,
+          resumeText: fullResume?.text || "",
+        })
         const next = [update, ...updates]
         setUpdates(next)
         localStorage.setItem(LS_UPDATES, JSON.stringify(next))
         mergeProfileLastResume(update.effectiveDate)
+      setResumeDate(readLocalProfile().lastResumeUpdate || update.effectiveDate)
         setTitle("")
         setDetails("")
         setEffectiveDate(new Date().toISOString().slice(0, 10))
-        if (relevance.length > 0) setRelevanceModal({ update, relevance })
+        openSaveResultModal(update, relevance)
       } else {
         setActionError(err.message)
       }
@@ -274,16 +372,21 @@ export default function Updates({ setPage, setComposePrefill }) {
   }
 
   function openComposeForContact(row, update) {
+    const contact = contacts.find((c) => c.id === row.contactId) || row
+    const draft = outreachByContact[row.contactId]
     setComposePrefill({
-      contactId: row.contactId,
-      situation: "Sharing a resume update",
-      tone: "Warm & professional (balanced)",
-      purpose:
-        "Briefly summarize this career/résumé update, tie it to why I'm writing them (using the relevance hints), and suggest a light next step.",
-      extraContext: `Update: "${update.title}" (effective ${update.effectiveDate}).\nWhy GhostBuster flagged them: ${row.reasons.join(" ")}`,
+      ...buildResumeUpdateComposePayload(contact, update, row.reasons),
+      ...(draft?.message ? { preGeneratedResult: draft.message } : {}),
     })
     setRelevanceModal(null)
     setPage("compose")
+  }
+
+  function copyOutreachMessage(contactId, message) {
+    if (!message) return
+    navigator.clipboard.writeText(message)
+    setCopiedContactId(contactId)
+    setTimeout(() => setCopiedContactId(null), 2000)
   }
 
   return (
@@ -313,15 +416,58 @@ export default function Updates({ setPage, setComposePrefill }) {
           Resume
         </h1>
         <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, maxWidth: 680, lineHeight: 1.55, fontFamily: font.body }}>
-          Log résumé or career changes here. We scan your text against contact cards (company, role, notes, website)
-          and, when something lines up, show a heads-up so you can reach out with context.
+          Log résumé or career changes here — no need to name contacts. We analyze your update against who
+          they are and what they do, then recommend matches with ready-to-send messages.
         </p>
         {loadError && (
           <p style={{ color: "#ffc96b", fontSize: 13, marginTop: 10 }}>
-            API offline — saving locally. Run the server to sync and use the same relevance rules on the backend.
+            API offline — saving locally. Run the server (with ANTHROPIC_API_KEY for best matching) to sync and use AI recommendations.
           </p>
         )}
         {actionError && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>}
+      </div>
+
+      <div
+        style={{
+          background: "#111118",
+          border: "1px solid rgba(184,255,87,0.2)",
+          borderRadius: 16,
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+          Résumé last updated
+        </div>
+        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", marginBottom: 14, lineHeight: 1.55, fontFamily: font.body }}>
+          Set the date you last refreshed your résumé. The Tracker uses this to nudge contacts who have not heard
+          from you since then.
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <input
+            type="date"
+            value={resumeDate}
+            onChange={(e) => setResumeDate(e.target.value)}
+            style={{ ...inputStyle, width: "auto" }}
+          />
+          <button
+            type="button"
+            onClick={saveResumeDate}
+            disabled={savingResumeDate}
+            style={{
+              background: "#b8ff57",
+              color: "#0a0f09",
+              border: "1px solid rgba(10,15,9,0.22)",
+              boxShadow: "none",
+              padding: "10px 20px",
+              borderRadius: 9,
+              fontWeight: 700,
+              cursor: savingResumeDate ? "wait" : "pointer",
+            }}
+          >
+            {savingResumeDate ? "Saving…" : "Save date"}
+          </button>
+        </div>
       </div>
 
       <div
@@ -721,10 +867,10 @@ export default function Updates({ setPage, setComposePrefill }) {
                 marginBottom: 6,
               }}
             >
-              DETAILS * (used to match companies, roles, and your notes on contacts)
+              DETAILS * (describe the update — we match it to contacts automatically)
             </label>
             <textarea
-              placeholder="Paste bullet points, new skills, company names, project keywords… The more specific, the better the contact matches."
+              placeholder="e.g. Shipped a recommendation feature, completed a data science internship, led a campus hackathon project… You don't need to name companies or people."
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               rows={7}
@@ -846,8 +992,8 @@ export default function Updates({ setPage, setComposePrefill }) {
         >
           <div
             style={{
-              width: "min(520px, 100%)",
-              maxHeight: "min(85vh, 640px)",
+              width: "min(680px, 100%)",
+              maxHeight: "min(90vh, 760px)",
               background: "#111118",
               border: "1px solid rgba(255,201,107,0.35)",
               borderRadius: 18,
@@ -871,11 +1017,32 @@ export default function Updates({ setPage, setComposePrefill }) {
                   gap: 10,
                 }}
               >
-                <span style={{ fontSize: 26 }}>✦</span> Heads-up
+                <span style={{ fontSize: 26 }}>✦</span>{" "}
+                {relevanceModal.notice === "no_contacts"
+                  ? "Update saved"
+                  : relevanceModal.notice === "no_matches"
+                    ? "Update saved — no matches yet"
+                    : "Recommended outreach"}
               </div>
               <p style={{ margin: "12px 0 0", fontSize: 14, color: "rgba(240,240,245,0.5)", lineHeight: 1.5 }}>
-                This update may be worth sharing with these people — we matched keywords from your text to their
-                company, role, notes, or website.
+                {relevanceModal.notice === "no_contacts" ? (
+                  <>
+                    Your update was saved, but there are no contacts yet. Add people on the{" "}
+                    <strong style={{ color: "#b8ff57" }}>Contacts</strong> page first — include their role,
+                    company, and notes so we can recommend who to message.
+                  </>
+                ) : relevanceModal.notice === "no_matches" ? (
+                  <>
+                    Your update was saved. We couldn&apos;t find strong contact matches yet — fill in{" "}
+                    <strong style={{ color: "#b8ff57" }}>role, company, and notes</strong> on your contacts
+                    (e.g. a consultant for a consulting club update) and try again.
+                  </>
+                ) : (
+                  <>
+                    Based on your update, these contacts look like a good fit — we inferred relevance from what
+                    they&apos;re doing, not keywords you had to mention. Copy a message or tweak it in Compose.
+                  </>
+                )}
               </p>
               <div
                 style={{
@@ -892,7 +1059,26 @@ export default function Updates({ setPage, setComposePrefill }) {
               </div>
             </div>
             <div style={{ padding: "16px 24px", overflowY: "auto", flex: 1 }}>
-              {relevanceModal.relevance.map((row) => (
+              {relevanceModal.notice && (
+                <div
+                  style={{
+                    padding: "16px 18px",
+                    borderRadius: 12,
+                    background: "rgba(255,201,107,0.06)",
+                    border: "1px solid rgba(255,201,107,0.2)",
+                    fontSize: 14,
+                    color: "rgba(240,240,245,0.65)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {relevanceModal.notice === "no_contacts"
+                    ? "Tip: Even one contact with a role like “Consultant” or notes about their industry is enough for us to suggest outreach."
+                    : "Tip: Restart isn’t needed — just add or edit contacts, then save another update (or re-save this one from History after deleting duplicates)."}
+                </div>
+              )}
+              {relevanceModal.relevance.map((row) => {
+                const outreach = outreachByContact[row.contactId] || { loading: true }
+                return (
                 <div
                   key={row.contactId}
                   style={{
@@ -907,31 +1093,113 @@ export default function Updates({ setPage, setComposePrefill }) {
                   <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 2 }}>
                     {[row.role, row.company].filter(Boolean).join(" @ ") || "—"}
                   </div>
-                  <ul style={{ margin: "10px 0 0", paddingLeft: 18, color: "rgba(240,240,245,0.65)", fontSize: 13, lineHeight: 1.5 }}>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      fontSize: 13,
+                      color: "rgba(184,255,87,0.85)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    This fits well with {row.name.split(/\s+/)[0] || row.name}
+                    {outreach.loading ? " — generating your message…" : ":"}
+                  </div>
+                  <ul style={{ margin: "10px 0 0", paddingLeft: 18, color: "rgba(240,240,245,0.55)", fontSize: 12, lineHeight: 1.5 }}>
                     {row.reasons.map((r, i) => (
                       <li key={i}>{r}</li>
                     ))}
                   </ul>
-                  <button
-                    type="button"
-                    onClick={() => openComposeForContact(row, relevanceModal.update)}
+                  <div
                     style={{
-                      marginTop: 12,
-                      background: "rgba(184,255,87,0.12)",
-                      border: "1px solid rgba(184,255,87,0.35)",
-                      color: "#b8ff57",
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      fontFamily: font.body,
-                      boxShadow: "none",
+                      marginTop: 14,
+                      padding: "14px 16px",
+                      borderRadius: 10,
+                      background: "rgba(184,255,87,0.04)",
+                      border: "1px solid rgba(184,255,87,0.15)",
+                      minHeight: 80,
                     }}
                   >
-                    Draft message for {row.name.split(/\s+/)[0] || row.name} →
-                  </button>
+                    {outreach.loading && (
+                      <div style={{ fontSize: 13, fontFamily: font.mono, color: "rgba(240,240,245,0.4)" }}>
+                        ✨ Composing message…
+                      </div>
+                    )}
+                    {outreach.error && (
+                      <div style={{ fontSize: 13, color: "#ff6b6b", lineHeight: 1.5 }}>{outreach.error}</div>
+                    )}
+                    {outreach.message && !outreach.loading && (
+                      <>
+                        {outreach.source === "template" && (
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontFamily: font.mono,
+                              color: "rgba(255,201,107,0.75)",
+                              marginBottom: 8,
+                            }}
+                          >
+                            Template draft (add ANTHROPIC_API_KEY for AI polish)
+                          </div>
+                        )}
+                        <pre
+                          style={{
+                            fontFamily: font.mono,
+                            fontSize: 12,
+                            lineHeight: 1.65,
+                            color: "#f0f0f5",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            margin: 0,
+                          }}
+                        >
+                          {outreach.message}
+                        </pre>
+                      </>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => copyOutreachMessage(row.contactId, outreach.message)}
+                      disabled={!outreach.message || outreach.loading}
+                      style={{
+                        background:
+                          copiedContactId === row.contactId
+                            ? "rgba(184,255,87,0.2)"
+                            : "rgba(184,255,87,0.12)",
+                        border: "1px solid rgba(184,255,87,0.35)",
+                        color: outreach.message && !outreach.loading ? "#b8ff57" : "rgba(184,255,87,0.35)",
+                        padding: "8px 14px",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        cursor: outreach.message && !outreach.loading ? "pointer" : "not-allowed",
+                        fontFamily: font.body,
+                        boxShadow: "none",
+                      }}
+                    >
+                      {copiedContactId === row.contactId ? "Copied!" : "Copy message"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openComposeForContact(row, relevanceModal.update)}
+                      disabled={outreach.loading}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        color: outreach.loading ? "rgba(240,240,245,0.3)" : "rgba(240,240,245,0.65)",
+                        padding: "8px 14px",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        cursor: outreach.loading ? "not-allowed" : "pointer",
+                        fontFamily: font.body,
+                        boxShadow: "none",
+                      }}
+                    >
+                      Customize in Compose →
+                    </button>
+                  </div>
                 </div>
-              ))}
+              )})}
             </div>
             <div
               style={{
@@ -944,19 +1212,26 @@ export default function Updates({ setPage, setComposePrefill }) {
             >
               <button
                 type="button"
-                onClick={() => setRelevanceModal(null)}
+                onClick={() => {
+                  setRelevanceModal(null)
+                  if (relevanceModal.notice === "no_contacts") setPage("contacts")
+                }}
                 style={{
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#f0f0f5",
+                  background: relevanceModal.notice === "no_contacts" ? "#b8ff57" : "rgba(255,255,255,0.08)",
+                  border:
+                    relevanceModal.notice === "no_contacts"
+                      ? "1px solid rgba(10,15,9,0.22)"
+                      : "1px solid rgba(255,255,255,0.12)",
+                  color: relevanceModal.notice === "no_contacts" ? "#0a0f09" : "#f0f0f5",
                   padding: "9px 18px",
                   borderRadius: 9,
                   fontSize: 13,
+                  fontWeight: relevanceModal.notice === "no_contacts" ? 700 : 400,
                   cursor: "pointer",
                   boxShadow: "none",
                 }}
               >
-                Got it
+                {relevanceModal.notice === "no_contacts" ? "Add contacts →" : "Got it"}
               </button>
             </div>
           </div>

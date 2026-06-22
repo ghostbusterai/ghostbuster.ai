@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react"
 import { api } from "../api"
 import { font } from "../theme"
+import {
+  getReminderDueStatus,
+  isReminderOverdue,
+  parseDueDay,
+  sortRemindersForDisplay,
+} from "../reminderUtils"
 
 const EMPTY = { contactName: "", reason: "", dueDate: "", done: false }
 
@@ -108,16 +114,16 @@ export default function Reminders() {
     }
   }
 
-  const filtered = reminders.filter(r => {
-    if (filter === "pending") return !r.done
-    if (filter === "done") return r.done
-    return true
-  })
+  const filtered = sortRemindersForDisplay(
+    reminders.filter((r) => {
+      if (filter === "pending") return !r.done
+      if (filter === "done") return r.done
+      return true
+    })
+  )
 
-  const isOverdue = (r) => {
-    if (!r.dueDate || r.done) return false
-    return new Date(r.dueDate) < new Date()
-  }
+  const pendingCount = reminders.filter((r) => !r.done).length
+  const overdueCount = reminders.filter((r) => isReminderOverdue(r)).length
 
   const inputStyle = {
     background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.1)",
@@ -142,11 +148,20 @@ export default function Reminders() {
         <div>
           <div style={{ fontSize: 11, fontFamily: font.mono, letterSpacing: "0.14em", color: "rgba(240,240,245,0.3)", textTransform: "uppercase", marginBottom: 8 }}>Stay Warm</div>
           <h1 style={{ fontFamily: font.display, fontWeight: 800, fontSize: 36, letterSpacing: "-1px", marginBottom: 8 }}>Reminders</h1>
-          <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body }}>
+          <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body, maxWidth: 560, lineHeight: 1.55 }}>
             {listLoading ? "Loading…" : (
               <>
-                <span style={{ fontFamily: font.mono, fontVariantNumeric: "tabular-nums" }}>{reminders.filter(r => !r.done).length}</span>
-                {` pending reminder${reminders.filter(r => !r.done).length !== 1 ? "s" : ""}`}
+                <span style={{ fontFamily: font.mono, fontVariantNumeric: "tabular-nums" }}>{pendingCount}</span>
+                {` pending reminder${pendingCount !== 1 ? "s" : ""}`}
+                {overdueCount > 0 && (
+                  <span style={{ color: "#ff6b6b" }}>
+                    {" "}
+                    · {overdueCount} overdue
+                  </span>
+                )}
+                <span style={{ display: "block", marginTop: 6, fontSize: 13, color: "rgba(240,240,245,0.35)" }}>
+                  Reminders stay pending until you check them off — passing the due date only highlights them.
+                </span>
                 {loadError && (
                   <span style={{ display: "block", marginTop: 8, color: "#ffc96b", fontSize: 13 }}>
                     API unavailable — using local data. Start the server and refresh to sync.
@@ -245,19 +260,41 @@ export default function Reminders() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map(r => (
+          {filtered.map((r) => {
+            const dueStatus = getReminderDueStatus(r)
+            const overdue = dueStatus.overdue
+            const dueToday = dueStatus.dueToday
+            const cardBorder = r.done
+              ? "1px solid rgba(255,255,255,0.04)"
+              : overdue
+                ? "2px solid rgba(255,107,107,0.65)"
+                : dueToday
+                  ? "2px solid rgba(255,201,107,0.45)"
+                  : "1px solid rgba(255,255,255,0.06)"
+            const cardShadow = r.done
+              ? "none"
+              : overdue
+                ? "0 0 0 1px rgba(255,107,107,0.15), 0 8px 24px rgba(255,107,107,0.08)"
+                : "none"
+
+            return (
             <div key={r.id} style={{
-              background: "#111118",
-              border: `1px solid ${r.done ? "rgba(255,255,255,0.04)" : isOverdue(r) ? "rgba(255,107,107,0.25)" : "rgba(255,255,255,0.06)"}`,
+              background: overdue && !r.done ? "rgba(255,107,107,0.04)" : "#111118",
+              border: cardBorder,
+              boxShadow: cardShadow,
               borderRadius: 14, padding: "18px 22px",
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              opacity: r.done ? 0.5 : 1, transition: "all 0.15s",
+              opacity: r.done ? 0.55 : 1, transition: "all 0.15s",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                {/* Checkbox */}
-                <button onClick={() => toggle(r.id)} style={{
+                <button
+                  type="button"
+                  onClick={() => toggle(r.id)}
+                  aria-label={r.done ? `Mark reminder for ${r.contactName} as pending` : `Mark reminder for ${r.contactName} as done`}
+                  title={r.done ? "Mark as not done" : "Mark as done"}
+                  style={{
                   width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                  border: `2px solid ${r.done ? "#b8ff57" : "rgba(255,255,255,0.2)"}`,
+                  border: `2px solid ${r.done ? "#b8ff57" : overdue ? "rgba(255,107,107,0.55)" : "rgba(255,255,255,0.2)"}`,
                   background: r.done ? "#b8ff57" : "transparent",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 12, color: "#0a0f09",
@@ -280,11 +317,18 @@ export default function Reminders() {
                 {r.dueDate && (
                   <div style={{
                     fontSize: 11, fontFamily: font.mono,
-                    color: isOverdue(r) ? "#ff6b6b" : "rgba(240,240,245,0.3)",
-                    background: isOverdue(r) ? "rgba(255,107,107,0.08)" : "transparent",
-                    padding: isOverdue(r) ? "3px 8px" : "0", borderRadius: 6,
+                    color: overdue ? "#ff6b6b" : dueToday ? "#ffc96b" : "rgba(240,240,245,0.3)",
+                    background: overdue
+                      ? "rgba(255,107,107,0.12)"
+                      : dueToday
+                        ? "rgba(255,201,107,0.1)"
+                        : "transparent",
+                    padding: overdue || dueToday ? "4px 10px" : "0",
+                    borderRadius: 6,
+                    border: overdue ? "1px solid rgba(255,107,107,0.25)" : dueToday ? "1px solid rgba(255,201,107,0.2)" : "none",
                   }}>
-                    {isOverdue(r) ? "⚠ Overdue · " : ""}{new Date(r.dueDate).toLocaleDateString()}
+                    {overdue ? "Overdue · " : dueToday ? "Due today · " : ""}
+                    {parseDueDay(r.dueDate)?.toLocaleDateString() ?? r.dueDate}
                   </div>
                 )}
                 <button onClick={() => remove(r.id)} style={{
@@ -294,7 +338,7 @@ export default function Reminders() {
                 }}>Delete</button>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </div>

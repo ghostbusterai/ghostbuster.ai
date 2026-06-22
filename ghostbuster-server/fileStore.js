@@ -144,12 +144,9 @@ exports.getResumeUpdates = async () => {
 }
 
 exports.createResumeUpdate = async (_userId, body) => {
-  const { suggestContactsForUpdate } = require("./relevance")
   const { title, details, effectiveDate } = body || {}
   const bodyText = typeof details === "string" ? details : ""
   const data = read()
-  const haystack = `${title.trim()}\n${bodyText}`
-  const relevance = suggestContactsForUpdate(data.contacts || [], haystack)
   const effective =
     typeof effectiveDate === "string" && effectiveDate.trim()
       ? effectiveDate.trim().slice(0, 10)
@@ -169,7 +166,7 @@ exports.createResumeUpdate = async (_userId, body) => {
     data.profile.lastResumeUpdate = effective
   }
   write(data)
-  return { update, relevance }
+  return { update }
 }
 
 exports.getFullResume = async () => {

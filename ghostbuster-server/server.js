@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3001
 const store = require("./fileStore")
 const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
 const { buildPrompt, parseSuggestionsJson } = require("./resumeSuggestions")
+const { suggestContactsForUpdateSmart } = require("./contactRelevance")
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -220,7 +221,19 @@ app.post("/api/resume-updates", async (req, res) => {
   }
   try {
     const out = await store.createResumeUpdate(null, { title, details, effectiveDate })
-    res.status(201).json(out)
+    const [{ contacts }, { profile }, { resume }] = await Promise.all([
+      store.getContacts(null),
+      store.getProfile(null),
+      store.getFullResume(null),
+    ])
+    const relevance = await suggestContactsForUpdateSmart({
+      anthropic,
+      contacts: contacts || [],
+      update: out.update,
+      profile: profile || {},
+      fullResume: resume || null,
+    })
+    res.status(201).json({ update: out.update, relevance })
   } catch (e) {
     console.error(e)
     res.status(500).json({ error: "Failed to save update" })
