@@ -16,6 +16,7 @@ function ensureFile() {
           outreachLogs: [],
           resumeUpdates: [],
           fullResume: null,
+          googleCalendar: null,
           profile: { name: "", careerGoals: "", lastResumeUpdate: "" },
         },
         null,
@@ -39,6 +40,19 @@ function read() {
             text: raw.fullResume.text,
             fileName: typeof raw.fullResume.fileName === "string" ? raw.fullResume.fileName : "",
             uploadedAt: typeof raw.fullResume.uploadedAt === "string" ? raw.fullResume.uploadedAt : "",
+          }
+        : null,
+    googleCalendar:
+      raw.googleCalendar &&
+      typeof raw.googleCalendar === "object" &&
+      typeof raw.googleCalendar.refreshToken === "string" &&
+      raw.googleCalendar.refreshToken
+        ? {
+            refreshToken: raw.googleCalendar.refreshToken,
+            connectedAt:
+              typeof raw.googleCalendar.connectedAt === "string"
+                ? raw.googleCalendar.connectedAt
+                : "",
           }
         : null,
     profile:

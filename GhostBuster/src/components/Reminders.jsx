@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { api } from "../api"
+import { api, BASE } from "../api"
 import { font } from "../theme"
 import {
   getReminderDueStatus,
@@ -8,9 +8,9 @@ import {
   sortRemindersForDisplay,
 } from "../reminderUtils"
 
-const EMPTY = { contactName: "", reason: "", dueDate: "", done: false }
+const EMPTY = { contactName: "", reason: "", dueDate: "", done: false, syncToCalendar: true }
 
-export default function Reminders() {
+export default function Reminders({ googleNotice = null, onConsumeGoogleNotice = () => {} }) {
   const [reminders, setReminders] = useState([])
   const [contacts, setContacts] = useState([])
   const [loadError, setLoadError] = useState(null)
@@ -19,19 +19,30 @@ export default function Reminders() {
   const [form, setForm] = useState(EMPTY)
   const [filter, setFilter] = useState("pending")
   const [actionError, setActionError] = useState(null)
+  const [notice, setNotice] = useState(null)
+  const [googleStatus, setGoogleStatus] = useState({ connected: false, configured: false })
+  const [googleLoading, setGoogleLoading] = useState(true)
+
+  useEffect(() => {
+    if (!googleNotice) return
+    setNotice(googleNotice)
+    onConsumeGoogleNotice()
+  }, [googleNotice, onConsumeGoogleNotice])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       setLoadError(null)
       try {
-        const [{ contacts: c }, { reminders: r }] = await Promise.all([
+        const [{ contacts: c }, { reminders: r }, gStatus] = await Promise.all([
           api.getContacts(),
           api.getReminders(),
+          api.getGoogleCalendarStatus(),
         ])
         if (!cancelled) {
           setContacts(c)
           setReminders(r)
+          setGoogleStatus(gStatus)
         }
       } catch (e) {
         if (!cancelled) {
@@ -40,7 +51,10 @@ export default function Reminders() {
           setReminders(JSON.parse(localStorage.getItem("gb_reminders") || "[]"))
         }
       } finally {
-        if (!cancelled) setListLoading(false)
+        if (!cancelled) {
+          setListLoading(false)
+          setGoogleLoading(false)
+        }
       }
     })()
     return () => { cancelled = true }
@@ -55,6 +69,7 @@ export default function Reminders() {
       dueDate: form.dueDate,
       done: false,
       customReason: form.reason === "Custom..." ? (form.customReason || "") : "",
+      syncToCalendar: form.syncToCalendar !== false,
     }
     try {
       await api.createReminder(payload)
@@ -93,6 +108,36 @@ export default function Reminders() {
       } else {
         setActionError(e.message)
       }
+    }
+  }
+
+  function connectGoogleCalendar() {
+    window.location.href = `${BASE}/api/google/auth`
+  }
+
+  async function disconnectGoogleCalendar() {
+    setActionError(null)
+    try {
+      await api.disconnectGoogleCalendar()
+      setGoogleStatus({ connected: false, configured: googleStatus.configured })
+      setNotice({ type: "success", text: "Google Calendar disconnected." })
+    } catch (e) {
+      setActionError(e.message)
+    }
+  }
+
+  async function syncOne(id) {
+    setActionError(null)
+    try {
+      const { reminder } = await api.syncReminderToCalendar(id)
+      setReminders((prev) => {
+        const next = prev.map((r) => (r.id === id ? reminder : r))
+        localStorage.setItem("gb_reminders", JSON.stringify(next))
+        return next
+      })
+      setNotice({ type: "success", text: "Added to Google Calendar." })
+    } catch (e) {
+      setActionError(e.message)
     }
   }
 
@@ -171,6 +216,17 @@ export default function Reminders() {
             )}
           </p>
           {actionError && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>}
+          {notice && (
+            <p
+              style={{
+                color: notice.type === "error" ? "#ff6b6b" : "#b8ff57",
+                fontSize: 13,
+                marginTop: 8,
+              }}
+            >
+              {notice.text}
+            </p>
+          )}
         </div>
         <button onClick={() => setShowForm(true)} style={{
           background: "#b8ff57", color: "#0a0f09", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
@@ -178,6 +234,70 @@ export default function Reminders() {
           fontWeight: 700, fontSize: 14, cursor: "pointer",
         }}>+ Add Reminder</button>
       </div>
+
+      {!googleLoading && googleStatus.configured && (
+        <div
+          style={{
+            background: googleStatus.connected ? "rgba(184,255,87,0.06)" : "#111118",
+            border: `1px solid ${googleStatus.connected ? "rgba(184,255,87,0.2)" : "rgba(255,255,255,0.08)"}`,
+            borderRadius: 14,
+            padding: "16px 20px",
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15 }}>
+              Google Calendar {googleStatus.connected ? "connected" : "not connected"}
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 13, color: "rgba(240,240,245,0.45)", lineHeight: 1.45 }}>
+              {googleStatus.connected
+                ? "New reminders with a due date are added to your calendar automatically."
+                : "Connect to sync reminders as calendar events."}
+            </p>
+          </div>
+          {googleStatus.connected ? (
+            <button
+              type="button"
+              onClick={disconnectGoogleCalendar}
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(240,240,245,0.65)",
+                padding: "8px 14px",
+                borderRadius: 8,
+                fontSize: 12,
+                cursor: "pointer",
+                boxShadow: "none",
+              }}
+            >
+              Disconnect
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={connectGoogleCalendar}
+              style={{
+                background: "rgba(184,255,87,0.12)",
+                border: "1px solid rgba(184,255,87,0.35)",
+                color: "#b8ff57",
+                padding: "8px 14px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: "none",
+              }}
+            >
+              Connect Google Calendar
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
@@ -232,6 +352,27 @@ export default function Reminders() {
               onChange={e => setForm({ ...form, customReason: e.target.value })}
               style={{ ...inputStyle, marginTop: 14 }}
             />
+          )}
+
+          {googleStatus.connected && (
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginTop: 14,
+                fontSize: 13,
+                color: "rgba(240,240,245,0.65)",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.syncToCalendar !== false}
+                onChange={(e) => setForm({ ...form, syncToCalendar: e.target.checked })}
+              />
+              Add to Google Calendar when a due date is set
+            </label>
           )}
 
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
@@ -330,6 +471,40 @@ export default function Reminders() {
                     {overdue ? "Overdue · " : dueToday ? "Due today · " : ""}
                     {parseDueDay(r.dueDate)?.toLocaleDateString() ?? r.dueDate}
                   </div>
+                )}
+                {r.googleEventId && (
+                  <span
+                    title="Synced to Google Calendar"
+                    style={{
+                      fontSize: 10,
+                      fontFamily: font.mono,
+                      color: "#b8ff57",
+                      background: "rgba(184,255,87,0.1)",
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                    }}
+                  >
+                    Calendar
+                  </span>
+                )}
+                {googleStatus.connected && r.dueDate && !r.googleEventId && !r.done && (
+                  <button
+                    type="button"
+                    onClick={() => syncOne(r.id)}
+                    style={{
+                      background: "rgba(91,228,216,0.1)",
+                      border: "1px solid rgba(91,228,216,0.3)",
+                      boxShadow: "none",
+                      color: "#5be4d8",
+                      padding: "6px 12px",
+                      borderRadius: 7,
+                      fontSize: 11,
+                      cursor: "pointer",
+                      fontFamily: font.mono,
+                    }}
+                  >
+                    Add to Calendar
+                  </button>
                 )}
                 <button onClick={() => remove(r.id)} style={{
                   background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.15)", boxShadow: "none",

@@ -75,6 +75,7 @@ exports.createReminder = async (_userId, body) => {
     dueDate: dueDate ?? "",
     done: Boolean(done),
     customReason: customReason ?? "",
+    googleEventId: "",
   }
   data.reminders.push(reminder)
   write(data)
@@ -105,6 +106,52 @@ exports.deleteReminder = async (_userId, id) => {
   if (data.reminders.length === before) return false
   write(data)
   return true
+}
+
+exports.getGoogleCalendarStatus = async () => {
+  const data = read()
+  const g = data.googleCalendar
+  return {
+    connected: Boolean(g?.refreshToken),
+    connectedAt: g?.connectedAt || "",
+  }
+}
+
+exports.saveGoogleCalendarTokens = async (_userId, tokens) => {
+  const refreshToken = tokens?.refresh_token
+  if (!refreshToken) throw new Error("missing_refresh_token")
+  const data = read()
+  data.googleCalendar = {
+    refreshToken,
+    connectedAt: new Date().toISOString(),
+  }
+  write(data)
+  return { connected: true, connectedAt: data.googleCalendar.connectedAt }
+}
+
+exports.clearGoogleCalendar = async () => {
+  const data = read()
+  if (!data.googleCalendar) return false
+  data.googleCalendar = null
+  write(data)
+  return true
+}
+
+exports.getGoogleRefreshToken = async () => {
+  const data = read()
+  return data.googleCalendar?.refreshToken || null
+}
+
+exports.setReminderGoogleEventId = async (_userId, id, googleEventId) => {
+  const data = read()
+  const idx = data.reminders.findIndex((r) => r.id === id)
+  if (idx === -1) return null
+  data.reminders[idx] = {
+    ...data.reminders[idx],
+    googleEventId: typeof googleEventId === "string" ? googleEventId : "",
+  }
+  write(data)
+  return { reminder: data.reminders[idx] }
 }
 
 exports.getProfile = async () => {

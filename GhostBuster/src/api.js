@@ -86,6 +86,10 @@ export const api = {
   deleteFullResume: () => request("/api/resume", { method: "DELETE" }),
   getResumeSuggestions: () =>
     request("/api/resume/suggestions", { method: "POST", body: JSON.stringify({}) }),
+  getGoogleCalendarStatus: () => request("/api/google/status"),
+  disconnectGoogleCalendar: () => request("/api/google/disconnect", { method: "DELETE" }),
+  syncReminderToCalendar: (id) =>
+    request(`/api/reminders/${id}/sync-calendar`, { method: "POST", body: JSON.stringify({}) }),
 }
 
 export { BASE }

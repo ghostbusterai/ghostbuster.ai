@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Dashboard from "./components/Dashboard"
 import ContactHub from "./components/ContactHub"
 import Reminders from "./components/Reminders"
@@ -21,6 +21,25 @@ const NAV = [
 export default function App() {
   const [page, setPage] = useState("dashboard")
   const [composePrefill, setComposePrefill] = useState(null)
+  const [googleNotice, setGoogleNotice] = useState(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const google = params.get("google")
+    if (google === "connected") {
+      setPage("reminders")
+      setGoogleNotice({ type: "success", text: "Google Calendar connected." })
+    } else if (google === "error") {
+      setPage("reminders")
+      setGoogleNotice({
+        type: "error",
+        text: params.get("message") || "Could not connect Google Calendar.",
+      })
+    }
+    if (google) {
+      window.history.replaceState({}, "", window.location.pathname || "/")
+    }
+  }, [])
 
   return (
     <div
@@ -145,7 +164,9 @@ export default function App() {
       >
         {page === "dashboard" && <Dashboard setPage={setPage} />}
         {page === "contacts" && <ContactHub />}
-        {page === "reminders" && <Reminders />}
+        {page === "reminders" && (
+          <Reminders googleNotice={googleNotice} onConsumeGoogleNotice={() => setGoogleNotice(null)} />
+        )}
         {page === "tracker" && <Tracker setPage={setPage} setComposePrefill={setComposePrefill} />}
         {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
         {page === "compose" && (

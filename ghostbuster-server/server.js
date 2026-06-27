@@ -12,6 +12,7 @@ const store = require("./fileStore")
 const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
 const { buildPrompt, parseSuggestionsJson } = require("./resumeSuggestions")
 const { suggestContactsForUpdateSmart } = require("./contactRelevance")
+const googleCal = require("./googleCalendar")
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -51,6 +52,38 @@ function formatAnthropicError(err) {
 function parseId(param) {
   const id = Number(param)
   return Number.isFinite(id) ? id : null
+}
+
+function appOrigin(req) {
+  if (process.env.APP_URL) return String(process.env.APP_URL).replace(/\/$/, "")
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https"
+  const host = req.get("x-forwarded-host") || req.get("host")
+  return `${proto}://${host}`
+}
+
+async function syncReminderCreate(reminder) {
+  const refreshToken = await store.getGoogleRefreshToken(null)
+  if (!refreshToken || !reminder.dueDate || reminder.googleEventId) return reminder
+  const eventId = await googleCal.createReminderEvent(refreshToken, reminder)
+  if (!eventId) return reminder
+  const out = await store.setReminderGoogleEventId(null, reminder.id, eventId)
+  return out?.reminder || { ...reminder, googleEventId: eventId }
+}
+
+async function syncReminderUpdate(prev, next) {
+  const refreshToken = await store.getGoogleRefreshToken(null)
+  if (!refreshToken || !next.dueDate) return next
+  if (next.googleEventId) {
+    await googleCal.updateReminderEvent(refreshToken, next.googleEventId, next)
+    return next
+  }
+  return syncReminderCreate(next)
+}
+
+async function syncReminderDelete(reminder) {
+  const refreshToken = await store.getGoogleRefreshToken(null)
+  if (!refreshToken || !reminder?.googleEventId) return
+  await googleCal.deleteReminderEvent(refreshToken, reminder.googleEventId)
 }
 
 // —— Contacts ——
@@ -131,18 +164,26 @@ app.get("/api/reminders", async (req, res) => {
 })
 
 app.post("/api/reminders", async (req, res) => {
-  const { contactName, reason, dueDate, done, customReason } = req.body || {}
+  const { contactName, reason, dueDate, done, customReason, syncToCalendar } = req.body || {}
   if (!contactName || typeof contactName !== "string" || !contactName.trim()) {
     return res.status(400).json({ error: "Contact name is required" })
   }
   try {
-    const { reminder } = await store.createReminder(null, {
+    let { reminder } = await store.createReminder(null, {
       contactName,
       reason,
       dueDate,
       done,
       customReason,
     })
+    const shouldSync = syncToCalendar !== false
+    if (shouldSync && reminder.dueDate) {
+      try {
+        reminder = await syncReminderCreate(reminder)
+      } catch (e) {
+        console.warn("Google Calendar sync failed on create:", e.message)
+      }
+    }
     res.status(201).json({ reminder })
   } catch (e) {
     console.error(e)
@@ -154,9 +195,17 @@ app.patch("/api/reminders/:id", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
+    const { reminders } = await store.getReminders(null)
+    const prev = reminders.find((r) => r.id === id)
     const out = await store.patchReminder(null, id, req.body || {})
     if (out == null) return res.status(404).json({ error: "Reminder not found" })
-    res.json(out)
+    let reminder = out.reminder
+    try {
+      reminder = await syncReminderUpdate(prev, reminder)
+    } catch (e) {
+      console.warn("Google Calendar sync failed on update:", e.message)
+    }
+    res.json({ reminder })
   } catch (e) {
     console.error(e)
     res.status(500).json({ error: "Failed to update reminder" })
@@ -167,12 +216,101 @@ app.delete("/api/reminders/:id", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
+    const { reminders } = await store.getReminders(null)
+    const prev = reminders.find((r) => r.id === id)
+    try {
+      if (prev) await syncReminderDelete(prev)
+    } catch (e) {
+      console.warn("Google Calendar sync failed on delete:", e.message)
+    }
     const ok = await store.deleteReminder(null, id)
     if (!ok) return res.status(404).json({ error: "Reminder not found" })
     res.status(204).end()
   } catch (e) {
     console.error(e)
     res.status(500).json({ error: "Failed to delete reminder" })
+  }
+})
+
+app.post("/api/reminders/:id/sync-calendar", async (req, res) => {
+  const id = parseId(req.params.id)
+  if (id == null) return res.status(400).json({ error: "Invalid id" })
+  if (!googleCal.isConfigured()) {
+    return res.status(503).json({ error: "Google Calendar is not configured on the server" })
+  }
+  const refreshToken = await store.getGoogleRefreshToken(null)
+  if (!refreshToken) {
+    return res.status(400).json({ error: "Connect Google Calendar first" })
+  }
+  try {
+    const { reminders } = await store.getReminders(null)
+    const reminder = reminders.find((r) => r.id === id)
+    if (!reminder) return res.status(404).json({ error: "Reminder not found" })
+    if (!reminder.dueDate) {
+      return res.status(400).json({ error: "Set a due date before adding to Google Calendar" })
+    }
+    let updated = reminder
+    if (reminder.googleEventId) {
+      await googleCal.updateReminderEvent(refreshToken, reminder.googleEventId, reminder)
+    } else {
+      updated = await syncReminderCreate(reminder)
+    }
+    res.json({ reminder: updated })
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: e.message || "Failed to sync reminder to Google Calendar" })
+  }
+})
+
+// —— Google Calendar ——
+app.get("/api/google/status", async (req, res) => {
+  try {
+    const status = await store.getGoogleCalendarStatus(null)
+    res.json({ ...status, configured: googleCal.isConfigured() })
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to load Google Calendar status" })
+  }
+})
+
+app.get("/api/google/auth", (req, res) => {
+  if (!googleCal.isConfigured()) {
+    return res.status(503).json({ error: "Google Calendar is not configured on the server" })
+  }
+  try {
+    res.redirect(googleCal.getAuthUrl())
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to start Google sign-in" })
+  }
+})
+
+app.get("/api/google/callback", async (req, res) => {
+  const origin = appOrigin(req)
+  const fail = (msg) => res.redirect(`${origin}/?google=error&message=${encodeURIComponent(msg)}`)
+
+  if (!googleCal.isConfigured()) return fail("Google Calendar is not configured")
+  const code = typeof req.query.code === "string" ? req.query.code : ""
+  if (!code) return fail("Google sign-in was cancelled or failed")
+
+  try {
+    const tokens = await googleCal.exchangeCode(code)
+    await store.saveGoogleCalendarTokens(null, tokens)
+    res.redirect(`${origin}/?google=connected`)
+  } catch (e) {
+    console.error(e)
+    fail(e.message || "Failed to connect Google Calendar")
+  }
+})
+
+app.delete("/api/google/disconnect", async (req, res) => {
+  try {
+    const ok = await store.clearGoogleCalendar(null)
+    if (!ok) return res.status(404).json({ error: "Google Calendar was not connected" })
+    res.status(204).end()
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to disconnect Google Calendar" })
   }
 })
 
