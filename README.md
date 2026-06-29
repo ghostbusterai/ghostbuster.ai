@@ -1,4 +1,5 @@
 # GhostBuster (local run)
+Website: https://ghostbuster-ai-js5l.onrender.com/
 
 Two apps: **`ghostbuster-server`** (Express API) and **`GhostBuster`** (Vite + React). Run both for full functionality.
 
@@ -6,7 +7,7 @@ Data is stored in a single JSON file on the API machine: `ghostbuster-server/dat
 
 ## User testing via URL (no install for testers)
 
-**Goal:** Testers open a **https://…** link in a browser and use the app. They do **not** clone the repo or run Node.
+**Goal:** Testers open the website link in a browser and use the app. They do **not** clone the repo or run Node.
 
 **You** deploy two pieces once:
 
