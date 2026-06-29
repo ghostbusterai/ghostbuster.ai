@@ -6,6 +6,8 @@ import MessageComposer from "./components/MessageComposer"
 import Tracker from "./components/Tracker"
 import Updates from "./components/Updates"
 import ProfileMenu from "./components/ProfileMenu"
+import NotificationBell from "./components/NotificationBell"
+import Notifications from "./components/Notifications"
 import { font, accentNeon } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
 
@@ -148,7 +150,10 @@ export default function App() {
             })}
           </nav>
 
-          <ProfileMenu />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <NotificationBell setPage={setPage} currentPage={page} />
+            <ProfileMenu />
+          </div>
         </div>
       </header>
 
@@ -163,11 +168,12 @@ export default function App() {
         }}
       >
         {page === "dashboard" && <Dashboard setPage={setPage} />}
+        {page === "notifications" && <Notifications setPage={setPage} />}
         {page === "contacts" && <ContactHub />}
         {page === "reminders" && (
           <Reminders googleNotice={googleNotice} onConsumeGoogleNotice={() => setGoogleNotice(null)} />
         )}
-        {page === "tracker" && <Tracker setPage={setPage} setComposePrefill={setComposePrefill} />}
+        {page === "tracker" && <Tracker />}
         {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
         {page === "compose" && (
           <MessageComposer composePrefill={composePrefill} onConsumePrefill={() => setComposePrefill(null)} />

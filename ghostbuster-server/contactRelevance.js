@@ -3,6 +3,8 @@
  * Uses AI when available; falls back to thematic alignment (not keyword-in-update matching).
  */
 
+const { resolveContactResumeBucket, resumeTextForContact } = require("./resumeBucketMatch")
+
 const { tokenize } = require("./relevance")
 
 const STOP = new Set([
@@ -255,17 +257,25 @@ function suggestContactsThematically(contacts, update, context = {}) {
   )
 }
 
-function buildAiPrompt(update, contacts, profile, fullResume) {
+function buildAiPrompt(update, contacts, profile, resumeBuckets) {
   const u = normalizeUpdate(update)
-  const resumeSnippet =
-    typeof fullResume?.text === "string" ? fullResume.text.trim().slice(0, 4000) : ""
-  const contactList = contacts.slice(0, 50).map((c) => ({
-    id: c.id,
-    name: c.name,
-    company: c.company || "",
-    role: c.role || "",
-    notes: String(c.notes || "").slice(0, 400),
-  }))
+  const buckets = Array.isArray(resumeBuckets) ? resumeBuckets : []
+  const bucketExcerpts = buckets
+    .filter((b) => typeof b.text === "string" && b.text.trim())
+    .slice(0, 6)
+    .map((b) => `Role bucket "${b.name}":\n${b.text.trim().slice(0, 1500)}`)
+    .join("\n\n")
+  const contactList = contacts.slice(0, 50).map((c) => {
+    const bucket = resolveContactResumeBucket(c, buckets)
+    return {
+      id: c.id,
+      name: c.name,
+      company: c.company || "",
+      role: c.role || "",
+      notes: String(c.notes || "").slice(0, 400),
+      resumeBucket: bucket?.name || null,
+    }
+  })
 
   return `You are a networking assistant. A user logged a career/résumé update. Recommend which contacts they should share it with.
 
@@ -283,7 +293,7 @@ Title: ${u.title}
 Details: ${u.details}
 Effective: ${u.effectiveDate || "unspecified"}
 
-${resumeSnippet ? `Résumé on file (excerpt):\n${resumeSnippet}\n` : ""}
+${bucketExcerpts ? `Résumés on file by role bucket:\n${bucketExcerpts}\n` : ""}
 
 Contacts (JSON):
 ${JSON.stringify(contactList, null, 2)}
@@ -299,8 +309,7 @@ Return ONLY valid JSON (no markdown):
   ]
 }
 
-Rules:
-- relevanceScore >= 65 only for genuine fits.
+- Each contact may have resumeBucket — the role-based résumé version that fits their job.
 - reasons[0] should read like: "This fits well with [Name] because …" referencing their role/work.
 - Do not invent facts about contacts not in the JSON.
 - Order matches by relevanceScore descending.`
@@ -345,13 +354,13 @@ function parseAiMatches(text, contacts) {
   return out.slice(0, 5)
 }
 
-async function suggestContactsWithAI(anthropic, contacts, update, profile, fullResume) {
+async function suggestContactsWithAI(anthropic, contacts, update, profile, resumeBuckets) {
   if (!anthropic || contacts.length === 0) return []
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1200,
-    messages: [{ role: "user", content: buildAiPrompt(update, contacts, profile, fullResume) }],
+    messages: [{ role: "user", content: buildAiPrompt(update, contacts, profile, resumeBuckets) }],
   })
 
   const textBlock = Array.isArray(message.content)
@@ -366,19 +375,23 @@ async function suggestContactsForUpdateSmart({
   contacts,
   update,
   profile = {},
+  resumeBuckets = [],
   fullResume = null,
 }) {
   const list = Array.isArray(contacts) ? contacts.filter((c) => c?.name) : []
+  const buckets = Array.isArray(resumeBuckets) ? resumeBuckets : []
+  const fallbackText = typeof fullResume?.text === "string" ? fullResume.text : ""
   const context = {
     careerGoals: typeof profile?.careerGoals === "string" ? profile.careerGoals.trim() : "",
-    resumeText: typeof fullResume?.text === "string" ? fullResume.text : "",
+    resumeText: fallbackText,
+    resumeBuckets: buckets,
   }
 
   if (list.length === 0) return []
 
   if (anthropic) {
     try {
-      const aiMatches = await suggestContactsWithAI(anthropic, list, update, profile, fullResume)
+      const aiMatches = await suggestContactsWithAI(anthropic, list, update, profile, buckets)
       if (aiMatches.length > 0) return aiMatches
     } catch (err) {
       console.warn("AI contact relevance failed, using thematic fallback:", err.message)

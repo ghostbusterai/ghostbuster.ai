@@ -1,9 +1,34 @@
 import React, { useState, useEffect, useMemo } from "react"
-import { getReminderDueStatus, isReminderOverdue } from "../reminderUtils"
+import { api } from "../api"
+import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, getReminderUrgencyStyle, getReminderUrgency } from "../reminderUtils"
 import { font, accentNeon, neonAlpha } from "../theme"
 
 const LS_LOGS = "gb_outreach_logs"
 const LS_UPDATES = "gb_resume_updates"
+
+const GETTING_STARTED_STEPS = [
+  {
+    step: 1,
+    title: "Add someone you've met",
+    detail: "Career fair, coffee chat, LinkedIn — save their name and how you know them.",
+    page: "contacts",
+    cta: "Go to Contacts",
+  },
+  {
+    step: 2,
+    title: "Send them a message",
+    detail: "Use Compose to draft a warm follow-up or introduction email.",
+    page: "compose",
+    cta: "Open Compose",
+  },
+  {
+    step: 3,
+    title: "Stay in touch",
+    detail: "Log outreach in Tracker and set a reminder so relationships don't go cold.",
+    page: "tracker",
+    cta: "Open Tracker",
+  },
+]
 
 function tintedCard(rgb, borderAlpha = 0.2) {
   return {
@@ -99,6 +124,25 @@ export default function Dashboard({ setPage }) {
 
   const dueReminders = reminders.filter((r) => !r.done)
   const overdueReminders = reminders.filter((r) => isReminderOverdue(r))
+  const reminderSummary = summarizePendingReminders(reminders)
+
+  const isNewUser = contacts.length === 0
+
+  const quickActions = [
+    {
+      label: "Add someone you met",
+      page: "contacts",
+      primary: isNewUser,
+    },
+    {
+      label: "Send a message",
+      page: "compose",
+      primary: !isNewUser,
+    },
+    { label: "Set a follow-up", page: "reminders" },
+    { label: "Log outreach", page: "tracker" },
+    { label: "Share résumé update", page: "updates" },
+  ]
 
   const stats = [
     {
@@ -113,8 +157,9 @@ export default function Dashboard({ setPage }) {
       value: dueReminders.length,
       sub: overdueReminders.length > 0 ? `${overdueReminders.length} overdue` : null,
       icon: "🔔",
-      color: overdueReminders.length > 0 ? "#ff6b6b" : "#ffc96b",
-      rgb: overdueReminders.length > 0 ? "255, 107, 107" : "255, 201, 107",
+      color: reminderSummary.critical > 0 ? "#ff6b6b" : overdueReminders.length > 0 ? "#ff8787" : "#ffc96b",
+      rgb: reminderSummary.critical > 0 ? "255, 107, 107" : overdueReminders.length > 0 ? "255, 135, 135" : "255, 201, 107",
+      page: "notifications",
     },
     {
       label: "Companies",
@@ -180,14 +225,16 @@ export default function Dashboard({ setPage }) {
       const ts = due || Number(r.id) || 0
       const reason = (r.customReason || r.reason || "Reminder")?.replace(/\s+/g, " ").trim()
       const status = getReminderDueStatus(r)
+      const urgency = getReminderUrgency(r)
+      const urgencyStyle = getReminderUrgencyStyle(urgency)
       items.push({
         id: `rem-${r.id}`,
         kind: "reminder",
         ts,
-        accent: status.overdue ? "#ff6b6b" : "#ffc96b",
+        accent: urgencyStyle.color,
         title: `Reminder · ${r.contactName || "Contact"}`,
         detail: status.overdue ? `Overdue · ${reason}` : reason,
-        page: "reminders",
+        page: "notifications",
       })
     }
 
@@ -214,8 +261,217 @@ export default function Dashboard({ setPage }) {
         <h1 style={{ fontFamily: font.display, fontWeight: 800, fontSize: 36, letterSpacing: "-1px", marginBottom: 8 }}>
           Home
         </h1>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body }}>Your networking activity at a glance.</p>
+        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body, maxWidth: 560, lineHeight: 1.55 }}>
+          {isNewUser
+            ? "Stay in touch with people you've already met — add them here, then reach out with a message."
+            : "Your networking activity at a glance."}
+        </p>
       </div>
+
+      {dueReminders.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setPage("notifications")}
+          style={{
+            width: "100%",
+            textAlign: "left",
+            marginBottom: 32,
+            padding: "18px 20px",
+            borderRadius: 14,
+            cursor: "pointer",
+            color: "inherit",
+            font: "inherit",
+            boxShadow:
+              reminderSummary.critical > 0
+                ? "0 0 0 1px rgba(255,107,107,0.25), 0 12px 32px rgba(255,107,107,0.1)"
+                : reminderSummary.overdue > 0
+                  ? "0 0 0 1px rgba(255,107,107,0.15)"
+                  : "none",
+            background:
+              reminderSummary.critical > 0
+                ? "rgba(255,107,107,0.08)"
+                : reminderSummary.overdue > 0
+                  ? "rgba(255,107,107,0.05)"
+                  : "rgba(255,201,107,0.06)",
+            border:
+              reminderSummary.critical > 0
+                ? "2px solid rgba(255,107,107,0.55)"
+                : reminderSummary.overdue > 0
+                  ? "2px solid rgba(255,107,107,0.4)"
+                  : "1px solid rgba(255,201,107,0.35)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+              <span style={{ fontSize: 22, lineHeight: 1 }} aria-hidden>
+                🔔
+              </span>
+              <div>
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16, marginBottom: 4 }}>
+                  {reminderSummary.attention > 0
+                    ? `${reminderSummary.attention} reminder${reminderSummary.attention !== 1 ? "s" : ""} need attention`
+                    : `${dueReminders.length} pending reminder${dueReminders.length !== 1 ? "s" : ""}`}
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(240,240,245,0.5)", lineHeight: 1.5 }}>
+                  {[
+                    reminderSummary.critical > 0 && `${reminderSummary.critical} critical`,
+                    reminderSummary.overdue > 0 && `${reminderSummary.overdue} overdue`,
+                    reminderSummary.today > 0 && `${reminderSummary.today} due today`,
+                    reminderSummary.soon > 0 && `${reminderSummary.soon} due soon`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Tap to view all pending reminders"}
+                </div>
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: 13,
+                fontFamily: font.mono,
+                color:
+                  reminderSummary.critical > 0 || reminderSummary.overdue > 0 ? "#ff6b6b" : "#ffc96b",
+              }}
+            >
+              View notifications →
+            </span>
+          </div>
+        </button>
+      )}
+
+      {isNewUser && (
+        <section
+          style={{
+            background: "#111118",
+            border: "1px solid rgba(184,255,87,0.28)",
+            borderRadius: 18,
+            padding: "28px 28px 24px",
+            marginBottom: 32,
+            boxShadow: "0 0 0 1px rgba(184,255,87,0.06), 0 16px 48px rgba(0,0,0,0.35)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontFamily: font.mono,
+              letterSpacing: "0.14em",
+              color: "rgba(184,255,87,0.65)",
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            Getting started
+          </div>
+          <h2
+            style={{
+              fontFamily: font.display,
+              fontWeight: 800,
+              fontSize: 22,
+              letterSpacing: "-0.4px",
+              margin: "0 0 10px",
+              lineHeight: 1.25,
+            }}
+          >
+            Welcome — here&apos;s how to connect with people
+          </h2>
+          <p
+            style={{
+              margin: "0 0 24px",
+              fontSize: 15,
+              color: "rgba(240,240,245,0.55)",
+              lineHeight: 1.6,
+              maxWidth: 640,
+            }}
+          >
+            GhostBuster doesn&apos;t find strangers for you. It helps you nurture relationships with people
+            you&apos;ve already met — at a career fair, through a friend, on LinkedIn, or after an interview.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
+              gap: 14,
+              marginBottom: 24,
+            }}
+          >
+            {GETTING_STARTED_STEPS.map((s) => (
+              <button
+                key={s.step}
+                type="button"
+                onClick={() => setPage(s.page)}
+                style={{
+                  textAlign: "left",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 14,
+                  padding: "16px 18px",
+                  cursor: "pointer",
+                  color: "inherit",
+                  font: "inherit",
+                  boxShadow: "none",
+                  transition: "border-color 0.15s, background 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(184,255,87,0.35)"
+                  e.currentTarget.style.background = "rgba(184,255,87,0.05)"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"
+                  e.currentTarget.style.background = "rgba(255,255,255,0.03)"
+                }}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: "rgba(184,255,87,0.12)",
+                    border: "1px solid rgba(184,255,87,0.25)",
+                    color: accentNeon,
+                    fontFamily: font.mono,
+                    fontWeight: 700,
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 12,
+                  }}
+                >
+                  {s.step}
+                </div>
+                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
+                  {s.title}
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", lineHeight: 1.5, marginBottom: 10 }}>
+                  {s.detail}
+                </div>
+                <div style={{ fontSize: 12, fontFamily: font.mono, color: accentNeon, letterSpacing: "0.04em" }}>
+                  {s.cta} →
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setPage("contacts")}
+            style={{
+              background: accentNeon,
+              color: "#0a0f09",
+              border: "1px solid rgba(10,15,9,0.22)",
+              boxShadow: "none",
+              padding: "13px 26px",
+              borderRadius: 11,
+              fontFamily: font.display,
+              fontWeight: 700,
+              fontSize: 15,
+              cursor: "pointer",
+            }}
+          >
+            Add your first contact →
+          </button>
+        </section>
+      )}
 
       {/* Stats */}
       <div
@@ -229,17 +485,21 @@ export default function Dashboard({ setPage }) {
       >
         {stats.map((s) => {
           const tg = tintedCard(s.rgb)
-          return (
-            <div
-              key={s.label}
-              style={{
-                ...tg,
-                borderRadius: 16,
-                padding: "20px 22px 22px",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
+          const cardStyle = {
+            ...tg,
+            borderRadius: 16,
+            padding: "20px 22px 22px",
+            position: "relative",
+            overflow: "hidden",
+            width: "100%",
+            textAlign: "left",
+            color: "inherit",
+            font: "inherit",
+            cursor: s.page ? "pointer" : "default",
+            boxShadow: "none",
+          }
+          const content = (
+            <>
               <div
                 style={{
                   display: "flex",
@@ -283,6 +543,15 @@ export default function Dashboard({ setPage }) {
                   {s.sub}
                 </div>
               )}
+            </>
+          )
+          return s.page ? (
+            <button key={s.label} type="button" onClick={() => setPage(s.page)} style={cardStyle}>
+              {content}
+            </button>
+          ) : (
+            <div key={s.label} style={cardStyle}>
+              {content}
             </div>
           )
         })}
@@ -290,16 +559,16 @@ export default function Dashboard({ setPage }) {
 
       {/* Quick Actions */}
       <div style={{ marginBottom: 48, width: "100%" }}>
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 16, letterSpacing: "-0.02em" }}>
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 6, letterSpacing: "-0.02em" }}>
           Quick Actions
         </div>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "rgba(240,240,245,0.38)", lineHeight: 1.5 }}>
+          {isNewUser
+            ? "Start with someone you've met — then message them and log the touch."
+            : "Jump straight to the most common next steps."}
+        </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {[
-            { label: "Add Contact", page: "contacts", primary: true },
-            { label: "Set Reminder", page: "reminders" },
-            { label: "Compose Message", page: "compose" },
-            { label: "Resume update", page: "updates" },
-          ].map((a) => {
+          {quickActions.map((a) => {
             const primary = a.primary === true
             const borderDefault = primary ? "1px solid rgba(10,15,9,0.22)" : "1px solid rgba(255,255,255,0.22)"
             const borderHover = primary ? "1px solid rgba(10,15,9,0.35)" : "1px solid rgba(255,255,255,0.38)"
@@ -414,30 +683,54 @@ export default function Dashboard({ setPage }) {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                padding: "36px 20px",
+                padding: "32px 24px",
                 textAlign: "center",
-                color: "rgba(240,240,245,0.32)",
-                fontSize: 14,
-                fontFamily: font.body,
                 borderRadius: 12,
-                border: "1px dashed rgba(255,255,255,0.08)",
+                border: "1px dashed rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.02)",
               }}
             >
-              No contacts yet —{" "}
+              <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.45 }}>👋</div>
+              <div
+                style={{
+                  fontFamily: font.display,
+                  fontWeight: 700,
+                  fontSize: 16,
+                  color: "rgba(240,240,245,0.85)",
+                  marginBottom: 8,
+                }}
+              >
+                No contacts saved yet
+              </div>
+              <p
+                style={{
+                  margin: "0 0 18px",
+                  maxWidth: 320,
+                  fontSize: 14,
+                  color: "rgba(240,240,245,0.45)",
+                  lineHeight: 1.55,
+                  fontFamily: font.body,
+                }}
+              >
+                Add someone from a career fair, class, or LinkedIn conversation — then use Compose to reach out.
+              </p>
               <button
                 type="button"
                 onClick={() => setPage("contacts")}
                 style={{
-                  background: "none",
-                  border: "none",
-                  color: accentNeon,
-                  cursor: "pointer",
-                  fontSize: 14,
+                  background: accentNeon,
+                  color: "#0a0f09",
+                  border: "1px solid rgba(10,15,9,0.22)",
+                  boxShadow: "none",
+                  padding: "10px 20px",
+                  borderRadius: 9,
                   fontFamily: font.display,
-                  fontWeight: 600,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
                 }}
               >
-                add your first one →
+                Add someone you met →
               </button>
             </div>
           ) : (

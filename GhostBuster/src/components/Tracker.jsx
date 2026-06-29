@@ -25,7 +25,6 @@ function connectorHeightPx(prevMs, nextMs) {
 }
 
 const LS_LOGS = "gb_outreach_logs"
-const LS_PROFILE = "gb_profile"
 
 function parseDay(iso) {
   const t = new Date(iso).getTime()
@@ -119,18 +118,29 @@ function daysSince(ms) {
   return Math.floor((Date.now() - ms) / (24 * 60 * 60 * 1000))
 }
 
-function needsResumeNudge(contactId, contact, logs, lastResumeUpdate) {
-  if (!lastResumeUpdate) return false
-  const resumeMs = parseDay(lastResumeUpdate)
-  if (!resumeMs) return false
-  const lastMs = lastTouchMs(contactId, contact, logs)
-  return lastMs < resumeMs
+function formatDaysAgo(days) {
+  if (days === Infinity) return "never logged"
+  if (days === 0) return "today"
+  if (days === 1) return "1 day ago"
+  return `${days} days ago`
 }
 
-export default function Tracker({ setPage, setComposePrefill }) {
+function formatOutreachWindow(count, windowDays) {
+  const label = windowDays === 7 ? "7 days" : windowDays === 30 ? "30 days" : `${windowDays} days`
+  const touch = count === 1 ? "touch" : "touches"
+  return `${count} ${touch} in last ${label}`
+}
+
+function warmthDetail(daysSinceTouch) {
+  if (daysSinceTouch === Infinity) return "No outreach logged yet"
+  if (daysSinceTouch <= 21) return `Last outreach ${formatDaysAgo(daysSinceTouch)}`
+  if (daysSinceTouch <= 45) return `${daysSinceTouch} days since last outreach — time to check in`
+  return `${daysSinceTouch} days since last outreach — overdue for a follow-up`
+}
+
+export default function Tracker() {
   const [contacts, setContacts] = useState([])
   const [logs, setLogs] = useState([])
-  const [lastResumeUpdate, setLastResumeUpdate] = useState("")
   const [filterContactId, setFilterContactId] = useState("")
   const [sortBy, setSortBy] = useState("warmth")
   const [loadError, setLoadError] = useState(null)
@@ -149,22 +159,17 @@ export default function Tracker({ setPage, setComposePrefill }) {
   async function loadAll() {
     setLoadError(null)
     try {
-      const [{ contacts: c }, { logs: lg }, { profile: p }] = await Promise.all([
+      const [{ contacts: c }, { logs: lg }] = await Promise.all([
         api.getContacts(),
         api.getOutreachLogs(),
-        api.getProfile(),
       ])
       setContacts(c)
       setLogs(lg)
-      setLastResumeUpdate((p && p.lastResumeUpdate) || "")
       localStorage.setItem(LS_LOGS, JSON.stringify(lg))
-      localStorage.setItem(LS_PROFILE, JSON.stringify(p || { lastResumeUpdate: "" }))
     } catch (e) {
       setLoadError(e.message)
       setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
       setLogs(JSON.parse(localStorage.getItem(LS_LOGS) || "[]"))
-      const pr = JSON.parse(localStorage.getItem(LS_PROFILE) || "{}")
-      setLastResumeUpdate(pr.lastResumeUpdate || "")
     } finally {
       setLoading(false)
     }
@@ -181,9 +186,10 @@ export default function Tracker({ setPage, setComposePrefill }) {
   }, [contacts, filterContactId])
 
   const filteredLogs = useMemo(() => {
-    if (!filterContactId) return logs
-    const id = Number(filterContactId)
-    return logs.filter((l) => l.contactId === id)
+    const base = !filterContactId
+      ? logs
+      : logs.filter((l) => l.contactId === Number(filterContactId))
+    return [...base].sort((a, b) => parseDay(b.contactedAt) - parseDay(a.contactedAt))
   }, [logs, filterContactId])
 
   const sortedFilteredContacts = useMemo(
@@ -300,22 +306,6 @@ export default function Tracker({ setPage, setComposePrefill }) {
     }
   }
 
-  function openResumeCompose(contact) {
-    const resume = lastResumeUpdate || ""
-    const resumeLine = resume
-      ? `I last updated my résumé on ${resume}.`
-      : "I recently refreshed my résumé."
-    setComposePrefill({
-      contactId: contact.id,
-      situation: "Sharing a resume update",
-      tone: "Warm & professional (balanced)",
-      purpose:
-        "Briefly let them know my résumé is updated, offer to share it if helpful, and invite a light next step (feedback, referrals, or staying in touch) without pressure.",
-      extraContext: `${resumeLine} This contact: ${contact.name}${contact.company ? ` at ${contact.company}` : ""}.`,
-    })
-    setPage("compose")
-  }
-
   const inputStyle = {
     background: "#0a0a0f",
     border: "1px solid rgba(255,255,255,0.1)",
@@ -354,10 +344,8 @@ export default function Tracker({ setPage, setComposePrefill }) {
         >
           Tracker
         </h1>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, maxWidth: 720, lineHeight: 1.55, fontFamily: font.body }}>
-          Filter by contact to focus on one relationship, or view everyone sorted by how “warm” the connection is.
-          Colors show time since your last touch; the strip is the last 12 weeks of logged outreach. Set your
-          résumé last updated date on the Resume tab — contacts you have not messaged since then get a nudge here.
+        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, maxWidth: 420, lineHeight: 1.45, fontFamily: font.body }}>
+          Who&apos;s warm, who needs a nudge. Filter and sort below.
         </p>
         {loadError && (
           <p style={{ color: "#ffc96b", fontSize: 13, marginTop: 10 }}>
@@ -370,37 +358,59 @@ export default function Tracker({ setPage, setComposePrefill }) {
       {/* Warmth legend */}
       <div
         style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 10,
-          marginBottom: 18,
-          alignItems: "center",
+          marginBottom: 20,
+          padding: "16px 18px",
+          borderRadius: 12,
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        <span style={{ fontSize: 11, fontFamily: font.mono, color: "rgba(240,240,245,0.35)" }}>LEGEND</span>
-        {[
-          { c: "#b8ff57", label: "Warm (≤21d)" },
-          { c: "#ffc96b", label: "Check in soon (22–45d)" },
-          { c: "#ff6b6b", label: "Overdue (&gt;45d)" },
-          { c: "#6b7280", label: "No touch logged" },
-        ].map((x) => (
-          <span
-            key={x.label}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 12,
-              color: "rgba(240,240,245,0.55)",
-              padding: "4px 10px",
-              borderRadius: 8,
-              background: "rgba(255,255,255,0.04)",
-            }}
-          >
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.c }} />
-            {x.label}
-          </span>
-        ))}
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+          How warmth works
+        </div>
+        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", margin: "0 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
+          Each contact gets a color based on how long it&apos;s been since you last logged outreach with them.
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {[
+            { c: "#b8ff57", label: "Warm", detail: "Last touch within 21 days" },
+            { c: "#ffc96b", label: "Check in soon", detail: "22–45 days since last touch" },
+            { c: "#ff6b6b", label: "Overdue", detail: "More than 45 days since last touch" },
+            { c: "#6b7280", label: "No touch logged", detail: "No outreach recorded yet" },
+          ].map((x) => (
+            <span
+              key={x.label}
+              style={{
+                display: "inline-flex",
+                alignItems: "flex-start",
+                gap: 8,
+                fontSize: 12,
+                color: "rgba(240,240,245,0.7)",
+                padding: "8px 12px",
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.04)",
+                maxWidth: 220,
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: x.c,
+                  marginTop: 3,
+                  flexShrink: 0,
+                }}
+              />
+              <span>
+                <strong style={{ color: "#f0f0f5" }}>{x.label}</strong>
+                <span style={{ display: "block", color: "rgba(240,240,245,0.4)", marginTop: 2, lineHeight: 1.35 }}>
+                  {x.detail}
+                </span>
+              </span>
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Filter + sort */}
@@ -443,9 +453,7 @@ export default function Tracker({ setPage, setComposePrefill }) {
             color: "rgba(240,240,245,0.75)",
           }}
         >
-          <strong style={{ color: "#f0f0f5" }}>{sortedFilteredContacts[0].name}</strong>
-          {" — "}
-          outreach frequency and warmth below are for this contact only. Touchpoint history is filtered the same way.
+          <strong style={{ color: "#f0f0f5" }}>{sortedFilteredContacts[0].name}</strong> only
         </div>
       )}
 
@@ -508,13 +516,13 @@ export default function Tracker({ setPage, setComposePrefill }) {
       </div>
 
       {/* Per-contact warmth */}
-      <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>
-        Connection warmth
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18 }}>Connection warmth</div>
+        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", margin: "6px 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
+          Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each
+          week for the past 12 weeks.
+        </p>
       </div>
-      <p style={{ fontSize: 13, color: "rgba(240,240,245,0.38)", marginBottom: 14, maxWidth: 640, fontFamily: font.body }}>
-        Click a contact row to open a timeline of every logged touchpoint, channel, and note. You can also click a row
-        in Touchpoint history below.
-      </p>
       {loading ? (
         <div style={{ color: "rgba(240,240,245,0.35)" }}>Loading…</div>
       ) : sortedFilteredContacts.length === 0 ? (
@@ -541,7 +549,6 @@ export default function Tracker({ setPage, setComposePrefill }) {
             const n90 = countInWindow(logs, c.id, 90)
             const avgGap = avgDaysBetweenTouches(logs, c.id)
             const weeks = weekTouchFlags(logs, c.id, 12)
-            const resumeNudge = needsResumeNudge(c.id, c, logs, lastResumeUpdate)
             return (
               <div
                 key={c.id}
@@ -550,11 +557,6 @@ export default function Tracker({ setPage, setComposePrefill }) {
                   border: `1px solid ${w.key === "green" ? "rgba(184,255,87,0.25)" : w.key === "yellow" ? "rgba(255,201,107,0.25)" : w.key === "red" ? "rgba(255,107,107,0.25)" : "rgba(255,255,255,0.06)"}`,
                   borderRadius: 14,
                   padding: "18px 20px",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                  gap: 16,
-                  flexWrap: "wrap",
                 }}
               >
                 <div
@@ -607,92 +609,87 @@ export default function Tracker({ setPage, setComposePrefill }) {
                     <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", marginTop: 2, fontFamily: font.body }}>
                       {[c.role, c.company].filter(Boolean).join(" @ ")}
                     </div>
-                    <div style={{ fontSize: 12, color: "rgba(240,240,245,0.35)", marginTop: 8, fontFamily: font.mono }}>
-                      Last touch:{" "}
+                    <div style={{ fontSize: 13, color: "rgba(240,240,245,0.55)", marginTop: 10, fontFamily: font.body, lineHeight: 1.5 }}>
                       {lastMs
-                        ? `${new Date(lastMs).toLocaleDateString()} (${d === Infinity ? "?" : d}d ago)`
-                        : "none logged"}
-                      {" · "}
-                      Outreach logged: {n7} / 7d · {n30} / 30d · {n90} / 90d
-                      {avgGap != null && ` · ~${avgGap}d avg between touches`}
+                        ? `Last outreach: ${new Date(lastMs).toLocaleDateString()} (${formatDaysAgo(d)})`
+                        : "Last outreach: none logged yet"}
                     </div>
-                    <div
-                      title="Last 12 weeks (left = older): green = at least one logged touch that week"
-                      style={{
-                        display: "flex",
-                        gap: 4,
-                        marginTop: 10,
-                        maxWidth: 420,
-                        alignItems: "stretch",
-                      }}
-                    >
-                      {weeks.map((on, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            flex: 1,
-                            height: 22,
-                            borderRadius: 4,
-                            background: on ? "rgba(184,255,87,0.55)" : "rgba(255,255,255,0.06)",
-                            border: on ? "1px solid rgba(184,255,87,0.4)" : "1px solid rgba(255,255,255,0.06)",
-                          }}
-                        />
-                      ))}
+                    <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 4, fontFamily: font.body, lineHeight: 1.5 }}>
+                      {formatOutreachWindow(n7, 7)} · {formatOutreachWindow(n30, 30)} · {formatOutreachWindow(n90, 90)}
+                      {avgGap != null && ` · about ${avgGap} days between touches on average`}
                     </div>
-                    <div style={{ fontSize: 10, color: "rgba(240,240,245,0.25)", marginTop: 4, fontFamily: font.mono }}>
-                      12-week rhythm (logged touchpoints only)
+                    <div style={{ marginTop: 12 }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontFamily: font.mono,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "rgba(240,240,245,0.35)",
+                          marginBottom: 6,
+                        }}
+                      >
+                        Outreach rhythm — last 12 weeks
+                      </div>
+                      <div
+                        title="Each bar is one week. Bright = at least one logged touch that week."
+                        style={{
+                          display: "flex",
+                          gap: 4,
+                          maxWidth: 420,
+                          alignItems: "stretch",
+                        }}
+                      >
+                        {weeks.map((on, i) => (
+                          <div
+                            key={i}
+                            title={on ? "Outreach logged this week" : "No outreach logged this week"}
+                            style={{
+                              flex: 1,
+                              height: 22,
+                              borderRadius: 4,
+                              background: on ? "rgba(184,255,87,0.55)" : "rgba(255,255,255,0.06)",
+                              border: on ? "1px solid rgba(184,255,87,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          maxWidth: 420,
+                          fontSize: 10,
+                          color: "rgba(240,240,245,0.3)",
+                          marginTop: 4,
+                          fontFamily: font.mono,
+                        }}
+                      >
+                        <span>12 weeks ago</span>
+                        <span>This week</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "rgba(240,240,245,0.35)", marginTop: 4, fontFamily: font.body }}>
+                        Bright bar = you logged outreach that week. Dim bar = no logged outreach.
+                      </div>
                     </div>
                     <div
                       style={{
                         display: "inline-block",
-                        marginTop: 8,
-                        padding: "4px 10px",
+                        marginTop: 10,
+                        padding: "5px 11px",
                         borderRadius: 8,
-                        fontSize: 11,
-                        fontFamily: font.mono,
+                        fontSize: 12,
+                        fontFamily: font.body,
                         color: w.color,
                         background: w.bg,
+                        lineHeight: 1.4,
                       }}
                     >
-                      {w.label}
+                      <strong>{w.label}</strong>
+                      <span style={{ color: "rgba(240,240,245,0.5)", fontWeight: 400 }}> · {warmthDetail(d)}</span>
                     </div>
-                    {resumeNudge && (
-                      <div
-                        style={{
-                          marginTop: 10,
-                          fontSize: 12,
-                          color: "#5be4d8",
-                          padding: "8px 10px",
-                          borderRadius: 8,
-                          background: "rgba(91,228,216,0.08)",
-                          border: "1px solid rgba(91,228,216,0.2)",
-                        }}
-                      >
-                        Résumé updated after your last touch — consider sharing an update with them.
-                      </div>
-                    )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    openResumeCompose(c)
-                  }}
-                  style={{
-                    background: "rgba(184,255,87,0.1)",
-                    border: "1px solid rgba(184,255,87,0.25)",
-                    color: "#b8ff57",
-                    padding: "8px 14px",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    fontFamily: font.body,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Draft résumé update →
-                </button>
               </div>
             )
           })}
@@ -700,12 +697,12 @@ export default function Tracker({ setPage, setComposePrefill }) {
       )}
 
       {/* Recent logs table */}
-      <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, margin: "36px 0 6px" }}>
-        Touchpoint history
+      <div style={{ margin: "36px 0 14px" }}>
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18 }}>Touchpoint history</div>
+        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", margin: "6px 0 0", lineHeight: 1.5, fontFamily: font.body }}>
+          A log of every outreach you record above. Newest first — click a row to open that contact&apos;s timeline.
+        </p>
       </div>
-      <p style={{ fontSize: 13, color: "rgba(240,240,245,0.38)", marginBottom: 14, fontFamily: font.body }}>
-        Click any row (except Delete) to open that contact&apos;s timeline.
-      </p>
       {filteredLogs.length === 0 ? (
         <div style={{ color: "rgba(240,240,245,0.35)", fontSize: 14 }}>No logs yet — add one above.</div>
       ) : (
@@ -713,10 +710,10 @@ export default function Tracker({ setPage, setComposePrefill }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "rgba(255,255,255,0.04)", textAlign: "left" }}>
-                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>Date</th>
+                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>When</th>
                 <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>Contact</th>
-                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>Channel</th>
-                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>Note</th>
+                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>How you reached out</th>
+                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>Notes</th>
                 <th style={{ padding: 12 }} />
               </tr>
             </thead>
@@ -1115,7 +1112,7 @@ export default function Tracker({ setPage, setComposePrefill }) {
                                     border: "1px solid rgba(255,255,255,0.06)",
                                   }}
                                 >
-                                  {gapDays}d between
+                                  {gapDays} days between
                                 </div>
                               )}
                             </div>

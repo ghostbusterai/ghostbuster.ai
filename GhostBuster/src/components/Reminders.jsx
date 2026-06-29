@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
 import {
-  getReminderDueStatus,
-  isReminderOverdue,
+  getReminderUrgency,
+  getReminderUrgencyStyle,
   parseDueDay,
+  reminderDueLabel,
   sortRemindersForDisplay,
+  summarizePendingReminders,
 } from "../reminderUtils"
 
 const EMPTY = { contactName: "", reason: "", dueDate: "", done: false, syncToCalendar: true }
@@ -168,7 +170,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
   )
 
   const pendingCount = reminders.filter((r) => !r.done).length
-  const overdueCount = reminders.filter((r) => isReminderOverdue(r)).length
+  const summary = summarizePendingReminders(reminders)
 
   const inputStyle = {
     background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.1)",
@@ -198,10 +200,10 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
               <>
                 <span style={{ fontFamily: font.mono, fontVariantNumeric: "tabular-nums" }}>{pendingCount}</span>
                 {` pending reminder${pendingCount !== 1 ? "s" : ""}`}
-                {overdueCount > 0 && (
+                {summary.overdue + summary.critical > 0 && (
                   <span style={{ color: "#ff6b6b" }}>
                     {" "}
-                    · {overdueCount} overdue
+                    · {summary.critical + summary.overdue} overdue
                   </span>
                 )}
                 <span style={{ display: "block", marginTop: 6, fontSize: 13, color: "rgba(240,240,245,0.35)" }}>
@@ -402,27 +404,17 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filtered.map((r) => {
-            const dueStatus = getReminderDueStatus(r)
-            const overdue = dueStatus.overdue
-            const dueToday = dueStatus.dueToday
+            const urgency = getReminderUrgency(r)
+            const style = getReminderUrgencyStyle(urgency)
             const cardBorder = r.done
               ? "1px solid rgba(255,255,255,0.04)"
-              : overdue
-                ? "2px solid rgba(255,107,107,0.65)"
-                : dueToday
-                  ? "2px solid rgba(255,201,107,0.45)"
-                  : "1px solid rgba(255,255,255,0.06)"
-            const cardShadow = r.done
-              ? "none"
-              : overdue
-                ? "0 0 0 1px rgba(255,107,107,0.15), 0 8px 24px rgba(255,107,107,0.08)"
-                : "none"
+              : `2px solid ${style.border}`
 
             return (
             <div key={r.id} style={{
-              background: overdue && !r.done ? "rgba(255,107,107,0.04)" : "#111118",
+              background: r.done ? "#111118" : style.cardBg,
               border: cardBorder,
-              boxShadow: cardShadow,
+              boxShadow: r.done ? "none" : style.shadow,
               borderRadius: 14, padding: "18px 22px",
               display: "flex", alignItems: "center", justifyContent: "space-between",
               opacity: r.done ? 0.55 : 1, transition: "all 0.15s",
@@ -435,7 +427,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                   title={r.done ? "Mark as not done" : "Mark as done"}
                   style={{
                   width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                  border: `2px solid ${r.done ? "#b8ff57" : overdue ? "rgba(255,107,107,0.55)" : "rgba(255,255,255,0.2)"}`,
+                  border: `2px solid ${r.done ? "#b8ff57" : style.border}`,
                   background: r.done ? "#b8ff57" : "transparent",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 12, color: "#0a0f09",
@@ -445,8 +437,27 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                 </button>
 
                 <div>
-                  <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, textDecoration: r.done ? "line-through" : "none" }}>
-                    {r.contactName}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, textDecoration: r.done ? "line-through" : "none" }}>
+                      {r.contactName}
+                    </div>
+                    {!r.done && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontFamily: font.mono,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: style.color,
+                          background: style.bg,
+                          border: `1px solid ${style.border}`,
+                          padding: "2px 7px",
+                          borderRadius: 5,
+                        }}
+                      >
+                        {style.label}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", marginTop: 2, fontFamily: font.body }}>
                     {r.reason || "General check-in"}
@@ -458,18 +469,13 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                 {r.dueDate && (
                   <div style={{
                     fontSize: 11, fontFamily: font.mono,
-                    color: overdue ? "#ff6b6b" : dueToday ? "#ffc96b" : "rgba(240,240,245,0.3)",
-                    background: overdue
-                      ? "rgba(255,107,107,0.12)"
-                      : dueToday
-                        ? "rgba(255,201,107,0.1)"
-                        : "transparent",
-                    padding: overdue || dueToday ? "4px 10px" : "0",
+                    color: r.done ? "rgba(240,240,245,0.3)" : style.color,
+                    background: r.done ? "transparent" : style.bg,
+                    padding: r.done ? "0" : "4px 10px",
                     borderRadius: 6,
-                    border: overdue ? "1px solid rgba(255,107,107,0.25)" : dueToday ? "1px solid rgba(255,201,107,0.2)" : "none",
+                    border: r.done ? "none" : `1px solid ${style.border}`,
                   }}>
-                    {overdue ? "Overdue · " : dueToday ? "Due today · " : ""}
-                    {parseDueDay(r.dueDate)?.toLocaleDateString() ?? r.dueDate}
+                    {r.done ? parseDueDay(r.dueDate)?.toLocaleDateString() ?? r.dueDate : reminderDueLabel(r)}
                   </div>
                 )}
                 {r.googleEventId && (

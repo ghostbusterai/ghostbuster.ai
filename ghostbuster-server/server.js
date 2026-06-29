@@ -13,6 +13,7 @@ const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
 const { buildPrompt, parseSuggestionsJson } = require("./resumeSuggestions")
 const { suggestContactsForUpdateSmart } = require("./contactRelevance")
 const googleCal = require("./googleCalendar")
+const { SUGGESTED_BUCKET_NAMES } = require("./resumeBucketMatch")
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -359,17 +360,17 @@ app.post("/api/resume-updates", async (req, res) => {
   }
   try {
     const out = await store.createResumeUpdate(null, { title, details, effectiveDate })
-    const [{ contacts }, { profile }, { resume }] = await Promise.all([
+    const [{ contacts }, { profile }, { buckets }] = await Promise.all([
       store.getContacts(null),
       store.getProfile(null),
-      store.getFullResume(null),
+      store.getResumeBuckets(null),
     ])
     const relevance = await suggestContactsForUpdateSmart({
       anthropic,
       contacts: contacts || [],
       update: out.update,
       profile: profile || {},
-      fullResume: resume || null,
+      resumeBuckets: buckets || [],
     })
     res.status(201).json({ update: out.update, relevance })
   } catch (e) {
@@ -391,7 +392,103 @@ app.delete("/api/resume-updates/:id", async (req, res) => {
   }
 })
 
-// —— Full résumé ——
+// —— Full résumé (legacy + first bucket) ——
+app.get("/api/resume-buckets/suggestions", (_req, res) => {
+  res.json({ names: SUGGESTED_BUCKET_NAMES })
+})
+
+app.get("/api/resume-buckets", async (req, res) => {
+  try {
+    const out = await store.getResumeBuckets(null)
+    res.json(out)
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to load résumé buckets" })
+  }
+})
+
+app.post("/api/resume-buckets", async (req, res) => {
+  const { name } = req.body || {}
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({ error: "Bucket name is required" })
+  }
+  try {
+    const out = await store.createResumeBucket(null, { name })
+    res.status(201).json(out)
+  } catch (e) {
+    if (e.message === "duplicate") {
+      return res.status(409).json({ error: "A bucket with that name already exists" })
+    }
+    console.error(e)
+    res.status(500).json({ error: "Failed to create bucket" })
+  }
+})
+
+app.patch("/api/resume-buckets/:id", async (req, res) => {
+  const id = parseId(req.params.id)
+  if (id == null) return res.status(400).json({ error: "Invalid id" })
+  try {
+    const out = await store.patchResumeBucket(null, id, req.body || {})
+    if (!out) return res.status(404).json({ error: "Bucket not found" })
+    res.json(out)
+  } catch (e) {
+    if (e.message === "duplicate") {
+      return res.status(409).json({ error: "A bucket with that name already exists" })
+    }
+    console.error(e)
+    res.status(500).json({ error: "Failed to update bucket" })
+  }
+})
+
+app.delete("/api/resume-buckets/:id", async (req, res) => {
+  const id = parseId(req.params.id)
+  if (id == null) return res.status(400).json({ error: "Invalid id" })
+  try {
+    const ok = await store.deleteResumeBucket(null, id)
+    if (!ok) return res.status(404).json({ error: "Bucket not found" })
+    res.status(204).end()
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to delete bucket" })
+  }
+})
+
+app.post("/api/resume-buckets/:id/upload", upload.single("file"), async (req, res) => {
+  const id = parseId(req.params.id)
+  if (id == null) return res.status(400).json({ error: "Invalid id" })
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" })
+  try {
+    const text = await extractResumeText(req.file.buffer, req.file.originalname)
+    if (!text.trim()) {
+      return res.status(400).json({ error: "Could not extract text from that file" })
+    }
+    const out = await store.saveBucketResume(null, id, {
+      text,
+      fileName: req.file.originalname,
+    })
+    if (!out) return res.status(404).json({ error: "Bucket not found" })
+    res.status(201).json(out)
+  } catch (e) {
+    const msg = typeof e.message === "string" ? e.message : "Failed to process file"
+    const status = /too large|unsupported|empty/i.test(msg) ? 400 : 500
+    if (status === 500) console.error(e)
+    res.status(status).json({ error: msg })
+  }
+})
+
+app.delete("/api/resume-buckets/:id/resume", async (req, res) => {
+  const id = parseId(req.params.id)
+  if (id == null) return res.status(400).json({ error: "Invalid id" })
+  try {
+    const ok = await store.deleteBucketResume(null, id)
+    if (!ok) return res.status(404).json({ error: "No résumé in this bucket" })
+    res.status(204).end()
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to remove résumé" })
+  }
+})
+
 app.get("/api/resume", async (req, res) => {
   try {
     const out = await store.getFullResume(null)
@@ -423,6 +520,7 @@ app.post("/api/resume/upload", upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" })
   }
+  const bucketId = req.body?.bucketId != null ? Number(req.body.bucketId) : null
   try {
     const text = await extractResumeText(req.file.buffer, req.file.originalname)
     if (!text.trim()) {
@@ -431,6 +529,7 @@ app.post("/api/resume/upload", upload.single("file"), async (req, res) => {
     const out = await store.saveFullResume(null, {
       text,
       fileName: req.file.originalname,
+      bucketId: Number.isFinite(bucketId) ? bucketId : undefined,
     })
     res.status(201).json(out)
   } catch (e) {
@@ -443,7 +542,10 @@ app.post("/api/resume/upload", upload.single("file"), async (req, res) => {
 
 app.delete("/api/resume", async (req, res) => {
   try {
-    const ok = await store.deleteFullResume(null)
+    const bucketId = req.query.bucketId != null ? Number(req.query.bucketId) : undefined
+    const ok = await store.deleteFullResume(null, {
+      bucketId: Number.isFinite(bucketId) ? bucketId : undefined,
+    })
     if (!ok) return res.status(404).json({ error: "No résumé on file" })
     res.status(204).end()
   } catch (e) {
@@ -458,12 +560,17 @@ app.post("/api/resume/suggestions", async (req, res) => {
   }
 
   try {
-    const [{ profile }, { resume }] = await Promise.all([
+    const bucketId = req.body?.bucketId != null ? Number(req.body.bucketId) : null
+    const [{ profile }, { buckets }] = await Promise.all([
       store.getProfile(null),
-      store.getFullResume(null),
+      store.getResumeBuckets(null),
     ])
     const careerGoals = typeof profile?.careerGoals === "string" ? profile.careerGoals.trim() : ""
-    const resumeText = typeof resume?.text === "string" ? resume.text.trim() : ""
+    const bucketList = buckets || []
+    const bucket =
+      (Number.isFinite(bucketId) ? bucketList.find((b) => b.id === bucketId) : null) ||
+      bucketList.find((b) => typeof b.text === "string" && b.text.trim())
+    const resumeText = typeof bucket?.text === "string" ? bucket.text.trim() : ""
 
     if (!careerGoals) {
       return res.status(400).json({

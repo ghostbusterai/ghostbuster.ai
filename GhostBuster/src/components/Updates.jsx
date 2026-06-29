@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { api } from "../api"
 import { suggestContactsForUpdate } from "../updateRelevance"
 import {
@@ -7,10 +7,14 @@ import {
 } from "../outreachMessage"
 import { font } from "../theme"
 import { readLocalProfile, saveLocalProfile } from "../profile"
+import { contactsNeedingResumeNudge, buildResumeShareComposePrefill } from "../resumeNudge"
+import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
+
+const LS_LOGS = "gb_outreach_logs"
 
 const LS_UPDATES = "gb_resume_updates"
 const LS_PROFILE = "gb_profile"
-const LS_FULL_RESUME = "gb_full_resume"
+const LS_RESUME_BUCKETS = "gb_resume_buckets"
 
 const ACCEPT_RESUME = ".pdf,.docx,.txt,.md,.text"
 
@@ -48,18 +52,35 @@ function mergeProfileLastResume(effectiveDate) {
   }
 }
 
-function readLocalFullResume() {
+function readLocalResumeBuckets() {
   try {
-    const raw = JSON.parse(localStorage.getItem(LS_FULL_RESUME) || "null")
-    if (raw && typeof raw.text === "string" && raw.text.trim()) return raw
+    const raw = JSON.parse(localStorage.getItem(LS_RESUME_BUCKETS) || "[]")
+    if (Array.isArray(raw)) return raw
   } catch {
     /* ignore */
   }
-  return null
+  try {
+    const legacy = JSON.parse(localStorage.getItem("gb_full_resume") || "null")
+    if (legacy && typeof legacy.text === "string" && legacy.text.trim()) {
+      return [
+        {
+          id: Date.now(),
+          name: "General",
+          text: legacy.text.trim(),
+          fileName: legacy.fileName || "",
+          uploadedAt: legacy.uploadedAt || "",
+          createdAt: legacy.uploadedAt || new Date().toISOString(),
+        },
+      ]
+    }
+  } catch {
+    /* ignore */
+  }
+  return []
 }
 
-function saveLocalFullResume(resume) {
-  localStorage.setItem(LS_FULL_RESUME, JSON.stringify(resume))
+function saveLocalResumeBuckets(buckets) {
+  localStorage.setItem(LS_RESUME_BUCKETS, JSON.stringify(buckets))
 }
 
 async function readTextFileLocally(file) {
@@ -84,41 +105,61 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [outreachByContact, setOutreachByContact] = useState({})
   const [copiedContactId, setCopiedContactId] = useState(null)
   const [profileName, setProfileName] = useState("")
-  const [fullResume, setFullResume] = useState(null)
-  const [resumeUploading, setResumeUploading] = useState(false)
-  const [resumeExpanded, setResumeExpanded] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
+  const [resumeBuckets, setResumeBuckets] = useState([])
+  const [newBucketName, setNewBucketName] = useState("")
+  const [creatingBucket, setCreatingBucket] = useState(false)
+  const [uploadingBucketId, setUploadingBucketId] = useState(null)
+  const [expandedBucketIds, setExpandedBucketIds] = useState({})
+  const [dragOverBucketId, setDragOverBucketId] = useState(null)
+  const [suggestionsBucketId, setSuggestionsBucketId] = useState(null)
   const [careerGoals, setCareerGoals] = useState("")
   const [suggestions, setSuggestions] = useState([])
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [suggestionsError, setSuggestionsError] = useState(null)
   const [resumeDate, setResumeDate] = useState("")
   const [savingResumeDate, setSavingResumeDate] = useState(false)
+  const [outreachLogs, setOutreachLogs] = useState([])
+
+  const resumeNudgeContacts = useMemo(
+    () => contactsNeedingResumeNudge(contacts, outreachLogs, resumeDate),
+    [contacts, outreachLogs, resumeDate]
+  )
+
+  const activeSuggestionsBucket = useMemo(() => {
+    if (suggestionsBucketId != null) {
+      return resumeBuckets.find((b) => b.id === suggestionsBucketId) || null
+    }
+    return resumeBuckets.find((b) => typeof b.text === "string" && b.text.trim()) || null
+  }, [resumeBuckets, suggestionsBucketId])
 
   const load = useCallback(async () => {
     setLoadError(null)
     try {
-      const [{ updates: u }, { contacts: c }, resumeOut, profileOut] = await Promise.all([
+      const [{ updates: u }, { contacts: c }, bucketsOut, profileOut, logOut] = await Promise.all([
         api.getResumeUpdates(),
         api.getContacts(),
-        api.getFullResume(),
+        api.getResumeBuckets(),
         api.getProfile(),
+        api.getOutreachLogs(),
       ])
       setUpdates(u || [])
       setContacts(c || [])
-      setFullResume(resumeOut?.resume || null)
+      setOutreachLogs(logOut?.logs || [])
+      setResumeBuckets(bucketsOut?.buckets || [])
       setCareerGoals(profileOut?.profile?.careerGoals?.trim() || "")
       setProfileName(profileOut?.profile?.name?.trim() || "")
       setResumeDate(profileOut?.profile?.lastResumeUpdate || "")
       if (profileOut?.profile) saveLocalProfile(profileOut.profile)
       localStorage.setItem(LS_UPDATES, JSON.stringify(u || []))
       localStorage.setItem("gb_contacts", JSON.stringify(c || []))
-      if (resumeOut?.resume) saveLocalFullResume(resumeOut.resume)
+      localStorage.setItem(LS_LOGS, JSON.stringify(logOut?.logs || []))
+      saveLocalResumeBuckets(bucketsOut?.buckets || [])
     } catch (e) {
       setLoadError(e.message)
       setUpdates(JSON.parse(localStorage.getItem(LS_UPDATES) || "[]"))
       setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
-      setFullResume(readLocalFullResume())
+      setOutreachLogs(JSON.parse(localStorage.getItem(LS_LOGS) || "[]"))
+      setResumeBuckets(readLocalResumeBuckets())
       const localProfile = readLocalProfile()
       setCareerGoals(localProfile.careerGoals?.trim() || "")
       setProfileName(localProfile.name?.trim() || "")
@@ -211,6 +252,11 @@ export default function Updates({ setPage, setComposePrefill }) {
     setSavingResumeDate(false)
   }
 
+  function openResumeCompose(contact) {
+    setComposePrefill(buildResumeShareComposePrefill(contact, resumeDate))
+    setPage("compose")
+  }
+
   function openSaveResultModal(update, relevance, contactList) {
     const list = contactList ?? contacts
     let notice = null
@@ -257,7 +303,7 @@ export default function Updates({ setPage, setComposePrefill }) {
         }
         const relevance = suggestContactsForUpdate(contacts, payload, {
           careerGoals,
-          resumeText: fullResume?.text || "",
+          resumeText: resumeBuckets.find((b) => b.text?.trim())?.text || "",
         })
         const next = [update, ...updates]
         setUpdates(next)
@@ -275,28 +321,100 @@ export default function Updates({ setPage, setComposePrefill }) {
     setSaving(false)
   }
 
-  async function handleResumeFile(file) {
-    if (!file) return
+  async function createBucket(name) {
+    const trimmed = String(name || "").trim()
+    if (!trimmed) return
     setActionError(null)
-    setResumeUploading(true)
+    setCreatingBucket(true)
     try {
-      const { resume } = await api.uploadFullResume(file)
-      setFullResume(resume)
-      saveLocalFullResume(resume)
-      setResumeExpanded(false)
+      const { bucket } = await api.createResumeBucket({ name: trimmed })
+      setResumeBuckets((prev) => {
+        const next = [...prev, bucket]
+        saveLocalResumeBuckets(next)
+        return next
+      })
+      setNewBucketName("")
+    } catch (err) {
+      if (loadError) {
+        const bucket = {
+          id: Date.now(),
+          name: trimmed,
+          text: "",
+          fileName: "",
+          uploadedAt: "",
+          createdAt: new Date().toISOString(),
+        }
+        setResumeBuckets((prev) => {
+          const next = [...prev, bucket]
+          saveLocalResumeBuckets(next)
+          return next
+        })
+        setNewBucketName("")
+      } else {
+        setActionError(err.message)
+      }
+    }
+    setCreatingBucket(false)
+  }
+
+  async function removeBucket(id) {
+    setActionError(null)
+    try {
+      await api.deleteResumeBucket(id)
+      setResumeBuckets((prev) => {
+        const next = prev.filter((b) => b.id !== id)
+        saveLocalResumeBuckets(next)
+        return next
+      })
+      if (suggestionsBucketId === id) {
+        setSuggestionsBucketId(null)
+        setSuggestions([])
+      }
+    } catch (err) {
+      if (loadError) {
+        setResumeBuckets((prev) => {
+          const next = prev.filter((b) => b.id !== id)
+          saveLocalResumeBuckets(next)
+          return next
+        })
+      } else {
+        setActionError(err.message)
+      }
+    }
+  }
+
+  async function handleResumeFile(file, bucketId) {
+    if (!file || bucketId == null) return
+    setActionError(null)
+    setUploadingBucketId(bucketId)
+    try {
+      const { bucket } = await api.uploadBucketResume(bucketId, file)
+      setResumeBuckets((prev) => {
+        const next = prev.map((b) => (b.id === bucket.id ? bucket : b))
+        saveLocalResumeBuckets(next)
+        return next
+      })
+      setExpandedBucketIds((prev) => ({ ...prev, [bucketId]: false }))
+      if (suggestionsBucketId == null) setSuggestionsBucketId(bucketId)
     } catch (err) {
       if (loadError) {
         try {
           const text = await readTextFileLocally(file)
           if (!text.trim()) throw new Error("File is empty")
-          const resume = {
-            text: text.trim(),
-            fileName: file.name,
-            uploadedAt: new Date().toISOString(),
-          }
-          setFullResume(resume)
-          saveLocalFullResume(resume)
-          setResumeExpanded(false)
+          setResumeBuckets((prev) => {
+            const next = prev.map((b) =>
+              b.id === bucketId
+                ? {
+                    ...b,
+                    text: text.trim(),
+                    fileName: file.name,
+                    uploadedAt: new Date().toISOString(),
+                  }
+                : b
+            )
+            saveLocalResumeBuckets(next)
+            return next
+          })
         } catch (localErr) {
           setActionError(localErr.message)
         }
@@ -304,15 +422,18 @@ export default function Updates({ setPage, setComposePrefill }) {
         setActionError(err.message)
       }
     }
-    setResumeUploading(false)
+    setUploadingBucketId(null)
   }
 
   async function fetchSuggestions() {
+    const bucket = activeSuggestionsBucket
+    if (!bucket?.text?.trim()) return
     setSuggestionsLoading(true)
     setSuggestionsError(null)
     try {
-      const { suggestions: list } = await api.getResumeSuggestions()
+      const { suggestions: list } = await api.getResumeSuggestions(bucket.id)
       setSuggestions(Array.isArray(list) ? list : [])
+      setSuggestionsBucketId(bucket.id)
     } catch (err) {
       setSuggestions([])
       setSuggestionsError(err.message)
@@ -320,33 +441,43 @@ export default function Updates({ setPage, setComposePrefill }) {
     setSuggestionsLoading(false)
   }
 
-  function onResumeInputChange(e) {
+  function onResumeInputChange(e, bucketId) {
     const file = e.target.files?.[0]
-    if (file) handleResumeFile(file)
+    if (file) handleResumeFile(file, bucketId)
     e.target.value = ""
   }
 
-  function onResumeDrop(e) {
+  function onResumeDrop(e, bucketId) {
     e.preventDefault()
-    setDragOver(false)
+    setDragOverBucketId(null)
     const file = e.dataTransfer.files?.[0]
-    if (file) handleResumeFile(file)
+    if (file) handleResumeFile(file, bucketId)
   }
 
-  async function removeFullResume() {
+  async function removeBucketResume(bucketId) {
     setActionError(null)
     try {
-      await api.deleteFullResume()
-      setFullResume(null)
-      setSuggestions([])
-      setSuggestionsError(null)
-      localStorage.removeItem(LS_FULL_RESUME)
-    } catch (err) {
-      if (loadError) {
-        setFullResume(null)
+      await api.deleteBucketResume(bucketId)
+      setResumeBuckets((prev) => {
+        const next = prev.map((b) =>
+          b.id === bucketId ? { ...b, text: "", fileName: "", uploadedAt: "" } : b
+        )
+        saveLocalResumeBuckets(next)
+        return next
+      })
+      if (suggestionsBucketId === bucketId) {
         setSuggestions([])
         setSuggestionsError(null)
-        localStorage.removeItem(LS_FULL_RESUME)
+      }
+    } catch (err) {
+      if (loadError) {
+        setResumeBuckets((prev) => {
+          const next = prev.map((b) =>
+            b.id === bucketId ? { ...b, text: "", fileName: "", uploadedAt: "" } : b
+          )
+          saveLocalResumeBuckets(next)
+          return next
+        })
       } else {
         setActionError(err.message)
       }
@@ -440,8 +571,8 @@ export default function Updates({ setPage, setComposePrefill }) {
           Résumé last updated
         </div>
         <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", marginBottom: 14, lineHeight: 1.55, fontFamily: font.body }}>
-          Set the date you last refreshed your résumé. The Tracker uses this to nudge contacts who have not heard
-          from you since then.
+          When did you last refresh your résumé? We&apos;ll suggest contacts you haven&apos;t messaged since
+          then.
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <input
@@ -468,6 +599,75 @@ export default function Updates({ setPage, setComposePrefill }) {
             {savingResumeDate ? "Saving…" : "Save date"}
           </button>
         </div>
+
+        {resumeDate && resumeNudgeContacts.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontFamily: font.mono,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(91,228,216,0.75)",
+                marginBottom: 10,
+              }}
+            >
+              Share your update
+            </div>
+            <p style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", margin: "0 0 12px", lineHeight: 1.5 }}>
+              These contacts haven&apos;t heard from you since your last résumé update.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {resumeNudgeContacts.map((c) => (
+                <div
+                  key={c.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    background: "rgba(91,228,216,0.06)",
+                    border: "1px solid rgba(91,228,216,0.18)",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+                    <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 2 }}>
+                      {[c.role, c.company].filter(Boolean).join(" @ ") || "—"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openResumeCompose(c)}
+                    style={{
+                      background: "rgba(184,255,87,0.12)",
+                      border: "1px solid rgba(184,255,87,0.35)",
+                      color: "#b8ff57",
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      fontFamily: font.body,
+                      whiteSpace: "nowrap",
+                      boxShadow: "none",
+                    }}
+                  >
+                    Draft message →
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {resumeDate && resumeNudgeContacts.length === 0 && contacts.length > 0 && (
+          <p style={{ fontSize: 13, color: "rgba(240,240,245,0.35)", marginTop: 16, marginBottom: 0 }}>
+            You&apos;re caught up — everyone has heard from you since this date.
+          </p>
+        )}
       </div>
 
       <div
@@ -480,142 +680,291 @@ export default function Updates({ setPage, setComposePrefill }) {
         }}
       >
         <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
-          Full résumé
+          Résumés by role
         </div>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 16, lineHeight: 1.5, maxWidth: 680 }}>
-          Upload your complete résumé (PDF, DOCX, or plain text). We extract the text so it stays searchable alongside your updates.
+        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
+          Create role buckets and upload a full résumé for each one — for example, a PM version and a SWE version.
+          Contacts are auto-matched to a bucket from their job role.
         </p>
 
-        {fullResume ? (
-          <div>
-            <div
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.35)", marginBottom: 8 }}>
+            CREATE A BUCKET
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="Role name, e.g. Product Management"
+              value={newBucketName}
+              onChange={(e) => setNewBucketName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  createBucket(newBucketName)
+                }
+              }}
+              style={{ ...inputStyle, maxWidth: 320 }}
+            />
+            <button
+              type="button"
+              onClick={() => createBucket(newBucketName)}
+              disabled={creatingBucket || !newBucketName.trim()}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 12,
-                flexWrap: "wrap",
-                marginBottom: 12,
+                background: newBucketName.trim() && !creatingBucket ? "#b8ff57" : "rgba(184,255,87,0.15)",
+                color: newBucketName.trim() && !creatingBucket ? "#0a0f09" : "rgba(184,255,87,0.4)",
+                border: "1px solid rgba(184,255,87,0.25)",
+                boxShadow: "none",
+                padding: "10px 18px",
+                borderRadius: 9,
+                fontWeight: 700,
+                cursor: newBucketName.trim() && !creatingBucket ? "pointer" : "not-allowed",
               }}
             >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>
-                  {fullResume.fileName || "Résumé on file"}
-                </div>
-                <div style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(184,255,87,0.65)", marginTop: 4 }}>
-                  Uploaded {fullResume.uploadedAt ? new Date(fullResume.uploadedAt).toLocaleString() : "—"}
-                  {" · "}
-                  {fullResume.text.length.toLocaleString()} characters
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <label
-                  style={{
-                    background: "rgba(184,255,87,0.12)",
-                    border: "1px solid rgba(184,255,87,0.35)",
-                    color: "#b8ff57",
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    cursor: resumeUploading ? "not-allowed" : "pointer",
-                    opacity: resumeUploading ? 0.5 : 1,
-                  }}
-                >
-                  Replace
-                  <input
-                    type="file"
-                    accept={ACCEPT_RESUME}
-                    onChange={onResumeInputChange}
-                    disabled={resumeUploading}
-                    style={{ display: "none" }}
-                  />
-                </label>
+              {creatingBucket ? "Adding…" : "Add bucket"}
+            </button>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: "rgba(240,240,245,0.35)", marginBottom: 8, fontFamily: font.mono }}>
+              SUGGESTED ROLES
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {SUGGESTED_BUCKET_NAMES.filter(
+                (name) => !resumeBuckets.some((b) => b.name.toLowerCase() === name.toLowerCase())
+              ).map((name) => (
                 <button
+                  key={name}
                   type="button"
-                  onClick={removeFullResume}
+                  onClick={() => createBucket(name)}
+                  disabled={creatingBucket}
                   style={{
-                    background: "transparent",
-                    border: "1px solid rgba(255,107,107,0.35)",
-                    color: "#ff6b6b",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "rgba(240,240,245,0.65)",
                     padding: "6px 12px",
-                    borderRadius: 8,
+                    borderRadius: 20,
                     fontSize: 12,
-                    cursor: "pointer",
+                    cursor: creatingBucket ? "wait" : "pointer",
+                    fontFamily: font.body,
                     boxShadow: "none",
                   }}
                 >
-                  Remove
+                  + {name}
                 </button>
-              </div>
+              ))}
             </div>
-            <div
-              style={{
-                fontSize: 14,
-                color: "rgba(240,240,245,0.55)",
-                lineHeight: 1.55,
-                whiteSpace: "pre-wrap",
-                maxHeight: resumeExpanded ? "none" : 120,
-                overflow: resumeExpanded ? "visible" : "hidden",
-                position: "relative",
-              }}
-            >
-              {fullResume.text}
-            </div>
-            {fullResume.text.length > 400 && (
-              <button
-                type="button"
-                onClick={() => setResumeExpanded((v) => !v)}
-                style={{
-                  marginTop: 10,
-                  background: "transparent",
-                  border: "none",
-                  color: "#b8ff57",
-                  fontSize: 13,
-                  cursor: "pointer",
-                  padding: 0,
-                  boxShadow: "none",
-                }}
-              >
-                {resumeExpanded ? "Show less" : "Show full text"}
-              </button>
-            )}
           </div>
-        ) : (
-          <label
-            onDragOver={(e) => {
-              e.preventDefault()
-              setDragOver(true)
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onResumeDrop}
+        </div>
+
+        {resumeBuckets.length === 0 ? (
+          <div
             style={{
-              display: "block",
-              border: dragOver
-                ? "2px dashed rgba(184,255,87,0.55)"
-                : "2px dashed rgba(255,255,255,0.12)",
+              padding: "28px 20px",
               borderRadius: 12,
-              padding: "32px 20px",
+              border: "1px dashed rgba(255,255,255,0.1)",
               textAlign: "center",
-              cursor: resumeUploading ? "not-allowed" : "pointer",
-              background: dragOver ? "rgba(184,255,87,0.04)" : "rgba(255,255,255,0.02)",
-              transition: "border-color 0.15s, background 0.15s",
+              color: "rgba(240,240,245,0.35)",
+              fontSize: 14,
             }}
           >
-            <input
-              type="file"
-              accept={ACCEPT_RESUME}
-              onChange={onResumeInputChange}
-              disabled={resumeUploading}
-              style={{ display: "none" }}
-            />
-            <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.5 }}>↑</div>
-            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>
-              {resumeUploading ? "Processing…" : "Drop your résumé here or click to browse"}
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(240,240,245,0.4)" }}>
-              PDF, DOCX, TXT, or MD · max 5 MB
-            </div>
-          </label>
+            No buckets yet — create one above, then upload a résumé for that role.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {resumeBuckets.map((bucket) => {
+              const hasResume = Boolean(bucket.text?.trim())
+              const uploading = uploadingBucketId === bucket.id
+              const dragOver = dragOverBucketId === bucket.id
+              const expanded = expandedBucketIds[bucket.id]
+              const assignedCount = contacts.filter((c) => c.resumeBucketId === bucket.id).length
+              return (
+                <div
+                  key={bucket.id}
+                  style={{
+                    borderRadius: 12,
+                    border: "1px solid rgba(184,255,87,0.15)",
+                    background: "rgba(184,255,87,0.03)",
+                    padding: "16px 18px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      flexWrap: "wrap",
+                      marginBottom: hasResume ? 12 : 0,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 16 }}>{bucket.name}</div>
+                      <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 4 }}>
+                        {assignedCount > 0
+                          ? `${assignedCount} contact${assignedCount !== 1 ? "s" : ""} assigned`
+                          : "No contacts assigned yet — we'll auto-match from their role"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeBucket(bucket.id)}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid rgba(255,107,107,0.25)",
+                        color: "#ff6b6b",
+                        padding: "5px 10px",
+                        borderRadius: 7,
+                        fontSize: 11,
+                        cursor: "pointer",
+                        boxShadow: "none",
+                      }}
+                    >
+                      Delete bucket
+                    </button>
+                  </div>
+
+                  {hasResume ? (
+                    <div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: 12,
+                          flexWrap: "wrap",
+                          marginBottom: 10,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>
+                            {bucket.fileName || "Résumé on file"}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              fontFamily: font.mono,
+                              color: "rgba(184,255,87,0.65)",
+                              marginTop: 4,
+                            }}
+                          >
+                            Uploaded{" "}
+                            {bucket.uploadedAt ? new Date(bucket.uploadedAt).toLocaleString() : "—"}
+                            {" · "}
+                            {bucket.text.length.toLocaleString()} characters
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <label
+                            style={{
+                              background: "rgba(184,255,87,0.12)",
+                              border: "1px solid rgba(184,255,87,0.35)",
+                              color: "#b8ff57",
+                              padding: "6px 12px",
+                              borderRadius: 8,
+                              fontSize: 12,
+                              cursor: uploading ? "not-allowed" : "pointer",
+                              opacity: uploading ? 0.5 : 1,
+                            }}
+                          >
+                            Replace
+                            <input
+                              type="file"
+                              accept={ACCEPT_RESUME}
+                              onChange={(e) => onResumeInputChange(e, bucket.id)}
+                              disabled={uploading}
+                              style={{ display: "none" }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeBucketResume(bucket.id)}
+                            style={{
+                              background: "transparent",
+                              border: "1px solid rgba(255,107,107,0.35)",
+                              color: "#ff6b6b",
+                              padding: "6px 12px",
+                              borderRadius: 8,
+                              fontSize: 12,
+                              cursor: "pointer",
+                              boxShadow: "none",
+                            }}
+                          >
+                            Remove file
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: "rgba(240,240,245,0.55)",
+                          lineHeight: 1.55,
+                          whiteSpace: "pre-wrap",
+                          maxHeight: expanded ? "none" : 100,
+                          overflow: expanded ? "visible" : "hidden",
+                        }}
+                      >
+                        {bucket.text}
+                      </div>
+                      {bucket.text.length > 400 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedBucketIds((prev) => ({ ...prev, [bucket.id]: !prev[bucket.id] }))
+                          }
+                          style={{
+                            marginTop: 8,
+                            background: "transparent",
+                            border: "none",
+                            color: "#b8ff57",
+                            fontSize: 13,
+                            cursor: "pointer",
+                            padding: 0,
+                            boxShadow: "none",
+                          }}
+                        >
+                          {expanded ? "Show less" : "Show full text"}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <label
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        setDragOverBucketId(bucket.id)
+                      }}
+                      onDragLeave={() => setDragOverBucketId(null)}
+                      onDrop={(e) => onResumeDrop(e, bucket.id)}
+                      style={{
+                        display: "block",
+                        marginTop: 12,
+                        border: dragOver
+                          ? "2px dashed rgba(184,255,87,0.55)"
+                          : "2px dashed rgba(255,255,255,0.12)",
+                        borderRadius: 10,
+                        padding: "24px 16px",
+                        textAlign: "center",
+                        cursor: uploading ? "not-allowed" : "pointer",
+                        background: dragOver ? "rgba(184,255,87,0.04)" : "rgba(255,255,255,0.02)",
+                      }}
+                    >
+                      <input
+                        type="file"
+                        accept={ACCEPT_RESUME}
+                        onChange={(e) => onResumeInputChange(e, bucket.id)}
+                        disabled={uploading}
+                        style={{ display: "none" }}
+                      />
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                        {uploading ? "Processing…" : `Upload ${bucket.name} résumé`}
+                      </div>
+                      <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)" }}>
+                        PDF, DOCX, TXT, or MD · max 5 MB
+                      </div>
+                    </label>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 
@@ -649,16 +998,16 @@ export default function Updates({ setPage, setComposePrefill }) {
           <button
             type="button"
             onClick={fetchSuggestions}
-            disabled={suggestionsLoading || !fullResume?.text?.trim() || !careerGoals}
+            disabled={suggestionsLoading || !activeSuggestionsBucket?.text?.trim() || !careerGoals}
             style={{
               flexShrink: 0,
               background:
-                suggestionsLoading || !fullResume?.text?.trim() || !careerGoals
+                suggestionsLoading || !activeSuggestionsBucket?.text?.trim() || !careerGoals
                   ? "rgba(91,228,216,0.15)"
                   : "rgba(91,228,216,0.2)",
               border: "1px solid rgba(91,228,216,0.4)",
               color:
-                suggestionsLoading || !fullResume?.text?.trim() || !careerGoals
+                suggestionsLoading || !activeSuggestionsBucket?.text?.trim() || !careerGoals
                   ? "rgba(91,228,216,0.4)"
                   : "#5be4d8",
               padding: "9px 16px",
@@ -666,7 +1015,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               fontSize: 13,
               fontWeight: 600,
               cursor:
-                suggestionsLoading || !fullResume?.text?.trim() || !careerGoals
+                suggestionsLoading || !activeSuggestionsBucket?.text?.trim() || !careerGoals
                   ? "not-allowed"
                   : "pointer",
               boxShadow: "none",
@@ -676,17 +1025,42 @@ export default function Updates({ setPage, setComposePrefill }) {
           </button>
         </div>
 
+        {careerGoals && resumeBuckets.some((b) => b.text?.trim()) && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", marginRight: 10 }}>
+              RÉSUMÉ BUCKET
+            </label>
+            <select
+              value={activeSuggestionsBucket?.id ?? ""}
+              onChange={(e) => {
+                const id = e.target.value ? Number(e.target.value) : null
+                setSuggestionsBucketId(id)
+                setSuggestions([])
+                setSuggestionsError(null)
+              }}
+              style={{ ...inputStyle, width: "auto", maxWidth: 320, display: "inline-block" }}
+            >
+              {resumeBuckets
+                .filter((b) => b.text?.trim())
+                .map((b) => (
+                  <option key={b.id} value={String(b.id)}>
+                    {b.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
         {!careerGoals && (
           <p style={{ color: "#ffc96b", fontSize: 13, margin: "0 0 8px" }}>
             Set career goals in your profile (top-right icon) to unlock suggestions.
           </p>
         )}
-        {careerGoals && !fullResume?.text?.trim() && (
+        {careerGoals && !resumeBuckets.some((b) => b.text?.trim()) && (
           <p style={{ color: "#ffc96b", fontSize: 13, margin: "0 0 8px" }}>
-            Upload your full résumé above to get tailored feedback.
+            Upload a résumé to a role bucket above to get tailored feedback.
           </p>
         )}
-        {careerGoals && fullResume?.text?.trim() && (
+        {careerGoals && activeSuggestionsBucket?.text?.trim() && (
           <div
             style={{
               fontSize: 12,

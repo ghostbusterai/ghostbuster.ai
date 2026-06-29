@@ -1,6 +1,30 @@
 const { read, write } = require("./store")
+const { suggestResumeBucket } = require("./resumeBucketMatch")
 
 /** Single-tenant JSON file store (no user id). */
+
+function resolveResumeBucketId(data, body, prev = null) {
+  const buckets = data.resumeBuckets || []
+  if (body.resumeBucketId !== undefined) {
+    if (body.resumeBucketId === null || body.resumeBucketId === "") return null
+    const id = Number(body.resumeBucketId)
+    return Number.isFinite(id) && buckets.some((b) => b.id === id) ? id : null
+  }
+
+  const role = body.role !== undefined ? String(body.role ?? "") : String(prev?.role ?? "")
+  const roleChanged =
+    prev && body.role !== undefined && String(body.role ?? "") !== String(prev.role ?? "")
+  if (prev && !roleChanged && prev.resumeBucketId != null) return prev.resumeBucketId
+
+  const suggested = suggestResumeBucket(role, buckets)
+  return suggested?.id ?? null
+}
+
+function findResumeBucket(data, id) {
+  const bid = Number(id)
+  if (!Number.isFinite(bid)) return null
+  return (data.resumeBuckets || []).find((b) => b.id === bid) || null
+}
 
 exports.getContacts = async () => {
   const data = read()
@@ -10,6 +34,8 @@ exports.getContacts = async () => {
 exports.createContact = async (_userId, body) => {
   const { name, email, phone, company, role, notes, lastContacted, linkedin, website } = body || {}
   const data = read()
+  if (!Array.isArray(data.resumeBuckets)) data.resumeBuckets = []
+  const resumeBucketId = resolveResumeBucketId(data, body)
   const contact = {
     id: Date.now(),
     name: name.trim(),
@@ -21,6 +47,7 @@ exports.createContact = async (_userId, body) => {
     lastContacted: lastContacted ?? "",
     linkedin: linkedin ?? "",
     website: website ?? "",
+    resumeBucketId,
   }
   data.contacts.push(contact)
   write(data)
@@ -32,6 +59,7 @@ exports.updateContact = async (_userId, id, body) => {
   const idx = data.contacts.findIndex((c) => c.id === id)
   if (idx === -1) return null
   const prev = data.contacts[idx]
+  const resumeBucketId = resolveResumeBucketId(data, body, prev)
   data.contacts[idx] = {
     ...prev,
     name: typeof body.name === "string" ? body.name.trim() : prev.name,
@@ -43,6 +71,7 @@ exports.updateContact = async (_userId, id, body) => {
     lastContacted: body.lastContacted !== undefined ? body.lastContacted : prev.lastContacted,
     linkedin: body.linkedin !== undefined ? body.linkedin : (prev.linkedin ?? ""),
     website: body.website !== undefined ? body.website : (prev.website ?? ""),
+    resumeBucketId,
   }
   if (!data.contacts[idx].name) return null
   write(data)
@@ -218,27 +247,173 @@ exports.createResumeUpdate = async (_userId, body) => {
 
 exports.getFullResume = async () => {
   const data = read()
+  const bucket = (data.resumeBuckets || []).find((b) => typeof b.text === "string" && b.text.trim())
+  if (bucket) {
+    return {
+      resume: {
+        text: bucket.text,
+        fileName: bucket.fileName || "",
+        uploadedAt: bucket.uploadedAt || "",
+        bucketId: bucket.id,
+        bucketName: bucket.name,
+      },
+    }
+  }
   return { resume: data.fullResume || null }
 }
 
-exports.saveFullResume = async (_userId, body) => {
+exports.getResumeBuckets = async () => {
+  const data = read()
+  return { buckets: data.resumeBuckets || [] }
+}
+
+exports.createResumeBucket = async (_userId, body) => {
+  const name = typeof body?.name === "string" ? body.name.trim() : ""
+  if (!name) throw new Error("name")
+  const data = read()
+  if (!Array.isArray(data.resumeBuckets)) data.resumeBuckets = []
+  if (data.resumeBuckets.some((b) => b.name.toLowerCase() === name.toLowerCase())) {
+    throw new Error("duplicate")
+  }
+  const bucket = {
+    id: Date.now(),
+    name,
+    text: "",
+    fileName: "",
+    uploadedAt: "",
+    createdAt: new Date().toISOString(),
+  }
+  data.resumeBuckets.push(bucket)
+  write(data)
+  return { bucket }
+}
+
+exports.patchResumeBucket = async (_userId, id, body) => {
+  const data = read()
+  const bucket = findResumeBucket(data, id)
+  if (!bucket) return null
+  if (typeof body?.name === "string" && body.name.trim()) {
+    const nextName = body.name.trim()
+    if (
+      (data.resumeBuckets || []).some((b) => b.id !== bucket.id && b.name.toLowerCase() === nextName.toLowerCase())
+    ) {
+      throw new Error("duplicate")
+    }
+    bucket.name = nextName
+  }
+  write(data)
+  return { bucket }
+}
+
+exports.deleteResumeBucket = async (_userId, id) => {
+  const data = read()
+  const bid = Number(id)
+  const before = (data.resumeBuckets || []).length
+  data.resumeBuckets = (data.resumeBuckets || []).filter((b) => b.id !== bid)
+  if (data.resumeBuckets.length === before) return false
+  data.contacts = (data.contacts || []).map((c) =>
+    c.resumeBucketId === bid ? { ...c, resumeBucketId: null } : c
+  )
+  write(data)
+  return true
+}
+
+exports.saveBucketResume = async (_userId, bucketId, body) => {
   const { text, fileName } = body || {}
+  if (typeof text !== "string" || !text.trim()) throw new Error("empty")
+  const data = read()
+  const bucket = findResumeBucket(data, bucketId)
+  if (!bucket) return null
+  bucket.text = text.trim()
+  bucket.fileName = typeof fileName === "string" ? fileName.trim() : ""
+  bucket.uploadedAt = new Date().toISOString()
+  write(data)
+  return { bucket }
+}
+
+exports.deleteBucketResume = async (_userId, bucketId) => {
+  const data = read()
+  const bucket = findResumeBucket(data, bucketId)
+  if (!bucket || !bucket.text) return false
+  bucket.text = ""
+  bucket.fileName = ""
+  bucket.uploadedAt = ""
+  write(data)
+  return true
+}
+
+exports.saveFullResume = async (_userId, body) => {
+  const { text, fileName, bucketId } = body || {}
   if (typeof text !== "string" || !text.trim()) {
     throw new Error("empty")
   }
   const data = read()
-  data.fullResume = {
-    text: text.trim(),
-    fileName: typeof fileName === "string" ? fileName.trim() : "",
-    uploadedAt: new Date().toISOString(),
+  if (!Array.isArray(data.resumeBuckets)) data.resumeBuckets = []
+  if (bucketId != null) {
+    const bucket = findResumeBucket(data, bucketId)
+    if (!bucket) throw new Error("bucket")
+    bucket.text = text.trim()
+    bucket.fileName = typeof fileName === "string" ? fileName.trim() : ""
+    bucket.uploadedAt = new Date().toISOString()
+    write(data)
+    return {
+      resume: {
+        text: bucket.text,
+        fileName: bucket.fileName,
+        uploadedAt: bucket.uploadedAt,
+        bucketId: bucket.id,
+        bucketName: bucket.name,
+      },
+    }
   }
+  if (data.resumeBuckets.length === 0) {
+    data.resumeBuckets.push({
+      id: Date.now(),
+      name: "General",
+      text: text.trim(),
+      fileName: typeof fileName === "string" ? fileName.trim() : "",
+      uploadedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    })
+  } else {
+    const bucket = data.resumeBuckets[0]
+    bucket.text = text.trim()
+    bucket.fileName = typeof fileName === "string" ? fileName.trim() : ""
+    bucket.uploadedAt = new Date().toISOString()
+  }
+  const bucket = data.resumeBuckets[0]
   write(data)
-  return { resume: data.fullResume }
+  return {
+    resume: {
+      text: bucket.text,
+      fileName: bucket.fileName,
+      uploadedAt: bucket.uploadedAt,
+      bucketId: bucket.id,
+      bucketName: bucket.name,
+    },
+  }
 }
 
-exports.deleteFullResume = async () => {
+exports.deleteFullResume = async (_userId, body) => {
   const data = read()
-  if (!data.fullResume) return false
+  if (body?.bucketId != null) {
+    const bucket = findResumeBucket(data, body.bucketId)
+    if (!bucket || !bucket.text) return false
+    bucket.text = ""
+    bucket.fileName = ""
+    bucket.uploadedAt = ""
+    write(data)
+    return true
+  }
+  if (!data.fullResume) {
+    const first = (data.resumeBuckets || []).find((b) => b.text)
+    if (!first) return false
+    first.text = ""
+    first.fileName = ""
+    first.uploadedAt = ""
+    write(data)
+    return true
+  }
   data.fullResume = null
   write(data)
   return true

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react"
 import { api } from "../api"
 import { font } from "../theme"
+import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
 
 const EMPTY = {
   name: "", email: "", phone: "", company: "", role: "", notes: "", lastContacted: "",
-  linkedin: "", website: "",
+  linkedin: "", website: "", bucketAssignment: "auto",
 }
 
 function hrefFromUrl(raw) {
@@ -16,6 +17,7 @@ function hrefFromUrl(raw) {
 
 export default function ContactHub() {
   const [contacts, setContacts] = useState([])
+  const [resumeBuckets, setResumeBuckets] = useState([])
   const [loadError, setLoadError] = useState(null)
   const [listLoading, setListLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -30,12 +32,23 @@ export default function ContactHub() {
     ;(async () => {
       setLoadError(null)
       try {
-        const { contacts: list } = await api.getContacts()
-        if (!cancelled) setContacts(list)
+        const [{ contacts: list }, { buckets }] = await Promise.all([
+          api.getContacts(),
+          api.getResumeBuckets(),
+        ])
+        if (!cancelled) {
+          setContacts(list)
+          setResumeBuckets(buckets || [])
+        }
       } catch (e) {
         if (!cancelled) {
           setLoadError(e.message)
           setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
+          try {
+            setResumeBuckets(JSON.parse(localStorage.getItem("gb_resume_buckets") || "[]"))
+          } catch {
+            setResumeBuckets([])
+          }
         }
       } finally {
         if (!cancelled) setListLoading(false)
@@ -71,6 +84,8 @@ export default function ContactHub() {
       linkedin: form.linkedin,
       website: form.website,
     }
+    if (form.bucketAssignment === "none") payload.resumeBucketId = null
+    else if (form.bucketAssignment !== "auto") payload.resumeBucketId = Number(form.bucketAssignment)
     try {
       if (editId) {
         await api.updateContact(editId, payload)
@@ -103,9 +118,19 @@ export default function ContactHub() {
   }
 
   function edit(c) {
-    setForm({ ...EMPTY, ...c })
+    setForm({
+      ...EMPTY,
+      ...c,
+      bucketAssignment:
+        c.resumeBucketId != null ? String(c.resumeBucketId) : "auto",
+    })
     setEditId(c.id)
     setShowForm(true)
+  }
+
+  function suggestedBucketLabel(role) {
+    const match = suggestResumeBucket(role, resumeBuckets)
+    return match?.name || null
   }
 
   async function remove(id) {
@@ -192,7 +217,7 @@ export default function ContactHub() {
               { key: "email", placeholder: "Email" },
               { key: "phone", placeholder: "Phone" },
               { key: "company", placeholder: "Company" },
-              { key: "role", placeholder: "Relationship" },
+              { key: "role", placeholder: "Their role (e.g. Product Manager)" },
               { key: "linkedin", placeholder: "LinkedIn (URL or handle)" },
               { key: "website", placeholder: "Personal website" },
               { key: "lastContacted", placeholder: "Last contacted", type: "date" },
@@ -202,7 +227,32 @@ export default function ContactHub() {
                 style={inputStyle}
               />
             ))}
+            <select
+              value={form.bucketAssignment}
+              onChange={(e) => setForm({ ...form, bucketAssignment: e.target.value })}
+              style={{ ...inputStyle, gridColumn: "1 / -1" }}
+            >
+              <option value="auto">
+                Auto-match résumé bucket from role
+                {form.bucketAssignment === "auto" && form.role && suggestedBucketLabel(form.role)
+                  ? ` → ${suggestedBucketLabel(form.role)}`
+                  : ""}
+              </option>
+              <option value="none">No résumé bucket</option>
+              {resumeBuckets.map((b) => (
+                <option key={b.id} value={String(b.id)}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
           </div>
+          {form.bucketAssignment === "auto" && form.role && (
+            <p style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 8, marginBottom: 0 }}>
+              {suggestedBucketLabel(form.role)
+                ? `Will match to "${suggestedBucketLabel(form.role)}" based on their role.`
+                : "Add role buckets on the Resume tab to enable auto-matching."}
+            </p>
+          )}
           <textarea placeholder="Notes/reflections about this person..."
             value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
             style={{ ...inputStyle, marginTop: 14, height: 80, resize: "vertical" }}
@@ -255,6 +305,11 @@ export default function ContactHub() {
                   <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", marginTop: 2, fontFamily: font.body }}>
                     {[c.role, c.company].filter(Boolean).join(" @ ")}
                   </div>
+                  {bucketNameForContact(c, resumeBuckets) && (
+                    <div style={{ fontSize: 11, color: "rgba(91,228,216,0.65)", marginTop: 4, fontFamily: font.mono }}>
+                      Résumé: {bucketNameForContact(c, resumeBuckets)}
+                    </div>
+                  )}
                   {(c.linkedin || c.website) && (
                     <div style={{ fontSize: 12, marginTop: 6, display: "flex", gap: 12, flexWrap: "wrap" }}>
                       {c.linkedin && (

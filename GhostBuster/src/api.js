@@ -78,14 +78,35 @@ export const api = {
   deleteResumeUpdate: (id) => request(`/api/resume-updates/${id}`, { method: "DELETE" }),
   getFullResume: () => request("/api/resume"),
   saveFullResume: (body) => request("/api/resume", { method: "POST", body: JSON.stringify(body) }),
-  uploadFullResume: (file) => {
+  uploadFullResume: (file, bucketId) => {
     const form = new FormData()
     form.append("file", file)
+    if (bucketId != null) form.append("bucketId", String(bucketId))
     return uploadRequest("/api/resume/upload", form)
   },
-  deleteFullResume: () => request("/api/resume", { method: "DELETE" }),
-  getResumeSuggestions: () =>
-    request("/api/resume/suggestions", { method: "POST", body: JSON.stringify({}) }),
+  deleteFullResume: (bucketId) => {
+    const q = bucketId != null ? `?bucketId=${encodeURIComponent(bucketId)}` : ""
+    return request(`/api/resume${q}`, { method: "DELETE" })
+  },
+  getResumeBucketSuggestions: () => request("/api/resume-buckets/suggestions"),
+  getResumeBuckets: () => request("/api/resume-buckets"),
+  createResumeBucket: (body) =>
+    request("/api/resume-buckets", { method: "POST", body: JSON.stringify(body) }),
+  patchResumeBucket: (id, body) =>
+    request(`/api/resume-buckets/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteResumeBucket: (id) => request(`/api/resume-buckets/${id}`, { method: "DELETE" }),
+  uploadBucketResume: (bucketId, file) => {
+    const form = new FormData()
+    form.append("file", file)
+    return uploadRequest(`/api/resume-buckets/${bucketId}/upload`, form)
+  },
+  deleteBucketResume: (bucketId) =>
+    request(`/api/resume-buckets/${bucketId}/resume`, { method: "DELETE" }),
+  getResumeSuggestions: (bucketId) =>
+    request("/api/resume/suggestions", {
+      method: "POST",
+      body: JSON.stringify(bucketId != null ? { bucketId } : {}),
+    }),
   getGoogleCalendarStatus: () => request("/api/google/status"),
   disconnectGoogleCalendar: () => request("/api/google/disconnect", { method: "DELETE" }),
   syncReminderToCalendar: (id) =>
