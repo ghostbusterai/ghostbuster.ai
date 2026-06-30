@@ -13,6 +13,7 @@ const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
 const { buildPrompt, parseSuggestionsJson } = require("./resumeSuggestions")
 const { suggestContactsForUpdateSmart } = require("./contactRelevance")
 const googleCal = require("./googleCalendar")
+const gmail = require("./gmail")
 const { SUGGESTED_BUCKET_NAMES } = require("./resumeBucketMatch")
 
 const upload = multer({
@@ -86,6 +87,25 @@ async function syncReminderDelete(reminder) {
   const refreshToken = await store.getGoogleRefreshToken(null)
   if (!refreshToken || !reminder?.googleEventId) return
   await googleCal.deleteReminderEvent(refreshToken, reminder.googleEventId)
+}
+
+async function processScheduledEmails() {
+  const refreshToken = await store.getGoogleRefreshToken(null)
+  if (!refreshToken) return
+  const due = await store.getDueScheduledEmails(null)
+  for (const item of due) {
+    try {
+      const { messageId } = await gmail.sendNow(refreshToken, {
+        to: item.to,
+        subject: item.subject || "Networking outreach",
+        body: item.body || "",
+      })
+      await store.markScheduledEmailSent(null, item.id, messageId)
+    } catch (e) {
+      console.warn("Scheduled email send failed:", item.id, e.message)
+      await store.markScheduledEmailFailed(null, item.id, e.message)
+    }
+  }
 }
 
 // —— Contacts ——
@@ -281,10 +301,11 @@ app.get("/api/google/status", async (req, res) => {
 
 app.get("/api/google/auth", (req, res) => {
   if (!googleCal.isConfigured()) {
-    return res.status(503).json({ error: "Google Calendar is not configured on the server" })
+    return res.status(503).json({ error: "Google is not configured on the server" })
   }
   try {
-    res.redirect(googleCal.getAuthUrl())
+    const returnTo = req.query.returnTo === "compose" ? "compose" : "reminders"
+    res.redirect(googleCal.getAuthUrl(returnTo))
   } catch (e) {
     console.error(e)
     res.status(500).json({ error: "Failed to start Google sign-in" })
@@ -293,30 +314,110 @@ app.get("/api/google/auth", (req, res) => {
 
 app.get("/api/google/callback", async (req, res) => {
   const origin = appOrigin(req)
-  const fail = (msg) => res.redirect(`${origin}/?google=error&message=${encodeURIComponent(msg)}`)
+  const returnPage = req.query.state === "compose" ? "compose" : "reminders"
+  const fail = (msg) =>
+    res.redirect(`${origin}/?google=error&page=${returnPage}&message=${encodeURIComponent(msg)}`)
 
-  if (!googleCal.isConfigured()) return fail("Google Calendar is not configured")
+  if (!googleCal.isConfigured()) return fail("Google is not configured")
   const code = typeof req.query.code === "string" ? req.query.code : ""
   if (!code) return fail("Google sign-in was cancelled or failed")
 
   try {
     const tokens = await googleCal.exchangeCode(code)
     await store.saveGoogleCalendarTokens(null, tokens)
-    res.redirect(`${origin}/?google=connected`)
+    res.redirect(`${origin}/?google=connected&page=${returnPage}`)
   } catch (e) {
     console.error(e)
-    fail(e.message || "Failed to connect Google Calendar")
+    fail(e.message || "Failed to connect Google account")
   }
 })
 
 app.delete("/api/google/disconnect", async (req, res) => {
   try {
     const ok = await store.clearGoogleCalendar(null)
-    if (!ok) return res.status(404).json({ error: "Google Calendar was not connected" })
+    if (!ok) return res.status(404).json({ error: "Google account was not connected" })
     res.status(204).end()
   } catch (e) {
     console.error(e)
-    res.status(500).json({ error: "Failed to disconnect Google Calendar" })
+    res.status(500).json({ error: "Failed to disconnect Google account" })
+  }
+})
+
+// —— Gmail ——
+app.post("/api/gmail/draft", async (req, res) => {
+  if (!googleCal.isConfigured()) {
+    return res.status(503).json({ error: "Google is not configured on the server" })
+  }
+  const refreshToken = await store.getGoogleRefreshToken(null)
+  if (!refreshToken) {
+    return res.status(400).json({ error: "Connect Google first (Calendar or Gmail uses the same sign-in)" })
+  }
+
+  const { to, messageText, subject, body } = req.body || {}
+  const recipient = typeof to === "string" ? to.trim() : ""
+  if (!recipient) return res.status(400).json({ error: "Recipient email is required" })
+
+  const parsed =
+    typeof messageText === "string" && messageText.trim()
+      ? gmail.parseComposedEmail(messageText)
+      : {
+          subject: typeof subject === "string" ? subject.trim() : "",
+          body: typeof body === "string" ? body.trim() : "",
+        }
+  if (!parsed.body) return res.status(400).json({ error: "Message body is required" })
+
+  try {
+    const out = await gmail.createDraft(refreshToken, {
+      to: recipient,
+      subject: parsed.subject || "Networking outreach",
+      body: parsed.body,
+    })
+    res.status(201).json(out)
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: e.message || "Failed to save Gmail draft" })
+  }
+})
+
+app.post("/api/gmail/schedule", async (req, res) => {
+  if (!googleCal.isConfigured()) {
+    return res.status(503).json({ error: "Google is not configured on the server" })
+  }
+  const refreshToken = await store.getGoogleRefreshToken(null)
+  if (!refreshToken) {
+    return res.status(400).json({ error: "Connect Google first (Calendar or Gmail uses the same sign-in)" })
+  }
+
+  const { to, messageText, sendAt, contactName, subject, body } = req.body || {}
+  const recipient = typeof to === "string" ? to.trim() : ""
+  if (!recipient) return res.status(400).json({ error: "Recipient email is required" })
+
+  const parsed =
+    typeof messageText === "string" && messageText.trim()
+      ? gmail.parseComposedEmail(messageText)
+      : {
+          subject: typeof subject === "string" ? subject.trim() : "",
+          body: typeof body === "string" ? body.trim() : "",
+        }
+  if (!parsed.body) return res.status(400).json({ error: "Message body is required" })
+  if (!sendAt) return res.status(400).json({ error: "Schedule date and time are required" })
+
+  try {
+    const { scheduled } = await store.createScheduledEmail(null, {
+      to: recipient,
+      subject: parsed.subject || "Networking outreach",
+      body: parsed.body,
+      sendAt,
+      contactName,
+    })
+    processScheduledEmails().catch((e) => console.warn("Schedule processor:", e.message))
+    res.status(201).json({ scheduled })
+  } catch (e) {
+    if (e.message === "future") {
+      return res.status(400).json({ error: "Scheduled time must be in the future" })
+    }
+    console.error(e)
+    res.status(500).json({ error: e.message || "Failed to schedule email" })
   }
 })
 
@@ -832,6 +933,10 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`  Network: http://localhost:${PORT}/`)
   console.log("  Data:   ghostbuster-server/data/app-data.json")
   if (!apiKey) console.warn("ANTHROPIC_API_KEY is not set — /compose will return 503")
+  setInterval(() => {
+    processScheduledEmails().catch((e) => console.warn("Schedule processor:", e.message))
+  }, 60 * 1000)
+  processScheduledEmails().catch((e) => console.warn("Schedule processor:", e.message))
 })
 
 server.on("error", (err) => {

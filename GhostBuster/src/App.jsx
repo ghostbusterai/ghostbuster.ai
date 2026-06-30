@@ -29,14 +29,21 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const google = params.get("google")
+    const returnPage = params.get("page") === "compose" ? "compose" : "reminders"
     if (google === "connected") {
-      setPage("reminders")
-      setGoogleNotice({ type: "success", text: "Google Calendar connected." })
+      setPage(returnPage)
+      setGoogleNotice({
+        type: "success",
+        text:
+          returnPage === "compose"
+            ? "Google connected. You can save drafts and schedule emails."
+            : "Google Calendar connected.",
+      })
     } else if (google === "error") {
-      setPage("reminders")
+      setPage(returnPage)
       setGoogleNotice({
         type: "error",
-        text: params.get("message") || "Could not connect Google Calendar.",
+        text: params.get("message") || "Could not connect Google account.",
       })
     }
     if (google) {
@@ -185,7 +192,12 @@ export default function App() {
         {page === "tracker" && <Tracker />}
         {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
         {page === "compose" && (
-          <MessageComposer composePrefill={composePrefill} onConsumePrefill={() => setComposePrefill(null)} />
+          <MessageComposer
+            composePrefill={composePrefill}
+            onConsumePrefill={() => setComposePrefill(null)}
+            googleNotice={googleNotice}
+            onConsumeGoogleNotice={() => setGoogleNotice(null)}
+          />
         )}
       </main>
     </div>

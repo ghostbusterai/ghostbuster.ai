@@ -17,6 +17,7 @@ function ensureFile() {
           resumeUpdates: [],
           fullResume: null,
           googleCalendar: null,
+          scheduledEmails: [],
           resumeBuckets: [],
           profile: { name: "", careerGoals: "", lastResumeUpdate: "", hideGettingStarted: false },
         },
@@ -96,6 +97,7 @@ function read() {
                 : "",
           }
         : null,
+    scheduledEmails: Array.isArray(raw.scheduledEmails) ? raw.scheduledEmails : [],
     profile:
       raw.profile && typeof raw.profile === "object"
         ? {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { api } from "../api"
+import { api, BASE } from "../api"
 import { font } from "../theme"
 
 const SITUATIONS = [
@@ -23,7 +23,26 @@ const TONES = [
   "Direct & minimal",
 ]
 
-export default function MessageComposer({ composePrefill = null, onConsumePrefill = () => {} }) {
+function defaultScheduleLocal() {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(9, 0, 0, 0)
+  const pad = (n) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function formatScheduleLabel(isoOrLocal) {
+  const d = new Date(isoOrLocal)
+  if (Number.isNaN(d.getTime())) return isoOrLocal
+  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+}
+
+export default function MessageComposer({
+  composePrefill = null,
+  onConsumePrefill = () => {},
+  googleNotice = null,
+  onConsumeGoogleNotice = () => {},
+}) {
   const [contacts, setContacts] = useState([])
   const [selectedContact, setSelectedContact] = useState("")
   const [situation, setSituation] = useState("")
@@ -36,6 +55,13 @@ export default function MessageComposer({ composePrefill = null, onConsumePrefil
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [recipientEmail, setRecipientEmail] = useState("")
+  const [scheduleAt, setScheduleAt] = useState("")
+  const [googleStatus, setGoogleStatus] = useState({ connected: false, configured: false })
+  const [googleLoading, setGoogleLoading] = useState(true)
+  const [gmailBusy, setGmailBusy] = useState(null)
+  const [gmailNotice, setGmailNotice] = useState(null)
+  const [gmailError, setGmailError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -51,6 +77,37 @@ export default function MessageComposer({ composePrefill = null, onConsumePrefil
   }, [])
 
   const contact = contacts.find(c => c.id === Number(selectedContact))
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const status = await api.getGoogleCalendarStatus()
+        if (!cancelled) setGoogleStatus(status)
+      } catch {
+        if (!cancelled) setGoogleStatus({ connected: false, configured: false })
+      } finally {
+        if (!cancelled) setGoogleLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!googleNotice) return
+    setGmailNotice(googleNotice)
+    onConsumeGoogleNotice()
+    api.getGoogleCalendarStatus().then(setGoogleStatus).catch(() => {})
+  }, [googleNotice, onConsumeGoogleNotice])
+
+  useEffect(() => {
+    if (contact?.email) setRecipientEmail(contact.email)
+    else if (!selectedContact) setRecipientEmail("")
+  }, [selectedContact, contact?.email])
+
+  useEffect(() => {
+    if (result && !scheduleAt) setScheduleAt(defaultScheduleLocal())
+  }, [result, scheduleAt])
 
   useEffect(() => {
     if (!composePrefill) return
@@ -109,6 +166,71 @@ export default function MessageComposer({ composePrefill = null, onConsumePrefil
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function connectGoogle() {
+    window.location.href = `${BASE}/api/google/auth?returnTo=compose`
+  }
+
+  async function saveGmailDraft() {
+    if (!result?.trim()) return
+    const to = recipientEmail.trim()
+    if (!to) {
+      setGmailError("Add a recipient email address.")
+      return
+    }
+    setGmailBusy("draft")
+    setGmailError(null)
+    setGmailNotice(null)
+    try {
+      await api.saveGmailDraft({
+        to,
+        messageText: result,
+        contactName: contact?.name || "",
+      })
+      setGmailNotice({ type: "success", text: "Saved to Gmail drafts. Open Gmail to review and send." })
+    } catch (err) {
+      setGmailError(err.message || "Could not save Gmail draft.")
+    } finally {
+      setGmailBusy(null)
+    }
+  }
+
+  async function scheduleGmailSend() {
+    if (!result?.trim()) return
+    const to = recipientEmail.trim()
+    if (!to) {
+      setGmailError("Add a recipient email address.")
+      return
+    }
+    if (!scheduleAt) {
+      setGmailError("Pick a date and time to schedule the send.")
+      return
+    }
+    const sendAt = new Date(scheduleAt)
+    if (Number.isNaN(sendAt.getTime()) || sendAt.getTime() <= Date.now()) {
+      setGmailError("Scheduled time must be in the future.")
+      return
+    }
+    setGmailBusy("schedule")
+    setGmailError(null)
+    setGmailNotice(null)
+    try {
+      const { scheduled } = await api.scheduleGmailSend({
+        to,
+        messageText: result,
+        sendAt: sendAt.toISOString(),
+        contactName: contact?.name || "",
+      })
+      setGmailNotice({
+        type: "success",
+        text: `Email scheduled for ${formatScheduleLabel(scheduled?.sendAt || sendAt.toISOString())}.`,
+      })
+    } catch (err) {
+      setGmailError(err.message || "Could not schedule email.")
+    } finally {
+      setGmailBusy(null)
+    }
+  }
+
   const inputStyle = {
     background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.1)",
     borderRadius: 8, padding: "10px 14px", color: "#f0f0f5",
@@ -151,6 +273,7 @@ export default function MessageComposer({ composePrefill = null, onConsumePrefil
               }}>
                 {contact.role && <div>🏷 {contact.role}</div>}
                 {contact.company && <div>🏢 {contact.company}</div>}
+                {contact.email && <div>✉ {contact.email}</div>}
                 {contact.notes && <div>📝 {contact.notes}</div>}
               </div>
             )}
@@ -302,6 +425,130 @@ export default function MessageComposer({ composePrefill = null, onConsumePrefil
                     fontSize: 13, cursor: "pointer", fontFamily: font.mono,
                     boxShadow: "none",
                   }}>Regenerate</button>
+                </div>
+
+                <div style={{
+                  marginTop: 20, paddingTop: 20,
+                  borderTop: "1px solid rgba(255,255,255,0.08)",
+                }}>
+                  <div style={{
+                    fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)",
+                    letterSpacing: 0.5, marginBottom: 10,
+                  }}>GMAIL</div>
+                  <p style={{
+                    fontSize: 12, color: "rgba(240,240,245,0.28)", margin: "0 0 12px 0", lineHeight: 1.5,
+                  }}>
+                    Save this message as a draft in Gmail, or schedule GhostBuster to send it at a chosen time.
+                  </p>
+
+                  {gmailNotice && (
+                    <div style={{
+                      marginBottom: 12, padding: "10px 12px", borderRadius: 8, fontSize: 13, lineHeight: 1.5,
+                      background: gmailNotice.type === "success" ? "rgba(184,255,87,0.08)" : "rgba(255,107,107,0.08)",
+                      border: `1px solid ${gmailNotice.type === "success" ? "rgba(184,255,87,0.25)" : "rgba(255,107,107,0.25)"}`,
+                      color: gmailNotice.type === "success" ? "#b8ff57" : "#ff6b6b",
+                    }}>
+                      {gmailNotice.text}
+                    </div>
+                  )}
+
+                  {gmailError && (
+                    <div style={{ marginBottom: 12, fontSize: 13, color: "#ff6b6b", lineHeight: 1.5 }}>
+                      ⚠ {gmailError}
+                    </div>
+                  )}
+
+                  {!googleLoading && !googleStatus.configured && (
+                    <div style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", lineHeight: 1.55 }}>
+                      Gmail is not configured on the server yet (Google OAuth env vars).
+                    </div>
+                  )}
+
+                  {!googleLoading && googleStatus.configured && !googleStatus.connected && (
+                    <div>
+                      <p style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", margin: "0 0 10px 0", lineHeight: 1.5 }}>
+                        Connect Google to use the same account as Calendar reminders.
+                      </p>
+                      <button type="button" onClick={connectGoogle} style={{
+                        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+                        color: "rgba(240,240,245,0.75)", padding: "8px 16px", borderRadius: 8,
+                        fontSize: 13, cursor: "pointer", fontFamily: font.mono, boxShadow: "none",
+                      }}>
+                        Connect Google
+                      </button>
+                    </div>
+                  )}
+
+                  {!googleLoading && googleStatus.connected && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div>
+                        <label style={{
+                          fontSize: 11, fontFamily: font.mono, color: "rgba(240,240,245,0.35)",
+                          display: "block", marginBottom: 6, letterSpacing: 0.5,
+                        }}>TO</label>
+                        <input
+                          type="email"
+                          value={recipientEmail}
+                          onChange={(e) => setRecipientEmail(e.target.value)}
+                          placeholder="contact@company.com"
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                        <button
+                          type="button"
+                          onClick={saveGmailDraft}
+                          disabled={gmailBusy != null}
+                          style={{
+                            background: gmailBusy === "draft" ? "rgba(184,255,87,0.12)" : "rgba(184,255,87,0.18)",
+                            border: "1px solid rgba(184,255,87,0.35)",
+                            color: gmailBusy != null ? "rgba(184,255,87,0.45)" : "#b8ff57",
+                            padding: "8px 16px", borderRadius: 8, fontSize: 13,
+                            cursor: gmailBusy != null ? "not-allowed" : "pointer",
+                            fontFamily: font.mono, boxShadow: "none",
+                          }}
+                        >
+                          {gmailBusy === "draft" ? "Saving…" : "Save to Gmail drafts"}
+                        </button>
+                      </div>
+
+                      <div>
+                        <label style={{
+                          fontSize: 11, fontFamily: font.mono, color: "rgba(240,240,245,0.35)",
+                          display: "block", marginBottom: 6, letterSpacing: 0.5,
+                        }}>SCHEDULE SEND</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                          <input
+                            type="datetime-local"
+                            value={scheduleAt}
+                            onChange={(e) => setScheduleAt(e.target.value)}
+                            style={{ ...inputStyle, width: "auto", flex: "1 1 200px" }}
+                          />
+                          <button
+                            type="button"
+                            onClick={scheduleGmailSend}
+                            disabled={gmailBusy != null}
+                            style={{
+                              background: gmailBusy === "schedule" ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)",
+                              border: "1px solid rgba(255,255,255,0.12)",
+                              color: gmailBusy != null ? "rgba(240,240,245,0.35)" : "rgba(240,240,245,0.75)",
+                              padding: "8px 16px", borderRadius: 8, fontSize: 13,
+                              cursor: gmailBusy != null ? "not-allowed" : "pointer",
+                              fontFamily: font.mono, boxShadow: "none",
+                            }}
+                          >
+                            {gmailBusy === "schedule" ? "Scheduling…" : "Schedule send"}
+                          </button>
+                        </div>
+                        <p style={{
+                          fontSize: 11, color: "rgba(240,240,245,0.25)", margin: "8px 0 0 0", lineHeight: 1.45,
+                        }}>
+                          GhostBuster sends from your Gmail at the scheduled time (server must stay running).
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

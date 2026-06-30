@@ -126,6 +126,8 @@ export const api = {
     }),
   getGoogleCalendarStatus: () => request("/api/google/status"),
   disconnectGoogleCalendar: () => request("/api/google/disconnect", { method: "DELETE" }),
+  saveGmailDraft: (body) => request("/api/gmail/draft", { method: "POST", body: JSON.stringify(body) }),
+  scheduleGmailSend: (body) => request("/api/gmail/schedule", { method: "POST", body: JSON.stringify(body) }),
   syncReminderToCalendar: (id) =>
     request(`/api/reminders/${id}/sync-calendar`, { method: "POST", body: JSON.stringify({}) }),
 }

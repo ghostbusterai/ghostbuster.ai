@@ -183,6 +183,73 @@ exports.setReminderGoogleEventId = async (_userId, id, googleEventId) => {
   return { reminder: data.reminders[idx] }
 }
 
+exports.createScheduledEmail = async (_userId, body) => {
+  const { to, subject, body: emailBody, sendAt, contactName } = body || {}
+  const when = typeof sendAt === "string" ? sendAt.trim() : ""
+  const recipient = typeof to === "string" ? to.trim() : ""
+  if (!recipient) throw new Error("recipient")
+  if (!when) throw new Error("sendAt")
+  const sendMs = new Date(when).getTime()
+  if (Number.isNaN(sendMs) || sendMs <= Date.now()) throw new Error("future")
+
+  const data = read()
+  if (!Array.isArray(data.scheduledEmails)) data.scheduledEmails = []
+  const item = {
+    id: Date.now(),
+    to: recipient,
+    subject: typeof subject === "string" ? subject.trim() : "",
+    body: typeof emailBody === "string" ? emailBody : "",
+    sendAt: when,
+    contactName: typeof contactName === "string" ? contactName.trim() : "",
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    sentAt: "",
+    error: "",
+  }
+  data.scheduledEmails.push(item)
+  write(data)
+  return { scheduled: item }
+}
+
+exports.getDueScheduledEmails = async () => {
+  const data = read()
+  const list = Array.isArray(data.scheduledEmails) ? data.scheduledEmails : []
+  const now = Date.now()
+  return list.filter((item) => {
+    if (item.status !== "pending") return false
+    const t = new Date(item.sendAt).getTime()
+    return !Number.isNaN(t) && t <= now
+  })
+}
+
+exports.markScheduledEmailSent = async (id, messageId) => {
+  const data = read()
+  const idx = (data.scheduledEmails || []).findIndex((e) => e.id === id)
+  if (idx === -1) return false
+  data.scheduledEmails[idx] = {
+    ...data.scheduledEmails[idx],
+    status: "sent",
+    sentAt: new Date().toISOString(),
+    messageId: typeof messageId === "string" ? messageId : "",
+    error: "",
+  }
+  write(data)
+  return true
+}
+
+exports.markScheduledEmailFailed = async (id, errorMessage) => {
+  const data = read()
+  const idx = (data.scheduledEmails || []).findIndex((e) => e.id === id)
+  if (idx === -1) return false
+  data.scheduledEmails[idx] = {
+    ...data.scheduledEmails[idx],
+    status: "failed",
+    error: typeof errorMessage === "string" ? errorMessage : "Send failed",
+  }
+  write(data)
+  return true
+}
+
 exports.getProfile = async () => {
   const data = read()
   const p = data.profile || {}

@@ -1,6 +1,10 @@
 const { google } = require("googleapis")
 
-const SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
+const SCOPES = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/gmail.compose",
+  "https://www.googleapis.com/auth/gmail.send",
+]
 
 function isConfigured() {
   return Boolean(
@@ -19,13 +23,15 @@ function getOAuthClient() {
   )
 }
 
-function getAuthUrl() {
+function getAuthUrl(returnTo) {
   const client = getOAuthClient()
   if (!client) throw new Error("Google Calendar is not configured on the server")
+  const state = returnTo === "compose" ? "compose" : "reminders"
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
     scope: SCOPES,
+    state,
   })
 }
 
@@ -101,6 +107,7 @@ module.exports = {
   isConfigured,
   getAuthUrl,
   exchangeCode,
+  getAuthedClient,
   createReminderEvent,
   updateReminderEvent,
   deleteReminderEvent,
