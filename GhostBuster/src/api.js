@@ -14,6 +14,23 @@ function apiBase() {
 
 const BASE = apiBase()
 
+function parseBody(text, response) {
+  if (!text) return {}
+  const trimmed = text.trim()
+  if (trimmed.startsWith("<!") || trimmed.startsWith("<html") || trimmed.startsWith("<!DOCTYPE")) {
+    const hint =
+      BASE === ""
+        ? " Start the API: cd ghostbuster-server && npm start"
+        : " Check that the API is running and VITE_API_BASE is correct."
+    throw new Error(`API returned HTML instead of JSON (${response.status}).${hint}`)
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new Error(`Invalid API response (${response.status})`)
+  }
+}
+
 async function request(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) }
   let r
@@ -31,7 +48,7 @@ async function request(path, options = {}) {
   }
   if (r.status === 204) return {}
   const text = await r.text()
-  const data = text ? JSON.parse(text) : {}
+  const data = parseBody(text, r)
   if (!r.ok) throw new Error(data.error || r.statusText || `Request failed (${r.status})`)
   return data
 }
@@ -48,7 +65,7 @@ async function uploadRequest(path, formData) {
     throw new Error(`Can't reach API${hint}`)
   }
   const text = await r.text()
-  const data = text ? JSON.parse(text) : {}
+  const data = parseBody(text, r)
   if (!r.ok) throw new Error(data.error || r.statusText || `Request failed (${r.status})`)
   return data
 }

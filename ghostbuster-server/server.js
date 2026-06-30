@@ -791,6 +791,14 @@ app.get("/api/health", (req, res) => {
 const frontendDir = path.join(__dirname, "..", "GhostBuster", "dist")
 const hasFrontend = fs.existsSync(path.join(frontendDir, "index.html"))
 
+// Unmatched API routes → JSON (avoid HTML 404 pages breaking the client)
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api") || req.path === "/compose") {
+    return res.status(404).json({ error: `Not found: ${req.method} ${req.path}` })
+  }
+  next()
+})
+
 if (hasFrontend) {
   app.use(express.static(frontendDir))
   app.use((req, res, next) => {
