@@ -164,11 +164,6 @@ export default function Dashboard({ setPage }) {
   const isNewUser = contacts.length === 0
   const showGettingStarted = !hideGettingStarted && !sessionDismissedTutorial
 
-  function dismissTutorialForSession() {
-    setSessionDismissedTutorial(true)
-    sessionStorage.setItem(GETTING_STARTED_SESSION_KEY, "1")
-  }
-
   async function dismissTutorialPermanently() {
     setHideGettingStarted(true)
     setSessionDismissedTutorial(true)
@@ -548,51 +543,31 @@ export default function Dashboard({ setPage }) {
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent: isNewUser ? "space-between" : "flex-end",
               gap: 12,
               flexWrap: "wrap",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              {isNewUser && (
-                <button
-                  type="button"
-                  onClick={() => setPage("contacts")}
-                  style={{
-                    background: accentNeon,
-                    color: "#0a0f09",
-                    border: "1px solid rgba(10,15,9,0.22)",
-                    boxShadow: "none",
-                    padding: "13px 26px",
-                    borderRadius: 11,
-                    fontFamily: font.display,
-                    fontWeight: 700,
-                    fontSize: 15,
-                    cursor: "pointer",
-                  }}
-                >
-                  Add your first contact →
-                </button>
-              )}
+            {isNewUser && (
               <button
                 type="button"
-                onClick={dismissTutorialForSession}
+                onClick={() => setPage("contacts")}
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  color: "rgba(240,240,245,0.85)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: accentNeon,
+                  color: "#0a0f09",
+                  border: "1px solid rgba(10,15,9,0.22)",
                   boxShadow: "none",
-                  padding: "13px 20px",
+                  padding: "13px 26px",
                   borderRadius: 11,
-                  fontFamily: font.body,
-                  fontWeight: 600,
+                  fontFamily: font.display,
+                  fontWeight: 700,
                   fontSize: 15,
                   cursor: "pointer",
                 }}
               >
-                Got it
+                Add your first contact →
               </button>
-            </div>
+            )}
             <button
               type="button"
               onClick={dismissTutorialPermanently}
