@@ -314,6 +314,14 @@ export default function Updates({ setPage, setComposePrefill }) {
     setRelevanceModal({ update, relevance: relevance || [], notice })
   }
 
+  function showOutreachForUpdate(update) {
+    const relevance = suggestContactsForUpdate(contacts, update, {
+      careerGoals,
+      resumeText: resumeBuckets.find((b) => b.text?.trim())?.text || "",
+    })
+    openSaveResultModal(update, relevance)
+  }
+
   async function saveUpdate(e) {
     e.preventDefault()
     if (!title.trim() || !details.trim()) return
@@ -659,8 +667,8 @@ export default function Updates({ setPage, setComposePrefill }) {
           Resume
         </h1>
         <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, maxWidth: 680, lineHeight: 1.55, fontFamily: font.body }}>
-          Log résumé or career changes here — no need to name contacts. We analyze your update against who
-          they are and what they do, then recommend matches with ready-to-send messages.
+          Log résumé or career changes here — no need to name contacts. Each update can optionally turn into
+          matched outreach, AI-drafted messages, and follow-up reminders when you&apos;re ready.
         </p>
         {loadError && (
           <p style={{ color: "#ffc96b", fontSize: 13, marginTop: 10 }}>
@@ -683,8 +691,8 @@ export default function Updates({ setPage, setComposePrefill }) {
           Résumé last updated
         </div>
         <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", marginBottom: 14, lineHeight: 1.55, fontFamily: font.body }}>
-          When did you last refresh your résumé? We&apos;ll suggest contacts you haven&apos;t messaged since
-          then.
+          When did you last refresh your résumé? We&apos;ll optionally suggest contacts you haven&apos;t messaged
+          since then — with draft messages and reminders in Notifications when you want them.
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <input
@@ -1483,9 +1491,61 @@ export default function Updates({ setPage, setComposePrefill }) {
           marginBottom: 36,
         }}
       >
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 16 }}>
-          New update
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+          Career update
         </div>
+        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 16, lineHeight: 1.55, maxWidth: 680 }}>
+          Describe a résumé or career change in plain language. You don&apos;t have to message anyone right away —
+          saving an update is the first step toward optional outreach later.
+        </p>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
+            gap: 10,
+            marginBottom: 20,
+            padding: "14px 16px",
+            borderRadius: 12,
+            background: "rgba(184,255,87,0.04)",
+            border: "1px solid rgba(184,255,87,0.14)",
+          }}
+        >
+          {[
+            {
+              step: "1",
+              title: "Save the update",
+              detail: "Stored in History — no contacts named upfront.",
+            },
+            {
+              step: "2",
+              title: "Get matched contacts",
+              detail: "We infer who cares based on their role and notes.",
+            },
+            {
+              step: "3",
+              title: "Follow up optionally",
+              detail: "Open AI drafts in Compose or set a Reminders follow-up.",
+            },
+          ].map((item) => (
+            <div key={item.step} style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontFamily: font.mono,
+                  color: "rgba(184,255,87,0.75)",
+                  letterSpacing: "0.08em",
+                  marginBottom: 6,
+                }}
+              >
+                STEP {item.step}
+              </div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: "#f0f0f5" }}>{item.title}</div>
+              <div style={{ fontSize: 12, color: "rgba(240,240,245,0.45)", lineHeight: 1.5 }}>{item.detail}</div>
+            </div>
+          ))}
+        </div>
+
         <form onSubmit={saveUpdate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label
@@ -1557,13 +1617,21 @@ export default function Updates({ setPage, setComposePrefill }) {
               cursor: saving || !title.trim() || !details.trim() ? "not-allowed" : "pointer",
             }}
           >
-            {saving ? "Saving…" : "Save update"}
+            {saving ? "Saving…" : "Save update & see matches"}
           </button>
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(240,240,245,0.38)", lineHeight: 1.5, maxWidth: 560 }}>
+            After saving, you can review optional message drafts. Set reminders anytime from the Reminders tab — we
+            also surface nudges in Notifications when follow-ups are due.
+          </p>
         </form>
       </div>
 
-      <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 14 }}>
-        History
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>History</div>
+        <p style={{ margin: 0, fontSize: 13, color: "rgba(240,240,245,0.4)", lineHeight: 1.5, maxWidth: 680 }}>
+          Past updates stay here. Re-open any entry for optional message ideas, then draft in Compose or add a
+          reminder when you&apos;re ready to reach out.
+        </p>
       </div>
       {loading ? (
         <div style={{ color: "rgba(240,240,245,0.35)" }}>Loading…</div>
@@ -1615,23 +1683,42 @@ export default function Updates({ setPage, setComposePrefill }) {
                   {u.details}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => remove(u.id)}
-                style={{
-                  flexShrink: 0,
-                  background: "transparent",
-                  border: "1px solid rgba(255,107,107,0.35)",
-                  color: "#ff6b6b",
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  boxShadow: "none",
-                }}
-              >
-                Delete
-              </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => showOutreachForUpdate(u)}
+                  style={{
+                    background: "rgba(184,255,87,0.1)",
+                    border: "1px solid rgba(184,255,87,0.3)",
+                    color: "#b8ff57",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "none",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Message ideas →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(u.id)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(255,107,107,0.35)",
+                    color: "#ff6b6b",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    boxShadow: "none",
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -1704,8 +1791,8 @@ export default function Updates({ setPage, setComposePrefill }) {
                   </>
                 ) : (
                   <>
-                    Based on your update, these contacts look like a good fit — we inferred relevance from what
-                    they&apos;re doing, not keywords you had to mention. Copy a message or tweak it in Compose.
+                    These matches are optional. Copy an AI draft or open Compose to edit — then set a follow-up
+                    reminder in Reminders if you want a nudge later (Notifications will flag due items).
                   </>
                 )}
               </p>
