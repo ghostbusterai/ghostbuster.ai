@@ -1,7 +1,7 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 
-/** Dev: `/` so http://localhost:5173/ works. Build: `./` so assets load as `./assets/...` — works for `vite preview`, static `dist/`, and GitHub Pages at /ghostbuster.ai/. Absolute `/ghostbuster.ai/` breaks preview because files are in `dist/assets/`, not `dist/ghostbuster.ai/assets/`. */
+/** Dev: `/` so http://localhost:5173/ works. Build: `./` so assets load as `./assets/...` when served by the API (Render) or `vite preview`. */
 export default defineConfig(({ command }) => ({
   base: command === "build" ? "./" : "/",
   plugins: [react()],

@@ -9,38 +9,28 @@ Data is stored in a single JSON file on the API machine: `ghostbuster-server/dat
 
 **Goal:** Testers open the website link in a browser and use the app. They do **not** clone the repo or run Node.
 
-**You** deploy two pieces once:
+**Live site:** https://ghostbuster-ai-js5l.onrender.com/
 
-| Piece | What it is | Examples |
-|-------|------------|----------|
-| **API** | Node server (`ghostbuster-server`) | [Render](https://render.com), [Railway](https://railway.app), [Fly.io](https://fly.io), any VPS |
-| **Web app** | Static files from `GhostBuster` after `npm run build` → upload `dist/` | [Netlify](https://netlify.com), [Vercel](https://vercel.com), [Cloudflare Pages](https://pages.cloudflare.com) |
+The app is deployed as **one Render web service** (`render.yaml`). On each deploy, Render:
 
-**1. Deploy the API**
+1. Installs and starts `ghostbuster-server`
+2. Runs `npm run build` there, which builds `GhostBuster/dist/`
+3. Serves the React UI and API from the same origin
 
-- Environment variables (dashboard, not in git):
-  - `ANTHROPIC_API_KEY` — optional; required for **Compose** AI drafts
-  - `PORT` — usually set by the platform
-- Start command: `npm start` in `ghostbuster-server` (after `npm install`).
-- Note the public HTTPS origin, e.g. `https://ghostbuster-api.onrender.com` (no trailing slash).
+**Deploy / update**
 
-**2. Build the web app**
+Push to `main` on GitHub. Render redeploys automatically when the repo is connected.
 
-```bash
-cd GhostBuster
-export VITE_API_BASE=https://your-api.example.com
-npm install
-npm run build
-```
+**Environment variables** (Render dashboard, not in git):
 
-Upload **`GhostBuster/dist/`** to your static host.
+- `ANTHROPIC_API_KEY` — optional; required for **Compose** AI drafts
+- `PORT` — set by Render
 
-**3. Send to testers**
+**Send to testers**
 
-*“Open **https://your-frontend…** and try the app.”*
+*"Open **https://ghostbuster-ai-js5l.onrender.com/** and try the app."*
 
-- If you change the API URL, rebuild with a new `VITE_API_BASE` and redeploy `dist/`.
-- Tab navigation is in-memory (no React Router paths), so static hosts usually do not need SPA fallback rules.
+No separate static host or GitHub Pages deploy is needed. The UI talks to `/api` on the same origin unless you override `VITE_API_BASE` at build time.
 
 ## Prerequisites
 
@@ -81,7 +71,7 @@ Open **http://localhost:5173**. The dev server proxies `/api` and `/compose` to 
 
 ### Same Wi‑Fi / LAN
 
-1. Find your machine’s LAN IP (macOS: **System Settings → Network**, or `ipconfig getifaddr en0`).
+1. Find your machine's LAN IP (macOS: **System Settings → Network**, or `ipconfig getifaddr en0`).
 2. Keep both terminals running.
 3. On another device, open **`http://<that-ip>:5173`** (not `localhost`).
 4. Allow port **5173** through the firewall if prompted.
@@ -94,4 +84,4 @@ Share this repo (zip or Git). They follow **One-time setup** and **Run** above. 
 
 ### Over the public internet
 
-Deploy API + static `dist/` as in **[User testing via URL](#user-testing-via-url-no-install-for-testers)**. Tunnels (ngrok, Cloudflare Tunnel) work for quick demos if you accept shared data on your machine.
+Use the Render deployment in **[User testing via URL](#user-testing-via-url-no-install-for-testers)**. Tunnels (ngrok, Cloudflare Tunnel) work for quick demos if you accept shared data on your machine.
