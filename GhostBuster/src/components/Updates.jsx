@@ -17,6 +17,7 @@ const LS_PROFILE = "gb_profile"
 const LS_RESUME_BUCKETS = "gb_resume_buckets"
 
 const ACCEPT_RESUME = ".pdf,.docx,.txt,.md,.text"
+const ARCHIVE_PREVIEW_LIMIT = 3
 
 const SUGGESTION_TYPES = {
   reword: { label: "Reword", color: "#5be4d8", bg: "rgba(91,228,216,0.12)" },
@@ -142,6 +143,7 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [outreachLogs, setOutreachLogs] = useState([])
   const [expandedArchiveIds, setExpandedArchiveIds] = useState({})
   const [archiveActionKey, setArchiveActionKey] = useState(null)
+  const [showAllArchiveItems, setShowAllArchiveItems] = useState(false)
 
   const resumeArchiveItems = useMemo(() => {
     const items = []
@@ -161,6 +163,11 @@ export default function Updates({ setPage, setComposePrefill }) {
     })
     return items
   }, [resumeBuckets])
+
+  const hiddenArchiveCount = Math.max(0, resumeArchiveItems.length - ARCHIVE_PREVIEW_LIMIT)
+  const visibleArchiveItems = showAllArchiveItems
+    ? resumeArchiveItems
+    : resumeArchiveItems.slice(0, ARCHIVE_PREVIEW_LIMIT)
 
   const resumeNudgeContacts = useMemo(
     () => contactsNeedingResumeNudge(contacts, outreachLogs, resumeDate),
@@ -1106,7 +1113,7 @@ export default function Updates({ setPage, setComposePrefill }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {resumeArchiveItems.map((item) => {
+            {visibleArchiveItems.map((item) => {
               const archiveKey = `${item.bucketId}-${item.id}`
               const expanded = expandedArchiveIds[archiveKey]
               const restoring = archiveActionKey === `restore-${archiveKey}`
@@ -1225,6 +1232,29 @@ export default function Updates({ setPage, setComposePrefill }) {
                 </div>
               )
             })}
+            {hiddenArchiveCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAllArchiveItems((v) => !v)}
+                style={{
+                  alignSelf: "flex-start",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "rgba(240,240,245,0.75)",
+                  padding: "10px 16px",
+                  borderRadius: 9,
+                  fontFamily: font.body,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  boxShadow: "none",
+                }}
+              >
+                {showAllArchiveItems
+                  ? "Show less"
+                  : `Show ${hiddenArchiveCount} more archived résumé${hiddenArchiveCount !== 1 ? "s" : ""}`}
+              </button>
+            )}
           </div>
         )}
       </div>
