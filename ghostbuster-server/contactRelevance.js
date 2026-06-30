@@ -358,7 +358,7 @@ async function suggestContactsWithAI(anthropic, contacts, update, profile, resum
   if (!anthropic || contacts.length === 0) return []
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: process.env.CLAUDE_MODEL || "claude-sonnet-4-6",
     max_tokens: 1200,
     messages: [{ role: "user", content: buildAiPrompt(update, contacts, profile, resumeBuckets) }],
   })

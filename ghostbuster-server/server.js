@@ -22,6 +22,7 @@ const upload = multer({
 
 const apiKey = process.env.ANTHROPIC_API_KEY
 const anthropic = apiKey ? new Anthropic.default({ apiKey }) : null
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6"
 
 app.use(cors())
 app.use(express.json())
@@ -267,7 +268,11 @@ app.post("/api/reminders/:id/sync-calendar", async (req, res) => {
 app.get("/api/google/status", async (req, res) => {
   try {
     const status = await store.getGoogleCalendarStatus(null)
-    res.json({ ...status, configured: googleCal.isConfigured() })
+    res.json({
+      ...status,
+      configured: googleCal.isConfigured(),
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || null,
+    })
   } catch (e) {
     console.error(e)
     res.status(500).json({ error: "Failed to load Google Calendar status" })
@@ -585,7 +590,7 @@ app.post("/api/resume/suggestions", async (req, res) => {
     const prompt = buildPrompt(careerGoals, resumeText, userName)
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 2500,
       messages: [{ role: "user", content: prompt }],
     })
@@ -746,7 +751,7 @@ Do not add any explanation, just the email.`
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     })
