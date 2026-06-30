@@ -182,22 +182,6 @@ export default function Dashboard({ setPage }) {
     }
   }
 
-  const quickActions = [
-    {
-      label: "Add someone you met",
-      page: "contacts",
-      primary: isNewUser,
-    },
-    {
-      label: "Send a message",
-      page: "compose",
-      primary: !isNewUser,
-    },
-    { label: "Set a follow-up", page: "reminders" },
-    { label: "Log outreach", page: "tracker" },
-    { label: "Share résumé update", page: "updates" },
-  ]
-
   const stats = [
     {
       label: "Total Contacts",
@@ -713,64 +697,6 @@ export default function Dashboard({ setPage }) {
             </div>
           )
         })}
-      </div>
-
-      {/* Quick Actions */}
-      <div style={{ marginBottom: 48, width: "100%" }}>
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 6, letterSpacing: "-0.02em" }}>
-          Quick Actions
-        </div>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "rgba(240,240,245,0.38)", lineHeight: 1.5 }}>
-          {isNewUser
-            ? "Start with someone you've met — then message them and log the touch."
-            : "Jump straight to the most common next steps."}
-        </p>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {quickActions.map((a) => {
-            const primary = a.primary === true
-            const borderDefault = primary ? "1px solid rgba(10,15,9,0.22)" : "1px solid rgba(255,255,255,0.22)"
-            const borderHover = primary ? "1px solid rgba(10,15,9,0.35)" : "1px solid rgba(255,255,255,0.38)"
-            return (
-              <button
-                key={a.label}
-                type="button"
-                onClick={() => setPage(a.page)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 0,
-                  padding: primary ? "12px 22px" : "11px 20px",
-                  borderRadius: primary ? 12 : 10,
-                  background: primary ? accentNeon : "transparent",
-                  border: borderDefault,
-                  color: primary ? "#0a0f09" : "#f0f0f5",
-                  fontFamily: font.display,
-                  fontWeight: primary ? 700 : 600,
-                  fontSize: 14,
-                  letterSpacing: primary ? "-0.02em" : "0",
-                  cursor: "pointer",
-                  transition: "background 0.15s, border-color 0.15s, color 0.15s",
-                  boxShadow: "none",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.border = borderHover
-                  if (primary) {
-                    e.currentTarget.style.background = "#9ed945"
-                  } else {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.08)"
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.border = borderDefault
-                  e.currentTarget.style.background = primary ? accentNeon : "transparent"
-                }}
-              >
-                {a.label}
-              </button>
-            )
-          })}
-        </div>
       </div>
 
       {/* Recent Contacts + Activity Feed */}
