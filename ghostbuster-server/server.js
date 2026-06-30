@@ -800,7 +800,16 @@ app.use((req, res, next) => {
 })
 
 if (hasFrontend) {
-  app.use(express.static(frontendDir))
+  app.use(
+    express.static(frontendDir, {
+      index: false,
+      setHeaders(res, filePath) {
+        if (filePath.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate")
+        }
+      },
+    })
+  )
   app.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") return next()
     if (req.path.startsWith("/api") || req.path === "/compose") return next()
