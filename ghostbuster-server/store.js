@@ -28,9 +28,25 @@ function ensureFile() {
   }
 }
 
+function normalizeResumeVersion(raw) {
+  if (!raw || typeof raw !== "object") return null
+  const text = typeof raw.text === "string" ? raw.text : ""
+  if (!text.trim()) return null
+  return {
+    id: Number(raw.id),
+    text: text.trim(),
+    fileName: typeof raw.fileName === "string" ? raw.fileName : "",
+    uploadedAt: typeof raw.uploadedAt === "string" ? raw.uploadedAt : "",
+    archivedAt: typeof raw.archivedAt === "string" ? raw.archivedAt : "",
+  }
+}
+
 function normalizeResumeBucket(raw) {
   if (!raw || typeof raw !== "object") return null
   const text = typeof raw.text === "string" ? raw.text : ""
+  const versions = Array.isArray(raw.versions)
+    ? raw.versions.map(normalizeResumeVersion).filter(Boolean)
+    : []
   return {
     id: Number(raw.id),
     name: typeof raw.name === "string" ? raw.name.trim() : "",
@@ -38,6 +54,7 @@ function normalizeResumeBucket(raw) {
     fileName: typeof raw.fileName === "string" ? raw.fileName : "",
     uploadedAt: typeof raw.uploadedAt === "string" ? raw.uploadedAt : "",
     createdAt: typeof raw.createdAt === "string" ? raw.createdAt : "",
+    versions,
   }
 }
 
@@ -54,6 +71,7 @@ function readResumeBuckets(raw) {
       fileName: typeof raw.fullResume.fileName === "string" ? raw.fullResume.fileName : "",
       uploadedAt: typeof raw.fullResume.uploadedAt === "string" ? raw.fullResume.uploadedAt : new Date().toISOString(),
       createdAt: typeof raw.fullResume.uploadedAt === "string" ? raw.fullResume.uploadedAt : new Date().toISOString(),
+      versions: [],
     })
   }
 

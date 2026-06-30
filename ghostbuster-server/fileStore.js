@@ -26,6 +26,29 @@ function findResumeBucket(data, id) {
   return (data.resumeBuckets || []).find((b) => b.id === bid) || null
 }
 
+function ensureBucketVersions(bucket) {
+  if (!Array.isArray(bucket.versions)) bucket.versions = []
+}
+
+function archiveCurrentBucketResume(bucket) {
+  if (!bucket?.text || !String(bucket.text).trim()) return
+  ensureBucketVersions(bucket)
+  bucket.versions.push({
+    id: Date.now(),
+    text: bucket.text.trim(),
+    fileName: typeof bucket.fileName === "string" ? bucket.fileName : "",
+    uploadedAt: typeof bucket.uploadedAt === "string" ? bucket.uploadedAt : new Date().toISOString(),
+    archivedAt: new Date().toISOString(),
+  })
+}
+
+function findResumeVersion(bucket, versionId) {
+  const vid = Number(versionId)
+  if (!Number.isFinite(vid)) return null
+  ensureBucketVersions(bucket)
+  return bucket.versions.find((v) => v.id === vid) || null
+}
+
 exports.getContacts = async () => {
   const data = read()
   return { contacts: data.contacts || [] }
@@ -353,6 +376,7 @@ exports.createResumeBucket = async (_userId, body) => {
     fileName: "",
     uploadedAt: "",
     createdAt: new Date().toISOString(),
+    versions: [],
   }
   data.resumeBuckets.push(bucket)
   write(data)
@@ -395,6 +419,7 @@ exports.saveBucketResume = async (_userId, bucketId, body) => {
   const data = read()
   const bucket = findResumeBucket(data, bucketId)
   if (!bucket) return null
+  archiveCurrentBucketResume(bucket)
   bucket.text = text.trim()
   bucket.fileName = typeof fileName === "string" ? fileName.trim() : ""
   bucket.uploadedAt = new Date().toISOString()
@@ -405,12 +430,41 @@ exports.saveBucketResume = async (_userId, bucketId, body) => {
 exports.deleteBucketResume = async (_userId, bucketId) => {
   const data = read()
   const bucket = findResumeBucket(data, bucketId)
-  if (!bucket || !bucket.text) return false
+  if (!bucket || !bucket.text) return null
+  archiveCurrentBucketResume(bucket)
   bucket.text = ""
   bucket.fileName = ""
   bucket.uploadedAt = ""
   write(data)
-  return true
+  return { bucket }
+}
+
+exports.restoreResumeVersion = async (_userId, bucketId, versionId) => {
+  const data = read()
+  const bucket = findResumeBucket(data, bucketId)
+  if (!bucket) return null
+  const version = findResumeVersion(bucket, versionId)
+  if (!version) return null
+  ensureBucketVersions(bucket)
+  bucket.versions = bucket.versions.filter((v) => v.id !== version.id)
+  archiveCurrentBucketResume(bucket)
+  bucket.text = version.text
+  bucket.fileName = version.fileName || ""
+  bucket.uploadedAt = version.uploadedAt || new Date().toISOString()
+  write(data)
+  return { bucket }
+}
+
+exports.deleteResumeVersion = async (_userId, bucketId, versionId) => {
+  const data = read()
+  const bucket = findResumeBucket(data, bucketId)
+  if (!bucket) return null
+  const version = findResumeVersion(bucket, versionId)
+  if (!version) return null
+  ensureBucketVersions(bucket)
+  bucket.versions = bucket.versions.filter((v) => v.id !== version.id)
+  write(data)
+  return { bucket }
 }
 
 exports.saveFullResume = async (_userId, body) => {
@@ -423,6 +477,7 @@ exports.saveFullResume = async (_userId, body) => {
   if (bucketId != null) {
     const bucket = findResumeBucket(data, bucketId)
     if (!bucket) throw new Error("bucket")
+    archiveCurrentBucketResume(bucket)
     bucket.text = text.trim()
     bucket.fileName = typeof fileName === "string" ? fileName.trim() : ""
     bucket.uploadedAt = new Date().toISOString()
@@ -445,9 +500,11 @@ exports.saveFullResume = async (_userId, body) => {
       fileName: typeof fileName === "string" ? fileName.trim() : "",
       uploadedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
+      versions: [],
     })
   } else {
     const bucket = data.resumeBuckets[0]
+    archiveCurrentBucketResume(bucket)
     bucket.text = text.trim()
     bucket.fileName = typeof fileName === "string" ? fileName.trim() : ""
     bucket.uploadedAt = new Date().toISOString()
@@ -470,6 +527,7 @@ exports.deleteFullResume = async (_userId, body) => {
   if (body?.bucketId != null) {
     const bucket = findResumeBucket(data, body.bucketId)
     if (!bucket || !bucket.text) return false
+    archiveCurrentBucketResume(bucket)
     bucket.text = ""
     bucket.fileName = ""
     bucket.uploadedAt = ""
@@ -479,6 +537,7 @@ exports.deleteFullResume = async (_userId, body) => {
   if (!data.fullResume) {
     const first = (data.resumeBuckets || []).find((b) => b.text)
     if (!first) return false
+    archiveCurrentBucketResume(first)
     first.text = ""
     first.fileName = ""
     first.uploadedAt = ""

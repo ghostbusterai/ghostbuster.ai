@@ -586,12 +586,40 @@ app.delete("/api/resume-buckets/:id/resume", async (req, res) => {
   const id = parseId(req.params.id)
   if (id == null) return res.status(400).json({ error: "Invalid id" })
   try {
-    const ok = await store.deleteBucketResume(null, id)
-    if (!ok) return res.status(404).json({ error: "No résumé in this bucket" })
-    res.status(204).end()
+    const out = await store.deleteBucketResume(null, id)
+    if (!out) return res.status(404).json({ error: "No résumé in this bucket" })
+    res.json(out)
   } catch (e) {
     console.error(e)
     res.status(500).json({ error: "Failed to remove résumé" })
+  }
+})
+
+app.post("/api/resume-buckets/:bucketId/versions/:versionId/restore", async (req, res) => {
+  const bucketId = parseId(req.params.bucketId)
+  const versionId = parseId(req.params.versionId)
+  if (bucketId == null || versionId == null) return res.status(400).json({ error: "Invalid id" })
+  try {
+    const out = await store.restoreResumeVersion(null, bucketId, versionId)
+    if (!out) return res.status(404).json({ error: "Archived version not found" })
+    res.json(out)
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to restore résumé version" })
+  }
+})
+
+app.delete("/api/resume-buckets/:bucketId/versions/:versionId", async (req, res) => {
+  const bucketId = parseId(req.params.bucketId)
+  const versionId = parseId(req.params.versionId)
+  if (bucketId == null || versionId == null) return res.status(400).json({ error: "Invalid id" })
+  try {
+    const out = await store.deleteResumeVersion(null, bucketId, versionId)
+    if (!out) return res.status(404).json({ error: "Archived version not found" })
+    res.json(out)
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: "Failed to delete archived résumé" })
   }
 })
 

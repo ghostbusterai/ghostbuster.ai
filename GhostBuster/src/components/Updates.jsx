@@ -5,7 +5,7 @@ import {
   buildResumeUpdateComposePayload,
   generateResumeUpdateOutreachMessage,
 } from "../outreachMessage"
-import { font } from "../theme"
+import { font, accentNeon } from "../theme"
 import { readLocalProfile, saveLocalProfile } from "../profile"
 import { contactsNeedingResumeNudge, buildResumeShareComposePrefill } from "../resumeNudge"
 import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
@@ -70,6 +70,7 @@ function readLocalResumeBuckets() {
           fileName: legacy.fileName || "",
           uploadedAt: legacy.uploadedAt || "",
           createdAt: legacy.uploadedAt || new Date().toISOString(),
+          versions: [],
         },
       ]
     }
@@ -81,6 +82,26 @@ function readLocalResumeBuckets() {
 
 function saveLocalResumeBuckets(buckets) {
   localStorage.setItem(LS_RESUME_BUCKETS, JSON.stringify(buckets))
+}
+
+function archiveBucketResumeLocally(bucket) {
+  if (!bucket?.text?.trim()) return bucket
+  const versions = Array.isArray(bucket.versions) ? [...bucket.versions] : []
+  versions.push({
+    id: Date.now(),
+    text: bucket.text.trim(),
+    fileName: bucket.fileName || "",
+    uploadedAt: bucket.uploadedAt || new Date().toISOString(),
+    archivedAt: new Date().toISOString(),
+  })
+  return { ...bucket, versions }
+}
+
+function formatResumeDate(iso) {
+  if (!iso) return "—"
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10) || "—"
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
 async function readTextFileLocally(file) {
@@ -119,6 +140,27 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [resumeDate, setResumeDate] = useState("")
   const [savingResumeDate, setSavingResumeDate] = useState(false)
   const [outreachLogs, setOutreachLogs] = useState([])
+  const [expandedArchiveIds, setExpandedArchiveIds] = useState({})
+  const [archiveActionKey, setArchiveActionKey] = useState(null)
+
+  const resumeArchiveItems = useMemo(() => {
+    const items = []
+    for (const bucket of resumeBuckets) {
+      for (const version of bucket.versions || []) {
+        items.push({
+          ...version,
+          bucketId: bucket.id,
+          bucketName: bucket.name,
+        })
+      }
+    }
+    items.sort((a, b) => {
+      const da = a.uploadedAt || a.archivedAt || ""
+      const db = b.uploadedAt || b.archivedAt || ""
+      return db.localeCompare(da)
+    })
+    return items
+  }, [resumeBuckets])
 
   const resumeNudgeContacts = useMemo(
     () => contactsNeedingResumeNudge(contacts, outreachLogs, resumeDate),
@@ -343,6 +385,7 @@ export default function Updates({ setPage, setComposePrefill }) {
           fileName: "",
           uploadedAt: "",
           createdAt: new Date().toISOString(),
+          versions: [],
         }
         setResumeBuckets((prev) => {
           const next = [...prev, bucket]
@@ -402,16 +445,16 @@ export default function Updates({ setPage, setComposePrefill }) {
           const text = await readTextFileLocally(file)
           if (!text.trim()) throw new Error("File is empty")
           setResumeBuckets((prev) => {
-            const next = prev.map((b) =>
-              b.id === bucketId
-                ? {
-                    ...b,
-                    text: text.trim(),
-                    fileName: file.name,
-                    uploadedAt: new Date().toISOString(),
-                  }
-                : b
-            )
+            const next = prev.map((b) => {
+              if (b.id !== bucketId) return b
+              const archived = archiveBucketResumeLocally(b)
+              return {
+                ...archived,
+                text: text.trim(),
+                fileName: file.name,
+                uploadedAt: new Date().toISOString(),
+              }
+            })
             saveLocalResumeBuckets(next)
             return next
           })
@@ -457,14 +500,8 @@ export default function Updates({ setPage, setComposePrefill }) {
   async function removeBucketResume(bucketId) {
     setActionError(null)
     try {
-      await api.deleteBucketResume(bucketId)
-      setResumeBuckets((prev) => {
-        const next = prev.map((b) =>
-          b.id === bucketId ? { ...b, text: "", fileName: "", uploadedAt: "" } : b
-        )
-        saveLocalResumeBuckets(next)
-        return next
-      })
+      const { bucket } = await api.deleteBucketResume(bucketId)
+      updateBucketInState(bucket)
       if (suggestionsBucketId === bucketId) {
         setSuggestions([])
         setSuggestionsError(null)
@@ -472,8 +509,75 @@ export default function Updates({ setPage, setComposePrefill }) {
     } catch (err) {
       if (loadError) {
         setResumeBuckets((prev) => {
+          const next = prev.map((b) => {
+            if (b.id !== bucketId || !b.text?.trim()) return b
+            const archived = archiveBucketResumeLocally(b)
+            return { ...archived, text: "", fileName: "", uploadedAt: "" }
+          })
+          saveLocalResumeBuckets(next)
+          return next
+        })
+      } else {
+        setActionError(err.message)
+      }
+    }
+  }
+
+  function updateBucketInState(bucket) {
+    setResumeBuckets((prev) => {
+      const next = prev.map((b) => (b.id === bucket.id ? bucket : b))
+      saveLocalResumeBuckets(next)
+      return next
+    })
+  }
+
+  async function restoreArchiveItem(bucketId, versionId) {
+    const actionKey = `restore-${bucketId}-${versionId}`
+    setArchiveActionKey(actionKey)
+    setActionError(null)
+    try {
+      const { bucket } = await api.restoreResumeVersion(bucketId, versionId)
+      updateBucketInState(bucket)
+    } catch (err) {
+      if (loadError) {
+        setResumeBuckets((prev) => {
+          const next = prev.map((b) => {
+            if (b.id !== bucketId) return b
+            const version = (b.versions || []).find((v) => v.id === versionId)
+            if (!version) return b
+            let updated = b.text?.trim() ? archiveBucketResumeLocally(b) : { ...b }
+            return {
+              ...updated,
+              text: version.text,
+              fileName: version.fileName || "",
+              uploadedAt: version.uploadedAt || new Date().toISOString(),
+              versions: (updated.versions || []).filter((v) => v.id !== versionId),
+            }
+          })
+          saveLocalResumeBuckets(next)
+          return next
+        })
+      } else {
+        setActionError(err.message)
+      }
+    }
+    setArchiveActionKey(null)
+  }
+
+  async function deleteArchiveItem(bucketId, versionId) {
+    const actionKey = `delete-${bucketId}-${versionId}`
+    setArchiveActionKey(actionKey)
+    setActionError(null)
+    try {
+      const { bucket } = await api.deleteResumeVersion(bucketId, versionId)
+      updateBucketInState(bucket)
+    } catch (err) {
+      if (loadError) {
+        setResumeBuckets((prev) => {
           const next = prev.map((b) =>
-            b.id === bucketId ? { ...b, text: "", fileName: "", uploadedAt: "" } : b
+            b.id === bucketId
+              ? { ...b, versions: (b.versions || []).filter((v) => v.id !== versionId) }
+              : b
           )
           saveLocalResumeBuckets(next)
           return next
@@ -482,6 +586,7 @@ export default function Updates({ setPage, setComposePrefill }) {
         setActionError(err.message)
       }
     }
+    setArchiveActionKey(null)
   }
 
   async function remove(id) {
@@ -684,7 +789,8 @@ export default function Updates({ setPage, setComposePrefill }) {
         </div>
         <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
           Create role buckets and upload a full résumé for each one — for example, a PM version and a SWE version.
-          Contacts are auto-matched to a bucket from their job role.
+          Contacts are auto-matched to a bucket from their job role. Replacing or removing a résumé saves the previous
+          version to your archive below.
         </p>
 
         <div style={{ marginBottom: 20 }}>
@@ -960,6 +1066,161 @@ export default function Updates({ setPage, setComposePrefill }) {
                         PDF, DOCX, TXT, or MD · max 5 MB
                       </div>
                     </label>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          background: "#111118",
+          border: "1px solid rgba(180,130,255,0.22)",
+          borderRadius: 16,
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+          Résumé archive
+        </div>
+        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
+          Past résumés are saved automatically when you upload a new file or remove the current one. Browse by date to
+          see how your résumé evolved over time.
+        </p>
+
+        {resumeArchiveItems.length === 0 ? (
+          <div
+            style={{
+              padding: "28px 20px",
+              borderRadius: 12,
+              border: "1px dashed rgba(255,255,255,0.1)",
+              textAlign: "center",
+              color: "rgba(240,240,245,0.35)",
+              fontSize: 14,
+            }}
+          >
+            No archived résumés yet — upload a new version to a role bucket and the previous file will appear here.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {resumeArchiveItems.map((item) => {
+              const archiveKey = `${item.bucketId}-${item.id}`
+              const expanded = expandedArchiveIds[archiveKey]
+              const restoring = archiveActionKey === `restore-${archiveKey}`
+              const deleting = archiveActionKey === `delete-${archiveKey}`
+              return (
+                <div
+                  key={archiveKey}
+                  style={{
+                    borderRadius: 12,
+                    border: "1px solid rgba(180,130,255,0.18)",
+                    background: "rgba(180,130,255,0.04)",
+                    padding: "16px 18px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{item.fileName || "Archived résumé"}</div>
+                      <div style={{ fontSize: 12, color: "rgba(180,130,255,0.85)", marginTop: 4, fontFamily: font.mono }}>
+                        {item.bucketName}
+                      </div>
+                      <div style={{ fontSize: 12, color: "rgba(240,240,245,0.45)", marginTop: 8, lineHeight: 1.5 }}>
+                        Uploaded {formatResumeDate(item.uploadedAt)}
+                        {item.archivedAt ? ` · archived ${formatResumeDate(item.archivedAt)}` : ""}
+                        {" · "}
+                        {item.text.length.toLocaleString()} characters
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => restoreArchiveItem(item.bucketId, item.id)}
+                        disabled={Boolean(archiveActionKey)}
+                        style={{
+                          background: restoring ? "rgba(184,255,87,0.12)" : "rgba(184,255,87,0.18)",
+                          border: "1px solid rgba(184,255,87,0.35)",
+                          color: accentNeon,
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: archiveActionKey ? "not-allowed" : "pointer",
+                          boxShadow: "none",
+                        }}
+                      >
+                        {restoring ? "Restoring…" : "Restore"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteArchiveItem(item.bucketId, item.id)}
+                        disabled={Boolean(archiveActionKey)}
+                        style={{
+                          background: "transparent",
+                          border: "1px solid rgba(255,107,107,0.35)",
+                          color: "#ff6b6b",
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          cursor: archiveActionKey ? "not-allowed" : "pointer",
+                          boxShadow: "none",
+                        }}
+                      >
+                        {deleting ? "Deleting…" : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedArchiveIds((prev) => ({ ...prev, [archiveKey]: !prev[archiveKey] }))
+                    }
+                    style={{
+                      marginTop: 12,
+                      background: "transparent",
+                      border: "none",
+                      color: "rgba(240,240,245,0.55)",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      padding: 0,
+                      boxShadow: "none",
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    {expanded ? "Hide text" : "Preview text"}
+                  </button>
+                  {expanded && (
+                    <pre
+                      style={{
+                        marginTop: 12,
+                        marginBottom: 0,
+                        padding: "14px 16px",
+                        borderRadius: 10,
+                        background: "#0a0a0f",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        color: "rgba(240,240,245,0.68)",
+                        fontSize: 12,
+                        lineHeight: 1.55,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        maxHeight: 280,
+                        overflow: "auto",
+                        fontFamily: font.body,
+                      }}
+                    >
+                      {item.text}
+                    </pre>
                   )}
                 </div>
               )

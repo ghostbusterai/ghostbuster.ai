@@ -119,6 +119,10 @@ export const api = {
   },
   deleteBucketResume: (bucketId) =>
     request(`/api/resume-buckets/${bucketId}/resume`, { method: "DELETE" }),
+  restoreResumeVersion: (bucketId, versionId) =>
+    request(`/api/resume-buckets/${bucketId}/versions/${versionId}/restore`, { method: "POST" }),
+  deleteResumeVersion: (bucketId, versionId) =>
+    request(`/api/resume-buckets/${bucketId}/versions/${versionId}`, { method: "DELETE" }),
   getResumeSuggestions: (bucketId) =>
     request("/api/resume/suggestions", {
       method: "POST",
