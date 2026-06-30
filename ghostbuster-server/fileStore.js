@@ -191,13 +191,14 @@ exports.getProfile = async () => {
       name: typeof p.name === "string" ? p.name : "",
       careerGoals: typeof p.careerGoals === "string" ? p.careerGoals : "",
       lastResumeUpdate: typeof p.lastResumeUpdate === "string" ? p.lastResumeUpdate : "",
+      hideGettingStarted: Boolean(p.hideGettingStarted),
     },
   }
 }
 
 exports.patchProfile = async (_userId, body) => {
   const data = read()
-  if (!data.profile) data.profile = { name: "", careerGoals: "", lastResumeUpdate: "" }
+  if (!data.profile) data.profile = { name: "", careerGoals: "", lastResumeUpdate: "", hideGettingStarted: false }
   if (body.name !== undefined) {
     data.profile.name = typeof body.name === "string" ? body.name.trim() : ""
   }
@@ -207,6 +208,9 @@ exports.patchProfile = async (_userId, body) => {
   if (body.lastResumeUpdate !== undefined) {
     data.profile.lastResumeUpdate =
       typeof body.lastResumeUpdate === "string" ? body.lastResumeUpdate : ""
+  }
+  if (body.hideGettingStarted !== undefined) {
+    data.profile.hideGettingStarted = Boolean(body.hideGettingStarted)
   }
   write(data)
   return { profile: data.profile }

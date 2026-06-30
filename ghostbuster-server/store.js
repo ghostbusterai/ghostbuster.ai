@@ -18,7 +18,7 @@ function ensureFile() {
           fullResume: null,
           googleCalendar: null,
           resumeBuckets: [],
-          profile: { name: "", careerGoals: "", lastResumeUpdate: "" },
+          profile: { name: "", careerGoals: "", lastResumeUpdate: "", hideGettingStarted: false },
         },
         null,
         2
@@ -102,8 +102,9 @@ function read() {
             name: typeof raw.profile.name === "string" ? raw.profile.name : "",
             careerGoals: typeof raw.profile.careerGoals === "string" ? raw.profile.careerGoals : "",
             lastResumeUpdate: raw.profile.lastResumeUpdate || "",
+            hideGettingStarted: Boolean(raw.profile.hideGettingStarted),
           }
-        : { name: "", careerGoals: "", lastResumeUpdate: "" },
+        : { name: "", careerGoals: "", lastResumeUpdate: "", hideGettingStarted: false },
   }
 }
 

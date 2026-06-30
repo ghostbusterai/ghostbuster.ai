@@ -4,6 +4,7 @@ export const DEFAULT_PROFILE = {
   name: "",
   careerGoals: "",
   lastResumeUpdate: "",
+  hideGettingStarted: false,
 }
 
 export function normalizeProfile(raw) {
@@ -12,6 +13,7 @@ export function normalizeProfile(raw) {
     name: typeof p.name === "string" ? p.name : "",
     careerGoals: typeof p.careerGoals === "string" ? p.careerGoals : "",
     lastResumeUpdate: typeof p.lastResumeUpdate === "string" ? p.lastResumeUpdate : "",
+    hideGettingStarted: Boolean(p.hideGettingStarted),
   }
 }
 

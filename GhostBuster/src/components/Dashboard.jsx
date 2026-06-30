@@ -3,8 +3,11 @@ import { api } from "../api"
 import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, getReminderUrgencyStyle, getReminderUrgency } from "../reminderUtils"
 import { font, accentNeon, neonAlpha } from "../theme"
 
+import { readLocalProfile, saveLocalProfile } from "../profile"
+
 const LS_LOGS = "gb_outreach_logs"
 const LS_UPDATES = "gb_resume_updates"
+const LS_GETTING_STARTED_SESSION = "gb_getting_started_dismissed"
 
 const GETTING_STARTED_STEPS = [
   {
@@ -91,6 +94,30 @@ export default function Dashboard({ setPage }) {
   const [reminders, setReminders] = useState([])
   const [outreachLogs, setOutreachLogs] = useState([])
   const [resumeUpdates, setResumeUpdates] = useState([])
+  const [hideGettingStarted, setHideGettingStarted] = useState(
+    () => readLocalProfile().hideGettingStarted === true
+  )
+  const [sessionDismissedTutorial, setSessionDismissedTutorial] = useState(
+    () => sessionStorage.getItem(LS_GETTING_STARTED_SESSION) === "1"
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { profile } = await api.getProfile()
+        if (!cancelled && profile) {
+          saveLocalProfile(profile)
+          if (profile.hideGettingStarted) setHideGettingStarted(true)
+        }
+      } catch {
+        /* use local profile */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -127,6 +154,25 @@ export default function Dashboard({ setPage }) {
   const reminderSummary = summarizePendingReminders(reminders)
 
   const isNewUser = contacts.length === 0
+  const showGettingStarted = !hideGettingStarted && !sessionDismissedTutorial
+
+  function dismissTutorialForSession() {
+    setSessionDismissedTutorial(true)
+    sessionStorage.setItem(LS_GETTING_STARTED_SESSION, "1")
+  }
+
+  async function dismissTutorialPermanently() {
+    setHideGettingStarted(true)
+    setSessionDismissedTutorial(true)
+    sessionStorage.setItem(LS_GETTING_STARTED_SESSION, "1")
+    const profile = { ...readLocalProfile(), hideGettingStarted: true }
+    saveLocalProfile(profile)
+    try {
+      await api.patchProfile({ hideGettingStarted: true })
+    } catch {
+      /* saved locally */
+    }
+  }
 
   const quickActions = [
     {
@@ -338,7 +384,7 @@ export default function Dashboard({ setPage }) {
         </button>
       )}
 
-      {isNewUser && (
+      {showGettingStarted && (
         <section
           style={{
             background: "#111118",
@@ -347,129 +393,257 @@ export default function Dashboard({ setPage }) {
             padding: "28px 28px 24px",
             marginBottom: 32,
             boxShadow: "0 0 0 1px rgba(184,255,87,0.06), 0 16px 48px rgba(0,0,0,0.35)",
+            position: "relative",
+            fontFamily: font.body,
           }}
         >
-          <div
+          <button
+            type="button"
+            onClick={dismissTutorialForSession}
+            aria-label="Dismiss tutorial for now"
+            title="Dismiss for now"
             style={{
-              fontSize: 11,
-              fontFamily: font.mono,
-              letterSpacing: "0.14em",
-              color: "rgba(184,255,87,0.65)",
-              textTransform: "uppercase",
-              marginBottom: 10,
-            }}
-          >
-            Getting started
-          </div>
-          <h2
-            style={{
-              fontFamily: font.display,
-              fontWeight: 800,
-              fontSize: 22,
-              letterSpacing: "-0.4px",
-              margin: "0 0 10px",
-              lineHeight: 1.25,
-            }}
-          >
-            Welcome — here&apos;s how to connect with people
-          </h2>
-          <p
-            style={{
-              margin: "0 0 24px",
-              fontSize: 15,
+              position: "absolute",
+              top: 16,
+              right: 16,
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.04)",
               color: "rgba(240,240,245,0.55)",
-              lineHeight: 1.6,
-              maxWidth: 640,
+              fontSize: 18,
+              lineHeight: 1,
+              cursor: "pointer",
+              boxShadow: "none",
             }}
           >
-            GhostBuster doesn&apos;t find strangers for you. It helps you nurture relationships with people
-            you&apos;ve already met — at a career fair, through a friend, on LinkedIn, or after an interview.
-          </p>
+            ×
+          </button>
+
+          <div style={{ marginBottom: 24, paddingRight: 36 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontFamily: font.body,
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                color: "rgba(184,255,87,0.8)",
+                textTransform: "uppercase",
+                marginBottom: 10,
+              }}
+            >
+              Getting started
+            </div>
+            <h2
+              style={{
+                fontFamily: font.display,
+                fontWeight: 700,
+                fontSize: 24,
+                letterSpacing: "-0.3px",
+                margin: "0 0 12px",
+                lineHeight: 1.35,
+                color: "#f0f0f5",
+              }}
+            >
+              Welcome — here&apos;s how to connect with people
+            </h2>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 16,
+                fontFamily: font.body,
+                color: "rgba(240,240,245,0.72)",
+                lineHeight: 1.65,
+                maxWidth: 680,
+              }}
+            >
+              GhostBuster doesn&apos;t find strangers for you. It helps you nurture relationships with people
+              you&apos;ve already met — at a career fair, through a friend, on LinkedIn, or after an interview.
+            </p>
+          </div>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
-              gap: 14,
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 16,
               marginBottom: 24,
+              alignItems: "start",
             }}
           >
             {GETTING_STARTED_STEPS.map((s) => (
-              <button
+              <div
                 key={s.step}
-                type="button"
-                onClick={() => setPage(s.page)}
                 style={{
-                  textAlign: "left",
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 14,
-                  padding: "16px 18px",
-                  cursor: "pointer",
-                  color: "inherit",
-                  font: "inherit",
-                  boxShadow: "none",
-                  transition: "border-color 0.15s, background 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(184,255,87,0.35)"
-                  e.currentTarget.style.background = "rgba(184,255,87,0.05)"
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"
-                  e.currentTarget.style.background = "rgba(255,255,255,0.03)"
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: 0,
                 }}
               >
                 <div
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 8,
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
                     background: "rgba(184,255,87,0.12)",
-                    border: "1px solid rgba(184,255,87,0.25)",
+                    border: "1px solid rgba(184,255,87,0.35)",
                     color: accentNeon,
-                    fontFamily: font.mono,
-                    fontWeight: 700,
-                    fontSize: 13,
+                    fontFamily: font.body,
+                    fontWeight: 600,
+                    fontSize: 15,
+                    fontVariantNumeric: "tabular-nums",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    marginBottom: 12,
+                    flexShrink: 0,
+                    marginBottom: 14,
                   }}
                 >
                   {s.step}
                 </div>
-                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
-                  {s.title}
-                </div>
-                <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", lineHeight: 1.5, marginBottom: 10 }}>
-                  {s.detail}
-                </div>
-                <div style={{ fontSize: 12, fontFamily: font.mono, color: accentNeon, letterSpacing: "0.04em" }}>
-                  {s.cta} →
-                </div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setPage(s.page)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    textAlign: "left",
+                    width: "100%",
+                    height: "100%",
+                    minHeight: 160,
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 14,
+                    padding: "18px 18px 16px",
+                    cursor: "pointer",
+                    color: "#f0f0f5",
+                    fontFamily: font.body,
+                    boxShadow: "none",
+                    transition: "border-color 0.15s, background 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(184,255,87,0.35)"
+                    e.currentTarget.style.background = "rgba(184,255,87,0.05)"
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"
+                    e.currentTarget.style.background = "rgba(255,255,255,0.03)"
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: font.body,
+                      fontWeight: 600,
+                      fontSize: 16,
+                      lineHeight: 1.4,
+                      minHeight: 44,
+                      marginBottom: 10,
+                      width: "100%",
+                      color: "#f0f0f5",
+                    }}
+                  >
+                    {s.title}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontFamily: font.body,
+                      color: "rgba(240,240,245,0.68)",
+                      lineHeight: 1.65,
+                      flex: 1,
+                      width: "100%",
+                    }}
+                  >
+                    {s.detail}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontFamily: font.body,
+                      fontWeight: 600,
+                      color: accentNeon,
+                      marginTop: 14,
+                      width: "100%",
+                    }}
+                  >
+                    {s.cta} →
+                  </div>
+                </button>
+              </div>
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setPage("contacts")}
+          <div
             style={{
-              background: accentNeon,
-              color: "#0a0f09",
-              border: "1px solid rgba(10,15,9,0.22)",
-              boxShadow: "none",
-              padding: "13px 26px",
-              borderRadius: 11,
-              fontFamily: font.display,
-              fontWeight: 700,
-              fontSize: 15,
-              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
             }}
           >
-            Add your first contact →
-          </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {isNewUser && (
+                <button
+                  type="button"
+                  onClick={() => setPage("contacts")}
+                  style={{
+                    background: accentNeon,
+                    color: "#0a0f09",
+                    border: "1px solid rgba(10,15,9,0.22)",
+                    boxShadow: "none",
+                    padding: "13px 26px",
+                    borderRadius: 11,
+                    fontFamily: font.display,
+                    fontWeight: 700,
+                    fontSize: 15,
+                    cursor: "pointer",
+                  }}
+                >
+                  Add your first contact →
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={dismissTutorialForSession}
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  color: "rgba(240,240,245,0.85)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  boxShadow: "none",
+                  padding: "13px 20px",
+                  borderRadius: 11,
+                  fontFamily: font.body,
+                  fontWeight: 600,
+                  fontSize: 15,
+                  cursor: "pointer",
+                }}
+              >
+                Got it
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={dismissTutorialPermanently}
+              style={{
+                background: "transparent",
+                color: "rgba(240,240,245,0.55)",
+                border: "none",
+                boxShadow: "none",
+                padding: "8px 4px",
+                fontFamily: font.body,
+                fontSize: 14,
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              Don&apos;t show again
+            </button>
+          </div>
         </section>
       )}
 
