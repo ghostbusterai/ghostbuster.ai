@@ -785,12 +785,12 @@ export default function Updates({ setPage, setComposePrefill }) {
         }}
       >
         <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
-          Résumés by role
+          Upload your résumé by role
         </div>
         <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
-          Create role buckets and upload a full résumé for each one — for example, a PM version and a SWE version.
-          Contacts are auto-matched to a bucket from their job role. Replacing or removing a résumé saves the previous
-          version to your archive below.
+          Upload a résumé for each role you&apos;re targeting — for example, a PM version and a SWE version. Create a
+          role bucket below, then drag in a PDF, DOCX, or text file. Contacts are auto-matched from their job role.
+          Replacing or removing a résumé saves the previous version to your archive below.
         </p>
 
         <div style={{ marginBottom: 20 }}>
