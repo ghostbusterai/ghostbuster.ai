@@ -775,6 +775,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     status: "GhostBuster server running",
     storage: "local-json",
+    claudeModel: CLAUDE_MODEL,
     endpoints: [
       "/api/contacts",
       "/api/reminders",

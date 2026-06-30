@@ -243,11 +243,16 @@ export default function MessageComposer({ composePrefill = null, onConsumePrefil
         {/* Right — Output */}
         <div>
           <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>GENERATED MESSAGE</label>
+          {result && !loading && (
+            <p style={{ fontSize: 12, color: "rgba(240,240,245,0.28)", margin: "0 0 8px 0", lineHeight: 1.45 }}>
+              Edit the draft below before copying or sending.
+            </p>
+          )}
           <div style={{
             background: "#111118", border: `1px solid ${result ? "rgba(184,255,87,0.2)" : "rgba(255,255,255,0.06)"}`,
-            borderRadius: 14, padding: 24, minHeight: 320,
-            display: "flex", flexDirection: "column", justifyContent: result ? "flex-start" : "center",
-            alignItems: result ? "flex-start" : "center",
+            borderRadius: 14, padding: result && !loading ? 16 : 24, minHeight: 320,
+            display: "flex", flexDirection: "column", justifyContent: result && !loading ? "flex-start" : "center",
+            alignItems: result && !loading ? "stretch" : "center",
           }}>
             {loading && (
               <div style={{ textAlign: "center", color: "rgba(240,240,245,0.3)" }}>
@@ -263,13 +268,24 @@ export default function MessageComposer({ composePrefill = null, onConsumePrefil
             )}
 
             {result && !loading && (
-              <div style={{ width: "100%" }}>
-                <pre style={{
-                  fontFamily: font.mono, fontSize: 13, lineHeight: 1.8,
-                  color: "#f0f0f5", whiteSpace: "pre-wrap", wordBreak: "break-word",
-                  margin: 0,
-                }}>{result}</pre>
-                <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", flex: 1 }}>
+                <textarea
+                  value={result}
+                  onChange={(e) => setResult(e.target.value)}
+                  aria-label="Generated message — editable"
+                  style={{
+                    ...inputStyle,
+                    flex: 1,
+                    minHeight: 260,
+                    fontFamily: font.mono,
+                    fontSize: 13,
+                    lineHeight: 1.8,
+                    resize: "vertical",
+                    border: "1px solid rgba(184,255,87,0.15)",
+                    background: "#0a0a0f",
+                  }}
+                />
+                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                   <button onClick={copy} style={{
                     background: copied ? "rgba(184,255,87,0.15)" : "rgba(255,255,255,0.05)",
                     border: "1px solid", borderColor: copied ? "rgba(184,255,87,0.3)" : "rgba(255,255,255,0.1)",
