@@ -3,11 +3,10 @@ import { api } from "../api"
 import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, getReminderUrgencyStyle, getReminderUrgency } from "../reminderUtils"
 import { font, accentNeon, neonAlpha } from "../theme"
 
-import { readLocalProfile, saveLocalProfile } from "../profile"
+import { readLocalProfile, saveLocalProfile, GETTING_STARTED_SESSION_KEY, GETTING_STARTED_RESTORED_EVENT } from "../profile"
 
 const LS_LOGS = "gb_outreach_logs"
 const LS_UPDATES = "gb_resume_updates"
-const LS_GETTING_STARTED_SESSION = "gb_getting_started_dismissed"
 
 const GETTING_STARTED_STEPS = [
   {
@@ -98,7 +97,7 @@ export default function Dashboard({ setPage }) {
     () => readLocalProfile().hideGettingStarted === true
   )
   const [sessionDismissedTutorial, setSessionDismissedTutorial] = useState(
-    () => sessionStorage.getItem(LS_GETTING_STARTED_SESSION) === "1"
+    () => sessionStorage.getItem(GETTING_STARTED_SESSION_KEY) === "1"
   )
 
   useEffect(() => {
@@ -117,6 +116,15 @@ export default function Dashboard({ setPage }) {
     return () => {
       cancelled = true
     }
+  }, [])
+
+  useEffect(() => {
+    function onRestored() {
+      setHideGettingStarted(false)
+      setSessionDismissedTutorial(false)
+    }
+    window.addEventListener(GETTING_STARTED_RESTORED_EVENT, onRestored)
+    return () => window.removeEventListener(GETTING_STARTED_RESTORED_EVENT, onRestored)
   }, [])
 
   useEffect(() => {
@@ -158,13 +166,13 @@ export default function Dashboard({ setPage }) {
 
   function dismissTutorialForSession() {
     setSessionDismissedTutorial(true)
-    sessionStorage.setItem(LS_GETTING_STARTED_SESSION, "1")
+    sessionStorage.setItem(GETTING_STARTED_SESSION_KEY, "1")
   }
 
   async function dismissTutorialPermanently() {
     setHideGettingStarted(true)
     setSessionDismissedTutorial(true)
-    sessionStorage.setItem(LS_GETTING_STARTED_SESSION, "1")
+    sessionStorage.setItem(GETTING_STARTED_SESSION_KEY, "1")
     const profile = { ...readLocalProfile(), hideGettingStarted: true }
     saveLocalProfile(profile)
     try {
@@ -397,31 +405,7 @@ export default function Dashboard({ setPage }) {
             fontFamily: font.body,
           }}
         >
-          <button
-            type="button"
-            onClick={dismissTutorialForSession}
-            aria-label="Dismiss tutorial for now"
-            title="Dismiss for now"
-            style={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.04)",
-              color: "rgba(240,240,245,0.55)",
-              fontSize: 18,
-              lineHeight: 1,
-              cursor: "pointer",
-              boxShadow: "none",
-            }}
-          >
-            ×
-          </button>
-
-          <div style={{ marginBottom: 24, paddingRight: 36 }}>
+          <div style={{ marginBottom: 24 }}>
             <div
               style={{
                 fontSize: 12,

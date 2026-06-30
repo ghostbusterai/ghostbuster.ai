@@ -1,4 +1,6 @@
 export const LS_PROFILE = "gb_profile"
+export const GETTING_STARTED_SESSION_KEY = "gb_getting_started_dismissed"
+export const GETTING_STARTED_RESTORED_EVENT = "gb_getting_started_restored"
 
 export const DEFAULT_PROFILE = {
   name: "",
@@ -40,4 +42,25 @@ export function profileInitials(name) {
   }
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return null
+}
+
+export function isGettingStartedSessionDismissed() {
+  try {
+    return sessionStorage.getItem(GETTING_STARTED_SESSION_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+export function isGettingStartedHidden(profile = readLocalProfile()) {
+  return profile.hideGettingStarted === true || isGettingStartedSessionDismissed()
+}
+
+export function restoreGettingStartedTutorial() {
+  try {
+    sessionStorage.removeItem(GETTING_STARTED_SESSION_KEY)
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new CustomEvent(GETTING_STARTED_RESTORED_EVENT))
 }

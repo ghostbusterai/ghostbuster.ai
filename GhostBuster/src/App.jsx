@@ -10,6 +10,7 @@ import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
 import { font, accentNeon } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
+import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 
 const NAV = [
   { id: "dashboard", label: "Home" },
@@ -41,6 +42,14 @@ export default function App() {
     if (google) {
       window.history.replaceState({}, "", window.location.pathname || "/")
     }
+  }, [])
+
+  useEffect(() => {
+    function goHome() {
+      setPage("dashboard")
+    }
+    window.addEventListener(GETTING_STARTED_RESTORED_EVENT, goHome)
+    return () => window.removeEventListener(GETTING_STARTED_RESTORED_EVENT, goHome)
   }, [])
 
   return (

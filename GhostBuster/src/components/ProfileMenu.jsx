@@ -7,6 +7,8 @@ import {
   profileInitials,
   readLocalProfile,
   saveLocalProfile,
+  isGettingStartedHidden,
+  restoreGettingStartedTutorial,
 } from "../profile"
 
 const inputStyle = {
@@ -45,6 +47,7 @@ export default function ProfileMenu() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(false)
+  const [restoringTutorial, setRestoringTutorial] = useState(false)
   const rootRef = useRef(null)
 
   const load = useCallback(async () => {
@@ -117,7 +120,26 @@ export default function ProfileMenu() {
     setSaving(false)
   }
 
+  async function showGettingStartedAgain() {
+    setRestoringTutorial(true)
+    setError(null)
+    try {
+      const { profile: p } = await api.patchProfile({ hideGettingStarted: false })
+      const next = normalizeProfile(p)
+      setProfile(next)
+      saveLocalProfile(next)
+    } catch {
+      const next = normalizeProfile({ ...readLocalProfile(), hideGettingStarted: false })
+      setProfile(next)
+      saveLocalProfile(next)
+    }
+    restoreGettingStartedTutorial()
+    setRestoringTutorial(false)
+    setOpen(false)
+  }
+
   const initials = profileInitials(profile.name)
+  const tutorialHidden = isGettingStartedHidden(profile)
   const dirty =
     name.trim() !== (profile.name || "").trim() ||
     careerGoals.trim() !== (profile.careerGoals || "").trim()
@@ -277,6 +299,62 @@ export default function ProfileMenu() {
               </>
             )}
           </form>
+
+          {!loading && (
+            <div
+              style={{
+                padding: "0 18px 18px",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+                marginTop: -2,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontFamily: font.mono,
+                  color: "rgba(240,240,245,0.4)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginBottom: 6,
+                  paddingTop: 16,
+                }}
+              >
+                Getting started
+              </div>
+              <p
+                style={{
+                  margin: "0 0 12px",
+                  fontSize: 13,
+                  color: "rgba(240,240,245,0.5)",
+                  lineHeight: 1.45,
+                }}
+              >
+                {tutorialHidden
+                  ? "Bring the Home tutorial back if you closed it."
+                  : "The tutorial is currently visible on Home."}
+              </p>
+              <button
+                type="button"
+                onClick={showGettingStartedAgain}
+                disabled={!tutorialHidden || restoringTutorial}
+                style={{
+                  width: "100%",
+                  background: !tutorialHidden || restoringTutorial ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)",
+                  color: !tutorialHidden || restoringTutorial ? "rgba(240,240,245,0.35)" : "rgba(240,240,245,0.85)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  padding: "10px 16px",
+                  borderRadius: 9,
+                  fontFamily: font.body,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: !tutorialHidden || restoringTutorial ? "not-allowed" : "pointer",
+                  boxShadow: "none",
+                }}
+              >
+                {restoringTutorial ? "Opening…" : "Show getting started on Home"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
