@@ -123,16 +123,17 @@ export default function App() {
           >
             <span
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                background: accentNeon,
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: "0 0 0 1px rgba(184, 255, 87, 0.18)",
               }}
             >
-              <GhostBusterLogo size={19} />
+              <GhostBusterLogo size={30} />
             </span>
             GhostBuster
           </div>
