@@ -6,6 +6,7 @@ import MessageComposer from "./components/MessageComposer"
 import Tracker from "./components/Tracker"
 import Updates from "./components/Updates"
 import ProfileMenu from "./components/ProfileMenu"
+import SettingsMenu from "./components/SettingsMenu"
 import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
 import { font, accentNeon } from "./theme"
@@ -25,22 +26,39 @@ export default function App() {
   const [page, setPage] = useState("dashboard")
   const [composePrefill, setComposePrefill] = useState(null)
   const [googleNotice, setGoogleNotice] = useState(null)
+  const [googleNoticeTarget, setGoogleNoticeTarget] = useState(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const google = params.get("google")
-    const returnPage = params.get("page") === "compose" ? "compose" : "reminders"
+    const returnTo = params.get("page")
+    const returnPage = returnTo === "compose" ? "compose" : "reminders"
     if (google === "connected") {
-      setPage(returnPage)
+      if (returnTo === "settings") {
+        setSettingsOpen(true)
+        setGoogleNoticeTarget("settings")
+      } else {
+        setPage(returnPage)
+        setGoogleNoticeTarget(returnPage)
+      }
       setGoogleNotice({
         type: "success",
         text:
-          returnPage === "compose"
+          returnTo === "compose"
             ? "Google connected. You can save drafts and schedule emails."
-            : "Google Calendar connected.",
+            : returnTo === "settings"
+              ? "Google account connected."
+              : "Google Calendar connected.",
       })
     } else if (google === "error") {
-      setPage(returnPage)
+      if (returnTo === "settings") {
+        setSettingsOpen(true)
+        setGoogleNoticeTarget("settings")
+      } else {
+        setPage(returnPage)
+        setGoogleNoticeTarget(returnPage)
+      }
       setGoogleNotice({
         type: "error",
         text: params.get("message") || "Could not connect Google account.",
@@ -168,6 +186,16 @@ export default function App() {
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <NotificationBell setPage={setPage} currentPage={page} />
+            <SettingsMenu
+              setPage={setPage}
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+              googleNotice={googleNoticeTarget === "settings" ? googleNotice : null}
+              onConsumeGoogleNotice={() => {
+                setGoogleNotice(null)
+                setGoogleNoticeTarget(null)
+              }}
+            />
             <ProfileMenu />
           </div>
         </div>
@@ -187,7 +215,13 @@ export default function App() {
         {page === "notifications" && <Notifications setPage={setPage} />}
         {page === "contacts" && <ContactHub />}
         {page === "reminders" && (
-          <Reminders googleNotice={googleNotice} onConsumeGoogleNotice={() => setGoogleNotice(null)} />
+          <Reminders
+            googleNotice={googleNoticeTarget === "reminders" ? googleNotice : null}
+            onConsumeGoogleNotice={() => {
+              setGoogleNotice(null)
+              setGoogleNoticeTarget(null)
+            }}
+          />
         )}
         {page === "tracker" && <Tracker />}
         {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
@@ -195,8 +229,11 @@ export default function App() {
           <MessageComposer
             composePrefill={composePrefill}
             onConsumePrefill={() => setComposePrefill(null)}
-            googleNotice={googleNotice}
-            onConsumeGoogleNotice={() => setGoogleNotice(null)}
+            googleNotice={googleNoticeTarget === "compose" ? googleNotice : null}
+            onConsumeGoogleNotice={() => {
+              setGoogleNotice(null)
+              setGoogleNoticeTarget(null)
+            }}
           />
         )}
       </main>

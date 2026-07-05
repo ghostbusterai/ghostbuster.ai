@@ -1,27 +1,13 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
-
-const SITUATIONS = [
-  "Cold outreach — never met",
-  "Follow up after career fair",
-  "Follow up after coffee chat",
-  "Reconnecting after a while",
-  "Sharing a resume update",
-  "Sharing a new accomplishment",
-  "Asking for a referral",
-  "Thanking after an interview",
-  "Checking in on application status",
-]
-
-const TONES = [
-  "Warm & professional (balanced)",
-  "Formal & concise",
-  "Friendly & conversational",
-  "Casual (still respectful)",
-  "Enthusiastic / upbeat",
-  "Direct & minimal",
-]
+import { COMPOSE_TONES, readPreferences } from "../preferences"
+import { readLocalProfile } from "../profile"
+import {
+  COMPOSE_SITUATIONS,
+  getScenarioConfig,
+  generateScenarioTemplateMessage,
+} from "../composeScenarios"
 
 function defaultScheduleLocal() {
   const d = new Date()
@@ -46,7 +32,7 @@ export default function MessageComposer({
   const [contacts, setContacts] = useState([])
   const [selectedContact, setSelectedContact] = useState("")
   const [situation, setSituation] = useState("")
-  const [tone, setTone] = useState(TONES[0])
+  const [tone, setTone] = useState(() => readPreferences().defaultComposeTone)
   const [purpose, setPurpose] = useState("")
   const [extraContext, setExtraContext] = useState("")
   const [previousCommunication, setPreviousCommunication] = useState("")
@@ -62,6 +48,16 @@ export default function MessageComposer({
   const [gmailBusy, setGmailBusy] = useState(null)
   const [gmailNotice, setGmailNotice] = useState(null)
   const [gmailError, setGmailError] = useState(null)
+  const [exampleNotice, setExampleNotice] = useState(null)
+
+  const scenarioConfig = useMemo(() => getScenarioConfig(situation), [situation])
+
+  useEffect(() => {
+    const prefs = readPreferences()
+    if (!prefs.prefillBackgroundFromGoals) return
+    const goals = readLocalProfile().careerGoals?.trim()
+    if (goals) setYourBackground((prev) => prev || goals)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -127,37 +123,94 @@ export default function MessageComposer({
     onConsumePrefill?.()
   }, [composePrefill, onConsumePrefill])
 
-  async function compose() {
-    if (!situation) return
+  async function runCompose(overrides = {}) {
+    const sit = overrides.situation ?? situation
+    if (!sit) return
+
+    const config = getScenarioConfig(sit)
+    const purposeVal = overrides.purpose ?? purpose ?? config?.purposeExample ?? ""
+    const extraVal = overrides.extraContext ?? extraContext ?? config?.extraContextExample ?? ""
+    const toneVal = overrides.tone ?? tone
+    const bgVal = overrides.yourBackground ?? yourBackground
+    const prevVal = overrides.previousCommunication ?? previousCommunication
+    const contactForCompose = overrides.contact ?? contact
+
     setLoading(true)
     setResult(null)
     setError(null)
+    setExampleNotice(null)
+
+    const composeBody = {
+      contactInfo: contactForCompose
+        ? [
+            `Name: ${contactForCompose.name}`,
+            `Company: ${contactForCompose.company || "unknown"}`,
+            `Role: ${contactForCompose.role || "unknown"}`,
+            `LinkedIn: ${contactForCompose.linkedin || "none"}`,
+            `Website: ${contactForCompose.website || "none"}`,
+            `Notes: ${contactForCompose.notes || "none"}`,
+          ].join(", ")
+        : null,
+      situation: sit,
+      tone: toneVal,
+      purpose: purposeVal,
+      yourBackground: bgVal,
+      previousCommunication: prevVal,
+      extraContext: extraVal,
+    }
 
     try {
-      const data = await api.compose({
-        contactInfo: contact
-          ? [
-              `Name: ${contact.name}`,
-              `Company: ${contact.company || "unknown"}`,
-              `Role: ${contact.role || "unknown"}`,
-              `LinkedIn: ${contact.linkedin || "none"}`,
-              `Website: ${contact.website || "none"}`,
-              `Notes: ${contact.notes || "none"}`,
-            ].join(", ")
-          : null,
-        situation,
-        tone,
-        purpose,
-        yourBackground,
-        previousCommunication,
-        extraContext,
-      })
+      const data = await api.compose(composeBody)
       setResult(data.result)
     } catch (err) {
-      setError(err.message || "Could not connect to server. Make sure it's running.")
+      const template = generateScenarioTemplateMessage(sit, {
+        contact: contactForCompose,
+        yourBackground: bgVal,
+        purpose: purposeVal,
+        extraContext: extraVal,
+      })
+      setResult(template)
+      const aiUnavailable =
+        err.message?.includes("503") ||
+        err.message?.includes("not configured") ||
+        err.message?.includes("ANTHROPIC")
+      if (aiUnavailable) {
+        setExampleNotice("AI is offline — loaded an editable starter template for this scenario. Customize it below.")
+      } else {
+        setError(err.message || "Could not connect to server. Showing a starter template you can edit.")
+      }
     }
 
     setLoading(false)
+  }
+
+  async function compose() {
+    await runCompose()
+  }
+
+  function applyExampleFields() {
+    if (!scenarioConfig) return
+    setPurpose(scenarioConfig.purposeExample || "")
+    setExtraContext(scenarioConfig.extraContextExample || "")
+  }
+
+  async function selectScenario(s) {
+    const config = getScenarioConfig(s)
+    setSituation(s)
+    setResult(null)
+    setError(null)
+    setExampleNotice(null)
+    if (config) {
+      setPurpose(config.purposeExample || "")
+      setExtraContext(config.extraContextExample || "")
+    }
+    const contactForCompose = contacts.find((c) => c.id === Number(selectedContact))
+    await runCompose({
+      situation: s,
+      purpose: config?.purposeExample || "",
+      extraContext: config?.extraContextExample || "",
+      contact: contactForCompose,
+    })
   }
 
   function copy() {
@@ -243,7 +296,54 @@ export default function MessageComposer({
       <div style={{ marginBottom: 32 }}>
         <div style={{ fontSize: 11, fontFamily: font.mono, letterSpacing: "0.14em", color: "rgba(240,240,245,0.3)", textTransform: "uppercase", marginBottom: 8 }}>AI Powered</div>
         <h1 style={{ fontFamily: font.display, fontWeight: 800, fontSize: 36, letterSpacing: "-1px", marginBottom: 8 }}>Message Composer</h1>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body }}>Generate a personalized outreach message in seconds.</p>
+        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body, maxWidth: 680, lineHeight: 1.55 }}>
+          Pick a scenario to auto-generate a starter message, then edit it before you copy or send.
+        </p>
+      </div>
+
+      <div style={{ marginBottom: 28 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontFamily: font.mono,
+            color: "rgba(240,240,245,0.35)",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            marginBottom: 10,
+          }}
+        >
+          Quick scenarios — click to generate
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {COMPOSE_SITUATIONS.map((s) => {
+            const config = getScenarioConfig(s)
+            const active = situation === s
+            return (
+              <button
+                key={s}
+                type="button"
+                title={s}
+                disabled={loading}
+                onClick={() => selectScenario(s)}
+                style={{
+                  background: active ? "rgba(184,255,87,0.14)" : "rgba(255,255,255,0.04)",
+                  border: active ? "1px solid rgba(184,255,87,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                  color: active ? "#b8ff57" : "rgba(240,240,245,0.7)",
+                  padding: "8px 14px",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontFamily: font.body,
+                  fontWeight: active ? 600 : 500,
+                  cursor: loading ? "wait" : "pointer",
+                  boxShadow: "none",
+                  transition: "border-color 0.15s, background 0.15s, color 0.15s",
+                }}
+              >
+                {loading && active ? "Generating…" : config?.shortLabel || s}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: 32, width: "100%" }}>
@@ -282,17 +382,104 @@ export default function MessageComposer({
           {/* Situation */}
           <div>
             <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>SITUATION *</label>
-            <select value={situation} onChange={e => setSituation(e.target.value)} style={inputStyle}>
+            <select
+              value={situation}
+              onChange={(e) => {
+                setSituation(e.target.value)
+                setExampleNotice(null)
+              }}
+              style={inputStyle}
+            >
               <option value="">Select a situation...</option>
-              {SITUATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              {COMPOSE_SITUATIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+
+            {scenarioConfig && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  background: "rgba(91,228,216,0.05)",
+                  border: "1px solid rgba(91,228,216,0.18)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontFamily: font.mono,
+                    color: "rgba(91,228,216,0.85)",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    marginBottom: 10,
+                  }}
+                >
+                  Suggest example for this scenario
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(240,240,245,0.55)", lineHeight: 1.55, marginBottom: 10 }}>
+                  <strong style={{ color: "rgba(240,240,245,0.75)", fontWeight: 600 }}>Purpose: </strong>
+                  {scenarioConfig.purposeExample}
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(240,240,245,0.55)", lineHeight: 1.55, marginBottom: 14 }}>
+                  <strong style={{ color: "rgba(240,240,245,0.75)", fontWeight: 600 }}>Extra context: </strong>
+                  {scenarioConfig.extraContextExample}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={applyExampleFields}
+                    disabled={loading}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "rgba(240,240,245,0.8)",
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontFamily: font.body,
+                      fontWeight: 600,
+                      cursor: loading ? "not-allowed" : "pointer",
+                      boxShadow: "none",
+                    }}
+                  >
+                    Use example fields
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      applyExampleFields()
+                      runCompose({
+                        situation,
+                        purpose: scenarioConfig.purposeExample,
+                        extraContext: scenarioConfig.extraContextExample,
+                      })
+                    }}
+                    disabled={loading}
+                    style={{
+                      background: loading ? "rgba(184,255,87,0.12)" : "rgba(184,255,87,0.18)",
+                      border: "1px solid rgba(184,255,87,0.35)",
+                      color: loading ? "rgba(184,255,87,0.45)" : "#b8ff57",
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontFamily: font.body,
+                      fontWeight: 600,
+                      cursor: loading ? "wait" : "pointer",
+                      boxShadow: "none",
+                    }}
+                  >
+                    {loading ? "Generating…" : "Generate message from scenario"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tone */}
           <div>
             <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>TONE</label>
             <select value={tone} onChange={e => setTone(e.target.value)} style={inputStyle}>
-              {TONES.map(t => <option key={t} value={t}>{t}</option>)}
+              {COMPOSE_TONES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
@@ -390,6 +577,11 @@ export default function MessageComposer({
               </div>
             )}
 
+            {exampleNotice && (
+              <p style={{ fontSize: 12, color: "rgba(255,201,107,0.9)", margin: "0 0 8px 0", lineHeight: 1.45 }}>
+                {exampleNotice}
+              </p>
+            )}
             {result && !loading && (
               <div style={{ width: "100%", display: "flex", flexDirection: "column", flex: 1 }}>
                 <textarea

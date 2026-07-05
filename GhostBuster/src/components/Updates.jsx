@@ -1351,7 +1351,7 @@ export default function Updates({ setPage, setComposePrefill }) {
         )}
         {!careerGoals && (
           <p style={{ color: "#ffc96b", fontSize: 13, margin: "0 0 8px" }}>
-            Set career goals in your profile (top-right icon) to unlock suggestions.
+            Set career goals in your profile (top-right avatar) to unlock suggestions.
           </p>
         )}
         {careerGoals && !resumeBuckets.some((b) => b.text?.trim()) && (

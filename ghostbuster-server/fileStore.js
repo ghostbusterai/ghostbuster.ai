@@ -71,6 +71,7 @@ exports.createContact = async (_userId, body) => {
     linkedin: linkedin ?? "",
     website: website ?? "",
     resumeBucketId,
+    pinned: Boolean(body.pinned),
   }
   data.contacts.push(contact)
   write(data)
@@ -95,6 +96,7 @@ exports.updateContact = async (_userId, id, body) => {
     linkedin: body.linkedin !== undefined ? body.linkedin : (prev.linkedin ?? ""),
     website: body.website !== undefined ? body.website : (prev.website ?? ""),
     resumeBucketId,
+    pinned: body.pinned !== undefined ? Boolean(body.pinned) : Boolean(prev.pinned),
   }
   if (!data.contacts[idx].name) return null
   write(data)

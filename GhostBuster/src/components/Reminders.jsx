@@ -9,8 +9,17 @@ import {
   sortRemindersForDisplay,
   summarizePendingReminders,
 } from "../reminderUtils"
+import { readPreferences } from "../preferences"
 
-const EMPTY = { contactName: "", reason: "", dueDate: "", done: false, syncToCalendar: true }
+function emptyReminderForm() {
+  return {
+    contactName: "",
+    reason: "",
+    dueDate: "",
+    done: false,
+    syncToCalendar: readPreferences().defaultSyncToCalendar,
+  }
+}
 
 export default function Reminders({ googleNotice = null, onConsumeGoogleNotice = () => {} }) {
   const [reminders, setReminders] = useState([])
@@ -18,7 +27,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
   const [loadError, setLoadError] = useState(null)
   const [listLoading, setListLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState(EMPTY)
+  const [form, setForm] = useState(emptyReminderForm)
   const [filter, setFilter] = useState("pending")
   const [actionError, setActionError] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -78,14 +87,14 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       const { reminders: list } = await api.getReminders()
       setReminders(list)
       localStorage.setItem("gb_reminders", JSON.stringify(list))
-      setForm(EMPTY)
+      setForm(emptyReminderForm())
       setShowForm(false)
     } catch (e) {
       if (loadError) {
         const next = [...reminders, { id: Date.now(), ...payload, done: false }]
         setReminders(next)
         localStorage.setItem("gb_reminders", JSON.stringify(next))
-        setForm(EMPTY)
+        setForm(emptyReminderForm())
         setShowForm(false)
       } else {
         setActionError(e.message)
@@ -383,7 +392,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
               padding: "10px 24px", borderRadius: 9, fontFamily: font.display,
               fontWeight: 700, fontSize: 14, cursor: "pointer",
             }}>Save</button>
-            <button onClick={() => { setShowForm(false); setForm(EMPTY) }} style={{
+            <button onClick={() => { setShowForm(false); setForm(emptyReminderForm()) }} style={{
               background: "transparent", color: "rgba(240,240,245,0.45)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "none",
               padding: "10px 24px", borderRadius: 9, fontFamily: font.body,
               fontSize: 14, cursor: "pointer",

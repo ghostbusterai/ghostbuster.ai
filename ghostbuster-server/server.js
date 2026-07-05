@@ -304,7 +304,7 @@ app.get("/api/google/auth", (req, res) => {
     return res.status(503).json({ error: "Google is not configured on the server" })
   }
   try {
-    const returnTo = req.query.returnTo === "compose" ? "compose" : "reminders"
+    const returnTo = ["compose", "settings"].includes(req.query.returnTo) ? req.query.returnTo : "reminders"
     res.redirect(googleCal.getAuthUrl(returnTo))
   } catch (e) {
     console.error(e)
@@ -314,7 +314,7 @@ app.get("/api/google/auth", (req, res) => {
 
 app.get("/api/google/callback", async (req, res) => {
   const origin = appOrigin(req)
-  const returnPage = req.query.state === "compose" ? "compose" : "reminders"
+  const returnPage = ["compose", "settings"].includes(req.query.state) ? req.query.state : "reminders"
   const fail = (msg) =>
     res.redirect(`${origin}/?google=error&page=${returnPage}&message=${encodeURIComponent(msg)}`)
 

@@ -145,10 +145,10 @@ export default function ProfileMenu() {
     careerGoals.trim() !== (profile.careerGoals || "").trim()
 
   return (
-    <div ref={rootRef} style={{ position: "relative", flexShrink: 0, marginLeft: "auto" }}>
+    <div ref={rootRef} style={{ position: "relative", flexShrink: 0 }}>
       <button
         type="button"
-        aria-label="Profile settings"
+        aria-label="Your profile"
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
@@ -177,7 +177,7 @@ export default function ProfileMenu() {
       {open && (
         <div
           role="dialog"
-          aria-label="Profile settings"
+          aria-label="Your profile"
           style={{
             position: "absolute",
             top: "calc(100% + 10px)",

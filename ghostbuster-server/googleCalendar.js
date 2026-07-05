@@ -26,7 +26,8 @@ function getOAuthClient() {
 function getAuthUrl(returnTo) {
   const client = getOAuthClient()
   if (!client) throw new Error("Google Calendar is not configured on the server")
-  const state = returnTo === "compose" ? "compose" : "reminders"
+  const state =
+    returnTo === "compose" ? "compose" : returnTo === "settings" ? "settings" : "reminders"
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
