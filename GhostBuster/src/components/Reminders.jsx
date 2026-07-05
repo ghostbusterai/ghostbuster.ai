@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
+import { inputStyle } from "../uiStyles"
+import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
 import {
   getReminderUrgency,
   getReminderUrgencyStyle,
@@ -181,12 +183,6 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
   const pendingCount = reminders.filter((r) => !r.done).length
   const summary = summarizePendingReminders(reminders)
 
-  const inputStyle = {
-    background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 8, padding: "10px 14px", color: "#f0f0f5",
-    fontSize: 14, fontFamily: font.body, width: "100%", outline: "none",
-  }
-
   const REASONS = [
     "Keep warm — check in",
     "Resume update",
@@ -198,74 +194,71 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
   ]
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
-        <div>
-          <div style={{ fontSize: 11, fontFamily: font.mono, letterSpacing: "0.14em", color: "rgba(240,240,245,0.3)", textTransform: "uppercase", marginBottom: 8 }}>Stay Warm</div>
-          <h1 style={{ fontFamily: font.display, fontWeight: 800, fontSize: 36, letterSpacing: "-1px", marginBottom: 8 }}>Reminders</h1>
-          <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body, maxWidth: 560, lineHeight: 1.55 }}>
-            {listLoading ? "Loading…" : (
-              <>
-                <span style={{ fontFamily: font.mono, fontVariantNumeric: "tabular-nums" }}>{pendingCount}</span>
-                {` pending reminder${pendingCount !== 1 ? "s" : ""}`}
-                {summary.overdue + summary.critical > 0 && (
-                  <span style={{ color: "#ff6b6b" }}>
-                    {" "}
-                    · {summary.critical + summary.overdue} overdue
-                  </span>
-                )}
-                <span style={{ display: "block", marginTop: 6, fontSize: 13, color: "rgba(240,240,245,0.35)" }}>
-                  Reminders stay pending until you check them off — passing the due date only highlights them.
-                </span>
-                {loadError && (
-                  <span style={{ display: "block", marginTop: 8, color: "#ffc96b", fontSize: 13 }}>
-                    API unavailable — using local data. Start the server and refresh to sync.
-                  </span>
-                )}
-              </>
+    <PageShell>
+      <PageHero
+        eyebrow="Stay Warm"
+        title="Reminders"
+        subtitle={listLoading ? "Loading…" : `${pendingCount} pending reminder${pendingCount !== 1 ? "s" : ""}`}
+        action={
+          <button onClick={() => setShowForm(true)} style={{
+            background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
+            padding: "11px 22px", borderRadius: 10, fontFamily: font.display,
+            fontWeight: 700, fontSize: 14, cursor: "pointer",
+          }}>+ Add Reminder</button>
+        }
+      >
+        {!listLoading && (
+          <p style={{ color: "var(--gb-text-muted)", fontSize: 14, fontFamily: font.body, marginTop: 8, marginBottom: 0 }}>
+            {summary.overdue + summary.critical > 0 && (
+              <span style={{ color: "var(--gb-danger)" }}>
+                {summary.critical + summary.overdue} overdue ·{" "}
+              </span>
+            )}
+            <span style={{ color: "var(--gb-text-faint)" }}>
+              Reminders stay pending until you check them off — passing the due date only highlights them.
+            </span>
+            {loadError && (
+              <span style={{ display: "block", marginTop: 8, color: "var(--gb-warning)", fontSize: 13 }}>
+                API unavailable — using local data. Start the server and refresh to sync.
+              </span>
             )}
           </p>
-          {actionError && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>}
-          {notice && (
-            <p
-              style={{
-                color: notice.type === "error" ? "#ff6b6b" : "#b8ff57",
-                fontSize: 13,
-                marginTop: 8,
-              }}
-            >
-              {notice.text}
-            </p>
-          )}
-        </div>
-        <button onClick={() => setShowForm(true)} style={{
-          background: "#b8ff57", color: "#0a0f09", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
-          padding: "11px 22px", borderRadius: 10, fontFamily: font.display,
-          fontWeight: 700, fontSize: 14, cursor: "pointer",
-        }}>+ Add Reminder</button>
-      </div>
+        )}
+        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
+        {notice && (
+          <p
+            style={{
+              color: notice.type === "error" ? "var(--gb-danger)" : "var(--gb-accent)",
+              fontSize: 13,
+              marginTop: 8,
+              marginBottom: 0,
+            }}
+          >
+            {notice.text}
+          </p>
+        )}
+      </PageHero>
 
       {!googleLoading && googleStatus.configured && (
-        <div
+        <>
+          <SectionLabel>Google Calendar</SectionLabel>
+          <ContentCard
           style={{
-            background: googleStatus.connected ? "rgba(184,255,87,0.06)" : "#111118",
-            border: `1px solid ${googleStatus.connected ? "rgba(184,255,87,0.2)" : "rgba(255,255,255,0.08)"}`,
-            borderRadius: 14,
-            padding: "16px 20px",
-            marginBottom: 24,
+            background: googleStatus.connected ? "var(--gb-accent-soft)" : "var(--gb-bg-elevated)",
+            border: `1px solid ${googleStatus.connected ? "var(--gb-accent-soft)" : "var(--gb-border-subtle)"}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             gap: 16,
             flexWrap: "wrap",
           }}
+          padding="16px 20px"
         >
           <div>
             <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15 }}>
               Google Calendar {googleStatus.connected ? "connected" : "not connected"}
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: 13, color: "rgba(240,240,245,0.45)", lineHeight: 1.45 }}>
+            <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--gb-text-muted)", lineHeight: 1.45 }}>
               {googleStatus.connected
                 ? "New reminders with a due date are added to your calendar automatically."
                 : "Connect to sync reminders as calendar events."}
@@ -277,8 +270,8 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
               onClick={disconnectGoogleCalendar}
               style={{
                 background: "transparent",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "rgba(240,240,245,0.65)",
+                border: "1px solid var(--gb-border)",
+                color: "var(--gb-text-subtle)",
                 padding: "8px 14px",
                 borderRadius: 8,
                 fontSize: 12,
@@ -293,9 +286,9 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
               type="button"
               onClick={connectGoogleCalendar}
               style={{
-                background: "rgba(184,255,87,0.12)",
-                border: "1px solid rgba(184,255,87,0.35)",
-                color: "#b8ff57",
+                background: "var(--gb-accent-soft)",
+                border: "1px solid var(--gb-accent-border)",
+                color: "var(--gb-accent)",
                 padding: "8px 14px",
                 borderRadius: 8,
                 fontSize: 12,
@@ -307,34 +300,39 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
               Connect Google Calendar
             </button>
           )}
-        </div>
+          </ContentCard>
+        </>
       )}
 
       {/* Filter tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+      <SectionLabel>View</SectionLabel>
+      <ContentCard padding="14px 14px 12px" marginBottom={24}>
+      <div style={{ display: "flex", gap: 8 }}>
         {["pending", "done", "all"].map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{
             padding: "7px 18px", borderRadius: 8, border: "1px solid",
-            borderColor: filter === f ? "rgba(184,255,87,0.3)" : "rgba(255,255,255,0.08)",
-            background: filter === f ? "rgba(184,255,87,0.08)" : "transparent",
-            color: filter === f ? "#b8ff57" : "rgba(240,240,245,0.4)",
+            borderColor: filter === f ? "var(--gb-accent-border)" : "var(--gb-border-subtle)",
+            background: filter === f ? "var(--gb-accent-soft)" : "transparent",
+            color: filter === f ? "var(--gb-accent)" : "var(--gb-text-faint)",
             fontSize: 13, fontFamily: font.mono, cursor: "pointer",
             textTransform: "capitalize",
             boxShadow: "none",
           }}>{f}</button>
         ))}
       </div>
+      </ContentCard>
 
       {/* Add Form */}
       {showForm && (
-        <div style={{
-          background: "#111118", border: "1px solid rgba(184,255,87,0.2)",
-          borderRadius: 16, padding: 28, marginBottom: 28,
-        }}>
-          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 20 }}>New Reminder</div>
+        <>
+          <SectionLabel>Add reminder</SectionLabel>
+          <ContentCard style={{
+            border: "1px solid var(--gb-accent-soft)",
+          }} padding="28px" marginBottom={28}>
+          <CardTitle>New Reminder</CardTitle>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {/* Contact picker */}
-            <select value={form.contactName} onChange={e => setForm({ ...form, contactName: e.target.value })} style={inputStyle}>
+            <select value={form.contactName} onChange={e => setForm({ ...form, contactName: e.target.value })} style={inputStyle()}>
               <option value="">Select contact *</option>
               {contacts.map(c => <option key={c.id} value={c.name}>{c.name} {c.company ? `(${c.company})` : ""}</option>)}
               <option value="__custom__">Someone else...</option>
@@ -344,24 +342,24 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
             {(form.contactName === "__custom__" || contacts.length === 0) && (
               <input placeholder="Contact name *" value={form.contactName === "__custom__" ? "" : form.contactName}
                 onChange={e => setForm({ ...form, contactName: e.target.value })}
-                style={inputStyle}
+                style={inputStyle()}
               />
             )}
 
             {/* Reason */}
-            <select value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} style={inputStyle}>
+            <select value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} style={inputStyle()}>
               <option value="">Reason for outreach</option>
               {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
 
             {/* Due date */}
-            <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} style={inputStyle} />
+            <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} style={inputStyle()} />
           </div>
 
           {form.reason === "Custom..." && (
             <input placeholder="Describe your reason..." value={form.customReason || ""}
               onChange={e => setForm({ ...form, customReason: e.target.value })}
-              style={{ ...inputStyle, marginTop: 14 }}
+              style={{ ...inputStyle(), marginTop: 14 }}
             />
           )}
 
@@ -373,7 +371,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                 gap: 10,
                 marginTop: 14,
                 fontSize: 13,
-                color: "rgba(240,240,245,0.65)",
+                color: "var(--gb-text-subtle)",
                 cursor: "pointer",
               }}
             >
@@ -388,25 +386,27 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
 
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
             <button onClick={save} style={{
-              background: "#b8ff57", color: "#0a0f09", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
+              background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
               padding: "10px 24px", borderRadius: 9, fontFamily: font.display,
               fontWeight: 700, fontSize: 14, cursor: "pointer",
             }}>Save</button>
             <button onClick={() => { setShowForm(false); setForm(emptyReminderForm()) }} style={{
-              background: "transparent", color: "rgba(240,240,245,0.45)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "none",
+              background: "transparent", color: "var(--gb-text-muted)", border: "1px solid var(--gb-border-subtle)", boxShadow: "none",
               padding: "10px 24px", borderRadius: 9, fontFamily: font.body,
               fontSize: 14, cursor: "pointer",
             }}>Cancel</button>
           </div>
-        </div>
+          </ContentCard>
+        </>
       )}
 
       {/* Reminder List */}
+      <SectionLabel>Your reminders</SectionLabel>
       {filtered.length === 0 ? (
         <div style={{
-          background: "#111118", border: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--gb-bg-elevated)", border: "1px solid var(--gb-surface-active)",
           borderRadius: 14, padding: 48, textAlign: "center",
-          color: "rgba(240,240,245,0.3)", fontSize: 14, fontFamily: font.body
+          color: "var(--gb-text-dim)", fontSize: 14, fontFamily: font.body
         }}>
           {filter === "pending" ? "No pending reminders — you're on top of it! 🎉" : "Nothing here yet."}
         </div>
@@ -416,12 +416,12 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
             const urgency = getReminderUrgency(r)
             const style = getReminderUrgencyStyle(urgency)
             const cardBorder = r.done
-              ? "1px solid rgba(255,255,255,0.04)"
+              ? "1px solid var(--gb-surface-hover)"
               : `2px solid ${style.border}`
 
             return (
             <div key={r.id} style={{
-              background: r.done ? "#111118" : style.cardBg,
+              background: r.done ? "var(--gb-bg-elevated)" : style.cardBg,
               border: cardBorder,
               boxShadow: r.done ? "none" : style.shadow,
               borderRadius: 14, padding: "18px 22px",
@@ -436,10 +436,10 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                   title={r.done ? "Mark as not done" : "Mark as done"}
                   style={{
                   width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                  border: `2px solid ${r.done ? "#b8ff57" : style.border}`,
-                  background: r.done ? "#b8ff57" : "transparent",
+                  border: `2px solid ${r.done ? "var(--gb-accent-bright)" : style.border}`,
+                  background: r.done ? "var(--gb-accent-bright)" : "transparent",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 12, color: "#0a0f09",
+                  fontSize: 12, color: "var(--gb-accent-text-on)",
                   boxShadow: "none",
                 }}>
                   {r.done ? "✓" : ""}
@@ -468,7 +468,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", marginTop: 2, fontFamily: font.body }}>
+                  <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 2, fontFamily: font.body }}>
                     {r.reason || "General check-in"}
                   </div>
                 </div>
@@ -478,7 +478,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                 {r.dueDate && (
                   <div style={{
                     fontSize: 11, fontFamily: font.mono,
-                    color: r.done ? "rgba(240,240,245,0.3)" : style.color,
+                    color: r.done ? "var(--gb-text-dim)" : style.color,
                     background: r.done ? "transparent" : style.bg,
                     padding: r.done ? "0" : "4px 10px",
                     borderRadius: 6,
@@ -493,8 +493,8 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                     style={{
                       fontSize: 10,
                       fontFamily: font.mono,
-                      color: "#b8ff57",
-                      background: "rgba(184,255,87,0.1)",
+                      color: "var(--gb-accent)",
+                      background: "var(--gb-accent-soft)",
                       padding: "3px 8px",
                       borderRadius: 6,
                     }}
@@ -523,7 +523,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                 )}
                 <button onClick={() => remove(r.id)} style={{
                   background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.15)", boxShadow: "none",
-                  color: "#ff6b6b", padding: "6px 14px", borderRadius: 7,
+                  color: "var(--gb-danger)", padding: "6px 14px", borderRadius: 7,
                   fontSize: 12, cursor: "pointer", fontFamily: font.mono,
                 }}>Delete</button>
               </div>
@@ -531,6 +531,6 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
           )})}
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { font } from "../theme"
+import { inputStyle } from "../uiStyles"
 import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
+import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
 
 const EMPTY = {
   name: "", email: "", phone: "", company: "", role: "", notes: "", lastContacted: "",
@@ -232,18 +234,12 @@ export default function ContactHub() {
   const isAdding = showForm && !editId
   const isEditing = showForm && editId
 
-  const inputStyle = {
-    background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 8, padding: "10px 14px", color: "#f0f0f5",
-    fontSize: 14, fontFamily: font.body, width: "100%", outline: "none",
-  }
-
   function renderContactCard(c) {
     return (
       <div
         style={{
-          background: c.pinned ? "rgba(255,201,107,0.04)" : "#111118",
-          border: c.pinned ? "1px solid rgba(255,201,107,0.22)" : "1px solid rgba(255,255,255,0.06)",
+          background: c.pinned ? "rgba(255,201,107,0.04)" : "var(--gb-bg-elevated)",
+          border: c.pinned ? "1px solid rgba(255,201,107,0.22)" : "1px solid var(--gb-surface-active)",
           borderRadius: 14,
           padding: "18px 22px",
           display: "flex",
@@ -255,7 +251,7 @@ export default function ContactHub() {
           e.currentTarget.style.borderColor = c.pinned ? "rgba(255,201,107,0.35)" : "rgba(184,255,87,0.2)"
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = c.pinned ? "rgba(255,201,107,0.22)" : "rgba(255,255,255,0.06)"
+          e.currentTarget.style.borderColor = c.pinned ? "rgba(255,201,107,0.22)" : "var(--gb-surface-active)"
         }}
       >
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -265,7 +261,7 @@ export default function ContactHub() {
                 height: 42,
                 borderRadius: "50%",
                 background: c.pinned ? "rgba(255,201,107,0.12)" : "rgba(184,255,87,0.1)",
-                color: c.pinned ? "#ffc96b" : "#b8ff57",
+                color: c.pinned ? "var(--gb-warning)" : "var(--gb-accent)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -298,7 +294,7 @@ export default function ContactHub() {
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", marginTop: 2, fontFamily: font.body }}>
+              <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 2, fontFamily: font.body }}>
                 {[c.role, c.company].filter(Boolean).join(" @ ")}
               </div>
               {bucketNameForContact(c, resumeBuckets) && (
@@ -313,7 +309,7 @@ export default function ContactHub() {
                       href={hrefFromUrl(c.linkedin)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ color: "#b8ff57", textDecoration: "none" }}
+                      style={{ color: "var(--gb-accent)", textDecoration: "none" }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       LinkedIn
@@ -333,7 +329,7 @@ export default function ContactHub() {
                 </div>
               )}
               {c.notes && (
-                <div style={{ fontSize: 12, color: "rgba(240,240,245,0.3)", marginTop: 4, maxWidth: 400, fontFamily: font.body }}>
+                <div style={{ fontSize: 12, color: "var(--gb-text-dim)", marginTop: 4, maxWidth: 400, fontFamily: font.body }}>
                   {c.notes}
                 </div>
               )}
@@ -346,7 +342,7 @@ export default function ContactHub() {
                   fontSize: 11,
                   fontFamily: font.mono,
                   fontVariantNumeric: "tabular-nums",
-                  color: "rgba(240,240,245,0.3)",
+                  color: "var(--gb-text-dim)",
                 }}
               >
                 {new Date(c.lastContacted).toLocaleDateString()}
@@ -359,10 +355,10 @@ export default function ContactHub() {
                 aria-label={c.pinned ? `Unpin ${c.name}` : `Pin ${c.name} to top`}
                 title={c.pinned ? "Unpin" : "Pin to top"}
                 style={{
-                  background: c.pinned ? "rgba(255,201,107,0.12)" : "rgba(255,255,255,0.05)",
-                  border: c.pinned ? "1px solid rgba(255,201,107,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                  background: c.pinned ? "rgba(255,201,107,0.12)" : "var(--gb-surface-muted)",
+                  border: c.pinned ? "1px solid rgba(255,201,107,0.3)" : "1px solid var(--gb-border-subtle)",
                   boxShadow: "none",
-                  color: c.pinned ? "#ffc96b" : "rgba(240,240,245,0.55)",
+                  color: c.pinned ? "var(--gb-warning)" : "var(--gb-text-subtle)",
                   padding: "6px 12px",
                   borderRadius: 7,
                   fontSize: 12,
@@ -375,10 +371,10 @@ export default function ContactHub() {
               <button
                 onClick={() => edit(c)}
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--gb-surface-muted)",
+                  border: "1px solid var(--gb-border-subtle)",
                   boxShadow: "none",
-                  color: "rgba(240,240,245,0.6)",
+                  color: "var(--gb-text-subtle)",
                   padding: "6px 14px",
                   borderRadius: 7,
                   fontSize: 12,
@@ -394,7 +390,7 @@ export default function ContactHub() {
                   background: "rgba(255,107,107,0.08)",
                   border: "1px solid rgba(255,107,107,0.15)",
                   boxShadow: "none",
-                  color: "#ff6b6b",
+                  color: "var(--gb-danger)",
                   padding: "6px 14px",
                   borderRadius: 7,
                   fontSize: 12,
@@ -411,51 +407,49 @@ export default function ContactHub() {
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <div>
-          <div style={{ fontSize: 11, fontFamily: font.mono, letterSpacing: "0.14em", color: "rgba(240,240,245,0.3)", textTransform: "uppercase", marginBottom: 8 }}>Network</div>
-          <h1 style={{ fontFamily: font.display, fontWeight: 800, fontSize: 36, letterSpacing: "-1px", marginBottom: 8 }}>Contact Hub</h1>
-          <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body, maxWidth: 560, lineHeight: 1.55 }}>
-            Save people you&apos;ve already met — career fairs, coffee chats, referrals. Add them here first, then
-            reach out from Compose and track touchpoints on Tracker.
-          </p>
-          <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body, marginTop: 8 }}>
-            {listLoading ? (
-              "Loading…"
-            ) : (
-              <>
-                <span style={{ fontFamily: font.mono, fontVariantNumeric: "tabular-nums" }}>{contacts.length}</span>
-                {` contact${contacts.length !== 1 ? "s" : ""} in your network`}
-                {pinnedCount > 0 && (
-                  <span style={{ color: "rgba(255,201,107,0.75)" }}>
-                    {` · ${pinnedCount} pinned`}
-                  </span>
-                )}
-              </>
-            )}
-            {loadError && (
-              <span style={{ display: "block", marginTop: 8, color: "#ffc96b", fontSize: 13 }}>
-                API unavailable — using local copy. Start the server and refresh to sync.
-              </span>
-            )}
-          </p>
-          {actionError && (
-            <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>
+    <PageShell>
+      <PageHero
+        eyebrow="Network"
+        title="Contact Hub"
+        subtitle="Save people you've already met — career fairs, coffee chats, referrals. Add them here first, then reach out from Compose and track touchpoints on Tracker."
+      >
+        <p style={{ color: "var(--gb-text-muted)", fontSize: 15, fontFamily: font.body, marginTop: 10, marginBottom: 0 }}>
+          {listLoading ? (
+            "Loading…"
+          ) : (
+            <>
+              <span style={{ fontFamily: font.mono, fontVariantNumeric: "tabular-nums" }}>{contacts.length}</span>
+              {` contact${contacts.length !== 1 ? "s" : ""} in your network`}
+              {pinnedCount > 0 && (
+                <span style={{ color: "rgba(255,201,107,0.75)" }}>
+                  {` · ${pinnedCount} pinned`}
+                </span>
+              )}
+            </>
           )}
-        </div>
-      </div>
+          {loadError && (
+            <span style={{ display: "block", marginTop: 8, color: "var(--gb-warning)", fontSize: 13 }}>
+              API unavailable — using local copy. Start the server and refresh to sync.
+            </span>
+          )}
+        </p>
+        {actionError && (
+          <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>
+        )}
+      </PageHero>
 
       {/* Primary action — add a contact */}
       {!isEditing && (
-        <div
+        <>
+          <SectionLabel>Start here</SectionLabel>
+          <ContentCard
+            style={{
+              background: isAdding ? "rgba(184,255,87,0.06)" : "rgba(184,255,87,0.04)",
+              border: isAdding ? "1px solid rgba(184,255,87,0.35)" : "1px solid rgba(184,255,87,0.22)",
+            }}
+          >
+            <div
           style={{
-            background: isAdding ? "rgba(184,255,87,0.06)" : "rgba(184,255,87,0.04)",
-            border: isAdding ? "1px solid rgba(184,255,87,0.35)" : "1px solid rgba(184,255,87,0.22)",
-            borderRadius: 16,
-            padding: "20px 24px",
-            marginBottom: isAdding ? 16 : 24,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -476,10 +470,10 @@ export default function ContactHub() {
             >
               {isAdding ? "Step 1 on Contacts" : "Start here"}
             </div>
-            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>
+            <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>
               {isAdding ? "Add someone you met" : "Add someone to your network"}
             </div>
-            <p style={{ margin: 0, fontSize: 14, color: "rgba(240,240,245,0.45)", lineHeight: 1.5 }}>
+            <p style={{ margin: 0, fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
               {isAdding
                 ? "Fill in their details in the form below. Role and notes help GhostBuster match résumé updates later."
                 : "Met someone worth staying in touch with? Add their profile — you can\u2019t message or track them until they\u2019re saved here."}
@@ -490,8 +484,8 @@ export default function ContactHub() {
               type="button"
               onClick={openAddForm}
               style={{
-                background: "#b8ff57",
-                color: "#0a0f09",
+                background: "var(--gb-accent-bright)",
+                color: "var(--gb-accent-text-on)",
                 border: "1px solid rgba(10,15,9,0.22)",
                 boxShadow: "none",
                 padding: "13px 26px",
@@ -508,22 +502,24 @@ export default function ContactHub() {
             </button>
           )}
         </div>
+          </ContentCard>
+        </>
       )}
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div style={{
-          background: "#111118",
-          border: editId ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(184,255,87,0.28)",
-          borderRadius: 16,
-          padding: 28,
-          marginBottom: 28,
-        }}>
-          <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 8 }}>
-            {editId ? "Edit contact" : "New contact"}
-          </div>
+        <>
+          <SectionLabel>Add / edit contact</SectionLabel>
+          <ContentCard
+            style={{
+              border: editId ? "1px solid var(--gb-border)" : "1px solid rgba(184,255,87,0.28)",
+            }}
+            padding="28px"
+            marginBottom={28}
+          >
+          <CardTitle>{editId ? "Edit contact" : "New contact"}</CardTitle>
           {!editId && (
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: "rgba(240,240,245,0.4)", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gb-text-faint)", lineHeight: 1.5 }}>
               Name is required. Everything else helps with smarter outreach and résumé matching.
             </p>
           )}
@@ -540,13 +536,13 @@ export default function ContactHub() {
             ].map(f => (
               <input key={f.key} type={f.type || "text"} placeholder={f.placeholder}
                 value={form[f.key]} onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                style={inputStyle}
+                style={inputStyle()}
               />
             ))}
             <select
               value={form.bucketAssignment}
               onChange={(e) => setForm({ ...form, bucketAssignment: e.target.value })}
-              style={{ ...inputStyle, gridColumn: "1 / -1" }}
+              style={{ ...inputStyle(), gridColumn: "1 / -1" }}
             >
               <option value="auto">
                 Auto-match résumé bucket from role
@@ -563,7 +559,7 @@ export default function ContactHub() {
             </select>
           </div>
           {form.bucketAssignment === "auto" && form.role && (
-            <p style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 8, marginBottom: 0 }}>
+            <p style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 8, marginBottom: 0 }}>
               {suggestedBucketLabel(form.role)
                 ? `Will match to "${suggestedBucketLabel(form.role)}" based on their role.`
                 : "Add role buckets on the Resume tab to enable auto-matching."}
@@ -571,32 +567,33 @@ export default function ContactHub() {
           )}
           <textarea placeholder="Notes/reflections about this person..."
             value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
-            style={{ ...inputStyle, marginTop: 14, height: 80, resize: "vertical" }}
+            style={{ ...inputStyle(), marginTop: 14, height: 80, resize: "vertical" }}
           />
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
             <button onClick={save} style={{
-              background: "#b8ff57", color: "#0a0f09", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
+              background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
               padding: "10px 24px", borderRadius: 9, fontFamily: font.display,
               fontWeight: 700, fontSize: 14, cursor: "pointer",
             }}>Save</button>
             <button onClick={closeForm} style={{
-              background: "transparent", color: "rgba(240,240,245,0.45)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "none",
+              background: "transparent", color: "var(--gb-text-muted)", border: "1px solid var(--gb-border-subtle)", boxShadow: "none",
               padding: "10px 24px", borderRadius: 9, fontFamily: font.body,
               fontSize: 14, cursor: "pointer",
             }}>Cancel</button>
           </div>
-        </div>
+          </ContentCard>
+        </>
       )}
 
       {/* Search */}
-      <div
+      <SectionLabel>Search</SectionLabel>
+      <ContentCard
         style={{
-          marginBottom: 16,
-          padding: "18px 20px",
-          borderRadius: 14,
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--gb-bg-elevated)",
+          border: "1px solid var(--gb-border)",
         }}
+        padding="18px 20px"
+        marginBottom={16}
       >
         <div
           style={{
@@ -615,13 +612,13 @@ export default function ContactHub() {
                 fontFamily: font.mono,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
-                color: "rgba(240,240,245,0.35)",
+                color: "var(--gb-text-faint)",
                 marginBottom: 4,
               }}
             >
               Search
             </div>
-            <div style={{ fontSize: 14, color: "rgba(240,240,245,0.55)" }}>
+            <div style={{ fontSize: 14, color: "var(--gb-text-subtle)" }}>
               Find a contact by name, role, or links
             </div>
           </div>
@@ -649,21 +646,21 @@ export default function ContactHub() {
           placeholder="Name, role, email, links…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ ...inputStyle, width: "100%", maxWidth: 480 }}
+          style={{ ...inputStyle(), width: "100%", maxWidth: 480 }}
         />
-      </div>
+      </ContentCard>
 
       {/* Filter by company */}
       {contacts.length > 0 && (
-        <div
-          style={{
-            marginBottom: 24,
-            padding: "18px 20px",
-            borderRadius: 14,
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,255,255,0.06)",
-          }}
-        >
+        <>
+          <SectionLabel>Filter by company</SectionLabel>
+          <ContentCard
+            style={{
+              background: "var(--gb-bg-elevated)",
+              border: "1px solid var(--gb-border)",
+            }}
+            padding="18px 20px"
+          >
           <div
             style={{
               display: "flex",
@@ -681,13 +678,13 @@ export default function ContactHub() {
                   fontFamily: font.mono,
                   letterSpacing: "0.1em",
                   textTransform: "uppercase",
-                  color: "rgba(240,240,245,0.35)",
+                  color: "var(--gb-text-faint)",
                   marginBottom: 4,
                 }}
               >
                 Filter by company
               </div>
-              <div style={{ fontSize: 14, color: "rgba(240,240,245,0.55)" }}>
+              <div style={{ fontSize: 14, color: "var(--gb-text-subtle)" }}>
                 Show only contacts from one company
               </div>
             </div>
@@ -717,7 +714,7 @@ export default function ContactHub() {
                 id="contact-company-filter"
                 value={filterCompany}
                 onChange={(e) => setFilterCompany(e.target.value)}
-                style={{ ...inputStyle, width: "100%", maxWidth: 320, marginBottom: companyOptions.withCompany.length > 0 ? 14 : 0 }}
+                style={{ ...inputStyle(), width: "100%", maxWidth: 320, marginBottom: companyOptions.withCompany.length > 0 ? 14 : 0 }}
               >
                 <option value="All">All companies ({contacts.length})</option>
                 {companyOptions.withCompany.map(({ name, count }) => (
@@ -736,9 +733,9 @@ export default function ContactHub() {
                     type="button"
                     onClick={() => setFilterCompany("All")}
                     style={{
-                      background: filterCompany === "All" ? "rgba(184,255,87,0.14)" : "rgba(255,255,255,0.04)",
-                      border: filterCompany === "All" ? "1px solid rgba(184,255,87,0.35)" : "1px solid rgba(255,255,255,0.1)",
-                      color: filterCompany === "All" ? "#b8ff57" : "rgba(240,240,245,0.65)",
+                      background: filterCompany === "All" ? "rgba(184,255,87,0.14)" : "var(--gb-surface-hover)",
+                      border: filterCompany === "All" ? "1px solid rgba(184,255,87,0.35)" : "1px solid var(--gb-border-strong)",
+                      color: filterCompany === "All" ? "var(--gb-accent)" : "var(--gb-text-subtle)",
                       padding: "6px 12px",
                       borderRadius: 20,
                       fontSize: 12,
@@ -755,9 +752,9 @@ export default function ContactHub() {
                       type="button"
                       onClick={() => setFilterCompany(name)}
                       style={{
-                        background: filterCompany === name ? "rgba(184,255,87,0.14)" : "rgba(255,255,255,0.04)",
-                        border: filterCompany === name ? "1px solid rgba(184,255,87,0.35)" : "1px solid rgba(255,255,255,0.1)",
-                        color: filterCompany === name ? "#b8ff57" : "rgba(240,240,245,0.65)",
+                        background: filterCompany === name ? "rgba(184,255,87,0.14)" : "var(--gb-surface-hover)",
+                        border: filterCompany === name ? "1px solid rgba(184,255,87,0.35)" : "1px solid var(--gb-border-strong)",
+                        color: filterCompany === name ? "var(--gb-accent)" : "var(--gb-text-subtle)",
                         padding: "6px 12px",
                         borderRadius: 20,
                         fontSize: 12,
@@ -773,42 +770,44 @@ export default function ContactHub() {
               )}
             </>
           ) : (
-            <p style={{ margin: 0, fontSize: 13, color: "rgba(240,240,245,0.4)" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)" }}>
               No companies yet — add a company when you create or edit a contact.
             </p>
           )}
-        </div>
+          </ContentCard>
+        </>
       )}
 
       {hasActiveFilters && contacts.length > 0 && (
-        <p style={{ margin: "0 0 20px", fontSize: 13, color: "rgba(240,240,245,0.45)" }}>
+        <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gb-text-muted)" }}>
           Showing {filtered.length} of {contacts.length}
           {hasCompanyFilter && (
             <span>
               {" "}
-              · Company: <strong style={{ color: "rgba(240,240,245,0.7)", fontWeight: 600 }}>{companyFilterLabel(filterCompany)}</strong>
+              · Company: <strong style={{ color: "var(--gb-text-secondary)", fontWeight: 600 }}>{companyFilterLabel(filterCompany)}</strong>
             </span>
           )}
           {hasActiveSearch && (
             <span>
               {" "}
-              · Search: <strong style={{ color: "rgba(240,240,245,0.7)", fontWeight: 600 }}>&quot;{search.trim()}&quot;</strong>
+              · Search: <strong style={{ color: "var(--gb-text-secondary)", fontWeight: 600 }}>&quot;{search.trim()}&quot;</strong>
             </span>
           )}
         </p>
       )}
 
       {/* Contact List */}
+      <SectionLabel>Your contacts</SectionLabel>
       {filtered.length === 0 ? (
         <div style={{
-          background: "#111118", border: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--gb-bg-elevated)", border: "1px solid var(--gb-surface-active)",
           borderRadius: 14, padding: 48, textAlign: "center",
-          color: "rgba(240,240,245,0.3)", fontSize: 14, fontFamily: font.body
+          color: "var(--gb-text-dim)", fontSize: 14, fontFamily: font.body
         }}>
           {contacts.length === 0 ? (
             <>
               <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.45 }}>👋</div>
-              <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, color: "rgba(240,240,245,0.75)", marginBottom: 8 }}>
+              <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, color: "var(--gb-text-secondary)", marginBottom: 8 }}>
                 Your network starts with one contact
               </div>
               <p style={{ margin: "0 0 20px", maxWidth: 420, marginLeft: "auto", marginRight: "auto", lineHeight: 1.55 }}>
@@ -819,8 +818,8 @@ export default function ContactHub() {
                   type="button"
                   onClick={openAddForm}
                   style={{
-                    background: "#b8ff57",
-                    color: "#0a0f09",
+                    background: "var(--gb-accent-bright)",
+                    color: "var(--gb-accent-text-on)",
                     border: "1px solid rgba(10,15,9,0.22)",
                     boxShadow: "none",
                     padding: "12px 24px",
@@ -845,9 +844,9 @@ export default function ContactHub() {
                   style={{
                     display: "block",
                     margin: "16px auto 0",
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "rgba(240,240,245,0.75)",
+                    background: "var(--gb-surface-active)",
+                    border: "1px solid var(--gb-border)",
+                    color: "var(--gb-text-secondary)",
                     padding: "8px 16px",
                     borderRadius: 8,
                     fontSize: 13,
@@ -891,7 +890,7 @@ export default function ContactHub() {
                       fontFamily: font.mono,
                       letterSpacing: "0.1em",
                       textTransform: "uppercase",
-                      color: "rgba(240,240,245,0.3)",
+                      color: "var(--gb-text-dim)",
                       marginTop: 8,
                       marginBottom: 2,
                     }}
@@ -905,6 +904,6 @@ export default function ContactHub() {
           })}
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

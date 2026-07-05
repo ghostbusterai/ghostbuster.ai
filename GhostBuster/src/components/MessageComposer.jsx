@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
+import { inputStyle } from "../uiStyles"
+import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
 import { COMPOSE_TONES, readPreferences } from "../preferences"
 import { readLocalProfile } from "../profile"
 import {
@@ -284,29 +286,22 @@ export default function MessageComposer({
     }
   }
 
-  const inputStyle = {
-    background: "#0a0a0f", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 8, padding: "10px 14px", color: "#f0f0f5",
-    fontSize: 14, fontFamily: font.body, width: "100%", outline: "none",
-  }
-
   return (
-    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 11, fontFamily: font.mono, letterSpacing: "0.14em", color: "rgba(240,240,245,0.3)", textTransform: "uppercase", marginBottom: 8 }}>AI Powered</div>
-        <h1 style={{ fontFamily: font.display, fontWeight: 800, fontSize: 36, letterSpacing: "-1px", marginBottom: 8 }}>Message Composer</h1>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, fontFamily: font.body, maxWidth: 680, lineHeight: 1.55 }}>
-          Pick a scenario to auto-generate a starter message, then edit it before you copy or send.
-        </p>
-      </div>
+    <PageShell>
+      <PageHero
+        eyebrow="AI Powered"
+        title="Message Composer"
+        subtitle="Pick a scenario to auto-generate a starter message, then edit it before you copy or send."
+      />
 
-      <div style={{ marginBottom: 28 }}>
+      <SectionLabel>Quick scenarios</SectionLabel>
+      <ContentCard padding="16px 16px 14px" marginBottom={28}>
+      <div>
         <div
           style={{
             fontSize: 11,
             fontFamily: font.mono,
-            color: "rgba(240,240,245,0.35)",
+            color: "var(--gb-text-faint)",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
             marginBottom: 10,
@@ -326,9 +321,9 @@ export default function MessageComposer({
                 disabled={loading}
                 onClick={() => selectScenario(s)}
                 style={{
-                  background: active ? "rgba(184,255,87,0.14)" : "rgba(255,255,255,0.04)",
-                  border: active ? "1px solid rgba(184,255,87,0.4)" : "1px solid rgba(255,255,255,0.1)",
-                  color: active ? "#b8ff57" : "rgba(240,240,245,0.7)",
+                  background: active ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
+                  border: active ? "1px solid rgba(184,255,87,0.4)" : "1px solid var(--gb-border-strong)",
+                  color: active ? "var(--gb-accent)" : "var(--gb-text-secondary)",
                   padding: "8px 14px",
                   borderRadius: 20,
                   fontSize: 12,
@@ -345,22 +340,25 @@ export default function MessageComposer({
           })}
         </div>
       </div>
+      </ContentCard>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: 32, width: "100%" }}>
 
         {/* Left — Inputs */}
+        <ContentCard style={{ marginBottom: 0 }} padding="18px 18px 16px">
+        <CardTitle>Message details</CardTitle>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Contact picker */}
           <div>
-            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>CONTACT (optional)</label>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>CONTACT (optional)</label>
             <select
               value={selectedContact}
               onChange={e => {
                 setSelectedContact(e.target.value)
                 setPreviousCommunication("")
               }}
-              style={inputStyle}
+              style={inputStyle()}
             >
               <option value="">No specific contact</option>
               {contacts.map(c => <option key={c.id} value={c.id}>{c.name} {c.company ? `— ${c.company}` : ""}</option>)}
@@ -368,8 +366,8 @@ export default function MessageComposer({
             {contact && (
               <div style={{
                 marginTop: 10, padding: "12px 14px", borderRadius: 9,
-                background: "rgba(184,255,87,0.05)", border: "1px solid rgba(184,255,87,0.15)",
-                fontSize: 13, color: "rgba(240,240,245,0.55)", lineHeight: 1.6
+                background: "rgba(184,255,87,0.05)", border: "1px solid var(--gb-accent-soft)",
+                fontSize: 13, color: "var(--gb-text-subtle)", lineHeight: 1.6
               }}>
                 {contact.role && <div>🏷 {contact.role}</div>}
                 {contact.company && <div>🏢 {contact.company}</div>}
@@ -381,14 +379,14 @@ export default function MessageComposer({
 
           {/* Situation */}
           <div>
-            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>SITUATION *</label>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>SITUATION *</label>
             <select
               value={situation}
               onChange={(e) => {
                 setSituation(e.target.value)
                 setExampleNotice(null)
               }}
-              style={inputStyle}
+              style={inputStyle()}
             >
               <option value="">Select a situation...</option>
               {COMPOSE_SITUATIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -416,12 +414,12 @@ export default function MessageComposer({
                 >
                   Suggest example for this scenario
                 </div>
-                <div style={{ fontSize: 13, color: "rgba(240,240,245,0.55)", lineHeight: 1.55, marginBottom: 10 }}>
-                  <strong style={{ color: "rgba(240,240,245,0.75)", fontWeight: 600 }}>Purpose: </strong>
+                <div style={{ fontSize: 13, color: "var(--gb-text-subtle)", lineHeight: 1.55, marginBottom: 10 }}>
+                  <strong style={{ color: "var(--gb-text-secondary)", fontWeight: 600 }}>Purpose: </strong>
                   {scenarioConfig.purposeExample}
                 </div>
-                <div style={{ fontSize: 13, color: "rgba(240,240,245,0.55)", lineHeight: 1.55, marginBottom: 14 }}>
-                  <strong style={{ color: "rgba(240,240,245,0.75)", fontWeight: 600 }}>Extra context: </strong>
+                <div style={{ fontSize: 13, color: "var(--gb-text-subtle)", lineHeight: 1.55, marginBottom: 14 }}>
+                  <strong style={{ color: "var(--gb-text-secondary)", fontWeight: 600 }}>Extra context: </strong>
                   {scenarioConfig.extraContextExample}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -430,9 +428,9 @@ export default function MessageComposer({
                     onClick={applyExampleFields}
                     disabled={loading}
                     style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      color: "rgba(240,240,245,0.8)",
+                      background: "var(--gb-surface-active)",
+                      border: "1px solid var(--gb-border)",
+                      color: "var(--gb-text-strong)",
                       padding: "8px 14px",
                       borderRadius: 8,
                       fontSize: 12,
@@ -456,9 +454,9 @@ export default function MessageComposer({
                     }}
                     disabled={loading}
                     style={{
-                      background: loading ? "rgba(184,255,87,0.12)" : "rgba(184,255,87,0.18)",
-                      border: "1px solid rgba(184,255,87,0.35)",
-                      color: loading ? "rgba(184,255,87,0.45)" : "#b8ff57",
+                      background: loading ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
+                      border: "1px solid var(--gb-accent-border)",
+                      color: loading ? "rgba(184,255,87,0.45)" : "var(--gb-accent)",
                       padding: "8px 14px",
                       borderRadius: 8,
                       fontSize: 12,
@@ -477,55 +475,55 @@ export default function MessageComposer({
 
           {/* Tone */}
           <div>
-            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>TONE</label>
-            <select value={tone} onChange={e => setTone(e.target.value)} style={inputStyle}>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>TONE</label>
+            <select value={tone} onChange={e => setTone(e.target.value)} style={inputStyle()}>
               {COMPOSE_TONES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
           {/* Purpose */}
           <div>
-            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>PURPOSE</label>
-            <p style={{ fontSize: 12, color: "rgba(240,240,245,0.28)", margin: "0 0 8px 0", lineHeight: 1.55 }}>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>PURPOSE</label>
+            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.55 }}>
               What you want from this message (e.g. schedule a call, ask for advice, confirm next steps). The draft will aim toward that outcome without being pushy.
             </p>
             <textarea
               placeholder="e.g. Land a 20-minute coffee chat to learn about their team’s intern pipeline and whether they’d take a quick résumé glance."
               value={purpose} onChange={e => setPurpose(e.target.value)}
-              style={{ ...inputStyle, height: 80, resize: "vertical" }}
+              style={{ ...inputStyle(), height: 80, resize: "vertical" }}
             />
           </div>
 
           {/* Your background */}
           <div>
-            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>YOUR BACKGROUND</label>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>YOUR BACKGROUND</label>
             <textarea
               placeholder="e.g. Junior at CMU studying Computer Science, interested in product management..."
               value={yourBackground} onChange={e => setYourBackground(e.target.value)}
-              style={{ ...inputStyle, height: 80, resize: "vertical" }}
+              style={{ ...inputStyle(), height: 80, resize: "vertical" }}
             />
           </div>
 
           {/* Previous communication */}
           <div>
-            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>PREVIOUS COMMUNICATION</label>
-            <p style={{ fontSize: 12, color: "rgba(240,240,245,0.28)", margin: "0 0 8px 0", lineHeight: 1.55 }}>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>PREVIOUS COMMUNICATION</label>
+            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.55 }}>
               Paste full threads or detailed notes — the more concrete, the better. Include their wording when you can, open questions, what you promised, and dates they gave. The draft will reference those specifics (up to ~200 words when you add history here).
             </p>
             <textarea
               placeholder={"e.g.\nThem (Mar 2): \"Happy to chat after my team’s release — try me mid-April.\"\nMe: Asked about interning on X team.\nThem: Suggested I look at the roles page and send a resume + 2 bullets on the ML project we discussed."}
               value={previousCommunication} onChange={e => setPreviousCommunication(e.target.value)}
-              style={{ ...inputStyle, height: 140, minHeight: 96, resize: "vertical", lineHeight: 1.45 }}
+              style={{ ...inputStyle(), height: 140, minHeight: 96, resize: "vertical", lineHeight: 1.45 }}
             />
           </div>
 
           {/* Extra context */}
           <div>
-            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>EXTRA CONTEXT</label>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>EXTRA CONTEXT</label>
             <textarea
               placeholder="e.g. We met at the Google career fair, talked about their ML team..."
               value={extraContext} onChange={e => setExtraContext(e.target.value)}
-              style={{ ...inputStyle, height: 80, resize: "vertical" }}
+              style={{ ...inputStyle(), height: 80, resize: "vertical" }}
             />
           </div>
 
@@ -533,9 +531,9 @@ export default function MessageComposer({
             onClick={compose}
             disabled={!situation || loading}
             style={{
-              background: situation && !loading ? "#b8ff57" : "rgba(184,255,87,0.2)",
-              color: situation && !loading ? "#0a0f09" : "rgba(184,255,87,0.4)",
-              border: situation && !loading ? "1px solid rgba(10,15,9,0.22)" : "1px solid rgba(184,255,87,0.2)",
+              background: situation && !loading ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
+              color: situation && !loading ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
+              border: situation && !loading ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-accent-border)",
               boxShadow: "none",
               padding: "13px 28px",
               borderRadius: 10,
@@ -549,30 +547,31 @@ export default function MessageComposer({
             {loading ? "Composing..." : "✨ Generate Message"}
           </button>
         </div>
+        </ContentCard>
 
         {/* Right — Output */}
-        <div>
-          <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>GENERATED MESSAGE</label>
+        <ContentCard style={{ marginBottom: 0 }} padding="18px 18px 16px">
+          <CardTitle>Generated message</CardTitle>
           {result && !loading && (
-            <p style={{ fontSize: 12, color: "rgba(240,240,245,0.28)", margin: "0 0 8px 0", lineHeight: 1.45 }}>
+            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.45 }}>
               Edit the draft below before copying or sending.
             </p>
           )}
           <div style={{
-            background: "#111118", border: `1px solid ${result ? "rgba(184,255,87,0.2)" : "rgba(255,255,255,0.06)"}`,
+            background: "var(--gb-bg-elevated)", border: `1px solid ${result ? "var(--gb-accent-soft)" : "var(--gb-surface-active)"}`,
             borderRadius: 14, padding: result && !loading ? 16 : 24, minHeight: 320,
             display: "flex", flexDirection: "column", justifyContent: result && !loading ? "flex-start" : "center",
             alignItems: result && !loading ? "stretch" : "center",
           }}>
             {loading && (
-              <div style={{ textAlign: "center", color: "rgba(240,240,245,0.3)" }}>
+              <div style={{ textAlign: "center", color: "var(--gb-text-dim)" }}>
                 <div style={{ fontSize: 28, marginBottom: 12, animation: "spin 1s linear infinite" }}>✨</div>
                 <div style={{ fontSize: 14, fontFamily: font.mono }}>Composing your message...</div>
               </div>
             )}
 
             {error && (
-              <div style={{ color: "#ff6b6b", fontSize: 14, lineHeight: 1.6 }}>
+              <div style={{ color: "var(--gb-danger)", fontSize: 14, lineHeight: 1.6 }}>
                 ⚠ {error}
               </div>
             )}
@@ -589,22 +588,22 @@ export default function MessageComposer({
                   onChange={(e) => setResult(e.target.value)}
                   aria-label="Generated message — editable"
                   style={{
-                    ...inputStyle,
+                    ...inputStyle(),
                     flex: 1,
                     minHeight: 260,
                     fontFamily: font.mono,
                     fontSize: 13,
                     lineHeight: 1.8,
                     resize: "vertical",
-                    border: "1px solid rgba(184,255,87,0.15)",
-                    background: "#0a0a0f",
+                    border: "1px solid var(--gb-accent-soft)",
+                    background: "var(--gb-bg-input)",
                   }}
                 />
                 <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                   <button onClick={copy} style={{
-                    background: copied ? "rgba(184,255,87,0.15)" : "rgba(255,255,255,0.05)",
-                    border: "1px solid", borderColor: copied ? "rgba(184,255,87,0.3)" : "rgba(255,255,255,0.1)",
-                    color: copied ? "#b8ff57" : "rgba(240,240,245,0.6)",
+                    background: copied ? "var(--gb-accent-soft)" : "var(--gb-surface-muted)",
+                    border: "1px solid", borderColor: copied ? "rgba(184,255,87,0.3)" : "var(--gb-border-strong)",
+                    color: copied ? "var(--gb-accent)" : "var(--gb-text-subtle)",
                     padding: "8px 18px", borderRadius: 8, fontSize: 13,
                     cursor: "pointer", fontFamily: font.mono, transition: "all 0.15s",
                     boxShadow: "none",
@@ -612,8 +611,8 @@ export default function MessageComposer({
                     {copied ? "✓ Copied!" : "Copy"}
                   </button>
                   <button onClick={compose} style={{
-                    background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                    color: "rgba(240,240,245,0.4)", padding: "8px 18px", borderRadius: 8,
+                    background: "transparent", border: "1px solid var(--gb-border-subtle)",
+                    color: "var(--gb-text-faint)", padding: "8px 18px", borderRadius: 8,
                     fontSize: 13, cursor: "pointer", fontFamily: font.mono,
                     boxShadow: "none",
                   }}>Regenerate</button>
@@ -621,14 +620,14 @@ export default function MessageComposer({
 
                 <div style={{
                   marginTop: 20, paddingTop: 20,
-                  borderTop: "1px solid rgba(255,255,255,0.08)",
+                  borderTop: "1px solid var(--gb-border-subtle)",
                 }}>
                   <div style={{
-                    fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)",
+                    fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)",
                     letterSpacing: 0.5, marginBottom: 10,
                   }}>GMAIL</div>
                   <p style={{
-                    fontSize: 12, color: "rgba(240,240,245,0.28)", margin: "0 0 12px 0", lineHeight: 1.5,
+                    fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 12px 0", lineHeight: 1.5,
                   }}>
                     Save this message as a draft in Gmail, or schedule GhostBuster to send it at a chosen time.
                   </p>
@@ -638,32 +637,32 @@ export default function MessageComposer({
                       marginBottom: 12, padding: "10px 12px", borderRadius: 8, fontSize: 13, lineHeight: 1.5,
                       background: gmailNotice.type === "success" ? "rgba(184,255,87,0.08)" : "rgba(255,107,107,0.08)",
                       border: `1px solid ${gmailNotice.type === "success" ? "rgba(184,255,87,0.25)" : "rgba(255,107,107,0.25)"}`,
-                      color: gmailNotice.type === "success" ? "#b8ff57" : "#ff6b6b",
+                      color: gmailNotice.type === "success" ? "var(--gb-accent)" : "var(--gb-danger)",
                     }}>
                       {gmailNotice.text}
                     </div>
                   )}
 
                   {gmailError && (
-                    <div style={{ marginBottom: 12, fontSize: 13, color: "#ff6b6b", lineHeight: 1.5 }}>
+                    <div style={{ marginBottom: 12, fontSize: 13, color: "var(--gb-danger)", lineHeight: 1.5 }}>
                       ⚠ {gmailError}
                     </div>
                   )}
 
                   {!googleLoading && !googleStatus.configured && (
-                    <div style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", lineHeight: 1.55 }}>
+                    <div style={{ fontSize: 13, color: "var(--gb-text-faint)", lineHeight: 1.55 }}>
                       Gmail is not configured on the server yet (Google OAuth env vars).
                     </div>
                   )}
 
                   {!googleLoading && googleStatus.configured && !googleStatus.connected && (
                     <div>
-                      <p style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", margin: "0 0 10px 0", lineHeight: 1.5 }}>
+                      <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 10px 0", lineHeight: 1.5 }}>
                         Connect Google to use the same account as Calendar reminders.
                       </p>
                       <button type="button" onClick={connectGoogle} style={{
-                        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-                        color: "rgba(240,240,245,0.75)", padding: "8px 16px", borderRadius: 8,
+                        background: "var(--gb-surface-active)", border: "1px solid var(--gb-border)",
+                        color: "var(--gb-text-secondary)", padding: "8px 16px", borderRadius: 8,
                         fontSize: 13, cursor: "pointer", fontFamily: font.mono, boxShadow: "none",
                       }}>
                         Connect Google
@@ -675,7 +674,7 @@ export default function MessageComposer({
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                       <div>
                         <label style={{
-                          fontSize: 11, fontFamily: font.mono, color: "rgba(240,240,245,0.35)",
+                          fontSize: 11, fontFamily: font.mono, color: "var(--gb-text-faint)",
                           display: "block", marginBottom: 6, letterSpacing: 0.5,
                         }}>TO</label>
                         <input
@@ -683,7 +682,7 @@ export default function MessageComposer({
                           value={recipientEmail}
                           onChange={(e) => setRecipientEmail(e.target.value)}
                           placeholder="contact@company.com"
-                          style={inputStyle}
+                          style={inputStyle()}
                         />
                       </div>
 
@@ -693,9 +692,9 @@ export default function MessageComposer({
                           onClick={saveGmailDraft}
                           disabled={gmailBusy != null}
                           style={{
-                            background: gmailBusy === "draft" ? "rgba(184,255,87,0.12)" : "rgba(184,255,87,0.18)",
-                            border: "1px solid rgba(184,255,87,0.35)",
-                            color: gmailBusy != null ? "rgba(184,255,87,0.45)" : "#b8ff57",
+                            background: gmailBusy === "draft" ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
+                            border: "1px solid var(--gb-accent-border)",
+                            color: gmailBusy != null ? "rgba(184,255,87,0.45)" : "var(--gb-accent)",
                             padding: "8px 16px", borderRadius: 8, fontSize: 13,
                             cursor: gmailBusy != null ? "not-allowed" : "pointer",
                             fontFamily: font.mono, boxShadow: "none",
@@ -707,7 +706,7 @@ export default function MessageComposer({
 
                       <div>
                         <label style={{
-                          fontSize: 11, fontFamily: font.mono, color: "rgba(240,240,245,0.35)",
+                          fontSize: 11, fontFamily: font.mono, color: "var(--gb-text-faint)",
                           display: "block", marginBottom: 6, letterSpacing: 0.5,
                         }}>SCHEDULE SEND</label>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
@@ -715,16 +714,16 @@ export default function MessageComposer({
                             type="datetime-local"
                             value={scheduleAt}
                             onChange={(e) => setScheduleAt(e.target.value)}
-                            style={{ ...inputStyle, width: "auto", flex: "1 1 200px" }}
+                            style={{ ...inputStyle(), width: "auto", flex: "1 1 200px" }}
                           />
                           <button
                             type="button"
                             onClick={scheduleGmailSend}
                             disabled={gmailBusy != null}
                             style={{
-                              background: gmailBusy === "schedule" ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              color: gmailBusy != null ? "rgba(240,240,245,0.35)" : "rgba(240,240,245,0.75)",
+                              background: gmailBusy === "schedule" ? "var(--gb-surface-hover)" : "var(--gb-surface-active)",
+                              border: "1px solid var(--gb-border)",
+                              color: gmailBusy != null ? "var(--gb-text-faint)" : "var(--gb-text-secondary)",
                               padding: "8px 16px", borderRadius: 8, fontSize: 13,
                               cursor: gmailBusy != null ? "not-allowed" : "pointer",
                               fontFamily: font.mono, boxShadow: "none",
@@ -734,7 +733,7 @@ export default function MessageComposer({
                           </button>
                         </div>
                         <p style={{
-                          fontSize: 11, color: "rgba(240,240,245,0.25)", margin: "8px 0 0 0", lineHeight: 1.45,
+                          fontSize: 11, color: "var(--gb-text-dim)", margin: "8px 0 0 0", lineHeight: 1.45,
                         }}>
                           GhostBuster sends from your Gmail at the scheduled time (server must stay running).
                         </p>
@@ -746,15 +745,15 @@ export default function MessageComposer({
             )}
 
             {!result && !loading && !error && (
-              <div style={{ textAlign: "center", color: "rgba(240,240,245,0.2)", fontSize: 14, fontFamily: font.mono }}>
+              <div style={{ textAlign: "center", color: "var(--gb-text-dim)", fontSize: 14, fontFamily: font.mono }}>
                 Your message will appear here
               </div>
             )}
           </div>
-        </div>
+        </ContentCard>
       </div>
 
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
-    </div>
+    </PageShell>
   )
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { api } from "../api"
-import { font, accentNeon } from "../theme"
+import { font } from "../theme"
+import { inputStyle } from "../uiStyles"
 import {
   DEFAULT_PROFILE,
   normalizeProfile,
@@ -10,19 +11,6 @@ import {
   isGettingStartedHidden,
   restoreGettingStartedTutorial,
 } from "../profile"
-
-const inputStyle = {
-  background: "#0a0a0f",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  padding: "10px 14px",
-  color: "#f0f0f5",
-  fontSize: 14,
-  fontFamily: font.body,
-  width: "100%",
-  outline: "none",
-  boxSizing: "border-box",
-}
 
 function UserIcon() {
   return (
@@ -156,9 +144,9 @@ export default function ProfileMenu() {
           width: 38,
           height: 38,
           borderRadius: "50%",
-          border: open ? `2px solid ${accentNeon}` : "1px solid rgba(255,255,255,0.14)",
-          background: open ? "rgba(184,255,87,0.12)" : "rgba(255,255,255,0.06)",
-          color: initials ? accentNeon : "rgba(240,240,245,0.75)",
+          border: open ? "2px solid var(--gb-accent)" : "1px solid var(--gb-border)",
+          background: open ? "var(--gb-accent-soft)" : "var(--gb-surface-active)",
+          color: initials ? "var(--gb-accent)" : "var(--gb-text-secondary)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -183,10 +171,10 @@ export default function ProfileMenu() {
             top: "calc(100% + 10px)",
             right: 0,
             width: "min(360px, calc(100vw - 32px))",
-            background: "#111118",
-            border: "1px solid rgba(255,255,255,0.1)",
+            background: "var(--gb-bg-elevated)",
+            border: "1px solid var(--gb-border-strong)",
             borderRadius: 14,
-            boxShadow: "0 16px 48px rgba(0,0,0,0.45)",
+            boxShadow: "var(--gb-shadow-panel)",
             zIndex: 100,
             overflow: "hidden",
           }}
@@ -194,12 +182,12 @@ export default function ProfileMenu() {
           <div
             style={{
               padding: "16px 18px",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              borderBottom: "1px solid var(--gb-border-subtle)",
             }}
           >
             <div
               style={{
-                fontFamily: font.display,
+                fontFamily: font.h2,
                 fontWeight: 800,
                 fontSize: 17,
                 letterSpacing: "-0.3px",
@@ -211,7 +199,7 @@ export default function ProfileMenu() {
               style={{
                 margin: "6px 0 0",
                 fontSize: 13,
-                color: "rgba(240,240,245,0.45)",
+                color: "var(--gb-text-muted)",
                 lineHeight: 1.45,
               }}
             >
@@ -221,7 +209,7 @@ export default function ProfileMenu() {
 
           <form onSubmit={save} style={{ padding: "16px 18px 18px" }}>
             {loading ? (
-              <div style={{ color: "rgba(240,240,245,0.35)", fontSize: 14 }}>Loading…</div>
+              <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>Loading…</div>
             ) : (
               <>
                 <div style={{ marginBottom: 14 }}>
@@ -230,7 +218,7 @@ export default function ProfileMenu() {
                     style={{
                       fontSize: 11,
                       fontFamily: font.mono,
-                      color: "rgba(240,240,245,0.4)",
+                      color: "var(--gb-text-faint)",
                       display: "block",
                       marginBottom: 6,
                       letterSpacing: "0.08em",
@@ -244,7 +232,7 @@ export default function ProfileMenu() {
                     placeholder="Your name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    style={inputStyle}
+                    style={inputStyle()}
                     autoComplete="name"
                   />
                 </div>
@@ -255,7 +243,7 @@ export default function ProfileMenu() {
                     style={{
                       fontSize: 11,
                       fontFamily: font.mono,
-                      color: "rgba(240,240,245,0.4)",
+                      color: "var(--gb-text-faint)",
                       display: "block",
                       marginBottom: 6,
                       letterSpacing: "0.08em",
@@ -270,12 +258,12 @@ export default function ProfileMenu() {
                     value={careerGoals}
                     onChange={(e) => setCareerGoals(e.target.value)}
                     rows={5}
-                    style={{ ...inputStyle, resize: "vertical", minHeight: 110, lineHeight: 1.5 }}
+                    style={{ ...inputStyle(), resize: "vertical", minHeight: 110, lineHeight: 1.5 }}
                   />
                 </div>
 
                 {error && (
-                  <p style={{ color: "#ff6b6b", fontSize: 12, marginBottom: 10 }}>{error}</p>
+                  <p style={{ color: "var(--gb-danger)", fontSize: 12, marginBottom: 10 }}>{error}</p>
                 )}
 
                 <button
@@ -283,8 +271,8 @@ export default function ProfileMenu() {
                   disabled={saving || !dirty}
                   style={{
                     width: "100%",
-                    background: saving || !dirty ? "rgba(184,255,87,0.2)" : accentNeon,
-                    color: saving || !dirty ? "rgba(184,255,87,0.4)" : "#0a0f09",
+                    background: saving || !dirty ? "var(--gb-accent-soft)" : "var(--gb-accent-bright)",
+                    color: saving || !dirty ? "var(--gb-accent-muted)" : "var(--gb-accent-text-on)",
                     border: "1px solid rgba(10,15,9,0.22)",
                     padding: "10px 16px",
                     borderRadius: 9,
@@ -304,7 +292,7 @@ export default function ProfileMenu() {
             <div
               style={{
                 padding: "0 18px 18px",
-                borderTop: "1px solid rgba(255,255,255,0.08)",
+                borderTop: "1px solid var(--gb-border-subtle)",
                 marginTop: -2,
               }}
             >
@@ -312,7 +300,7 @@ export default function ProfileMenu() {
                 style={{
                   fontSize: 11,
                   fontFamily: font.mono,
-                  color: "rgba(240,240,245,0.4)",
+                  color: "var(--gb-text-faint)",
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                   marginBottom: 6,
@@ -325,7 +313,7 @@ export default function ProfileMenu() {
                 style={{
                   margin: "0 0 12px",
                   fontSize: 13,
-                  color: "rgba(240,240,245,0.5)",
+                  color: "var(--gb-text-subtle)",
                   lineHeight: 1.45,
                 }}
               >
@@ -339,9 +327,9 @@ export default function ProfileMenu() {
                 disabled={!tutorialHidden || restoringTutorial}
                 style={{
                   width: "100%",
-                  background: !tutorialHidden || restoringTutorial ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)",
-                  color: !tutorialHidden || restoringTutorial ? "rgba(240,240,245,0.35)" : "rgba(240,240,245,0.85)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: !tutorialHidden || restoringTutorial ? "var(--gb-surface-hover)" : "var(--gb-surface-active)",
+                  color: !tutorialHidden || restoringTutorial ? "var(--gb-text-faint)" : "var(--gb-text-strong)",
+                  border: "1px solid var(--gb-border)",
                   padding: "10px 16px",
                   borderRadius: 9,
                   fontFamily: font.body,

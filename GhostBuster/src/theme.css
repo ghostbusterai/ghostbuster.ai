@@ -1,0 +1,19 @@
+html,
+body,
+#root {
+  background: var(--gb-bg);
+  color: var(--gb-text);
+}
+
+h1 {
+  font-family: Lexend, sans-serif;
+}
+
+h2 {
+  font-family: Lexend, sans-serif;
+}
+
+button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--gb-accent-bright) 60%, transparent);
+  outline-offset: 2px;
+}

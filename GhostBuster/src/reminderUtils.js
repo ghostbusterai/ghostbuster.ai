@@ -84,7 +84,7 @@ export function getReminderUrgencyStyle(urgency) {
     case "critical":
       return {
         label: "Critical",
-        color: "#ff6b6b",
+        color: "var(--gb-danger)",
         bg: "rgba(255,107,107,0.16)",
         border: "rgba(255,107,107,0.7)",
         cardBg: "rgba(255,107,107,0.07)",
@@ -123,7 +123,7 @@ export function getReminderUrgencyStyle(urgency) {
         color: "#5be4d8",
         bg: "rgba(91,228,216,0.1)",
         border: "rgba(91,228,216,0.28)",
-        cardBg: "#111118",
+        cardBg: "var(--gb-bg-elevated)",
         shadow: "none",
       }
     default:
@@ -131,8 +131,8 @@ export function getReminderUrgencyStyle(urgency) {
         label: "Done",
         color: "#9ca3af",
         bg: "rgba(156,163,175,0.1)",
-        border: "rgba(255,255,255,0.06)",
-        cardBg: "#111118",
+        border: "var(--gb-surface-active)",
+        cardBg: "var(--gb-bg-elevated)",
         shadow: "none",
       }
   }

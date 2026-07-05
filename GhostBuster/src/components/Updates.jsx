@@ -5,10 +5,12 @@ import {
   buildResumeUpdateComposePayload,
   generateResumeUpdateOutreachMessage,
 } from "../outreachMessage"
-import { font, accentNeon } from "../theme"
+import { font } from "../theme"
+import { inputStyle } from "../uiStyles"
 import { readLocalProfile, saveLocalProfile } from "../profile"
 import { contactsNeedingResumeNudge, buildResumeShareComposePrefill } from "../resumeNudge"
 import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
+import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
 
 const LS_LOGS = "gb_outreach_logs"
 
@@ -21,23 +23,11 @@ const ARCHIVE_PREVIEW_LIMIT = 3
 
 const SUGGESTION_TYPES = {
   reword: { label: "Reword", color: "#5be4d8", bg: "rgba(91,228,216,0.12)" },
-  replace: { label: "Replace activity", color: "#ffc96b", bg: "rgba(255,201,107,0.12)" },
-  add_metrics: { label: "Add data", color: "#b8ff57", bg: "rgba(184,255,87,0.12)" },
+  replace: { label: "Replace activity", color: "var(--gb-warning)", bg: "rgba(255,201,107,0.12)" },
+  add_metrics: { label: "Add data", color: "var(--gb-accent)", bg: "var(--gb-accent-soft)" },
   add: { label: "Add", color: "#b482ff", bg: "rgba(180,130,255,0.12)" },
-  remove: { label: "Remove", color: "#ff6b6b", bg: "rgba(255,107,107,0.12)" },
-  highlight: { label: "Highlight", color: "#f0f0f5", bg: "rgba(255,255,255,0.1)" },
-}
-
-const inputStyle = {
-  background: "#0a0a0f",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  padding: "10px 14px",
-  color: "#f0f0f5",
-  fontSize: 14,
-  fontFamily: font.body,
-  width: "100%",
-  outline: "none",
+  remove: { label: "Remove", color: "var(--gb-danger)", bg: "rgba(255,107,107,0.12)" },
+  highlight: { label: "Highlight", color: "var(--gb-text)", bg: "var(--gb-border-strong)" },
 }
 
 function mergeProfileLastResume(effectiveDate) {
@@ -641,56 +631,29 @@ export default function Updates({ setPage, setComposePrefill }) {
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-      <div style={{ marginBottom: 32 }}>
-        <div
-          style={{
-            fontSize: 11,
-            fontFamily: font.mono,
-            letterSpacing: "0.14em",
-            color: "rgba(240,240,245,0.3)",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}
-        >
-          Resume
-        </div>
-        <h1
-          style={{
-            fontFamily: font.display,
-            fontWeight: 800,
-            fontSize: 36,
-            letterSpacing: "-1px",
-            marginBottom: 8,
-          }}
-        >
-          Resume
-        </h1>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, maxWidth: 680, lineHeight: 1.55, fontFamily: font.body }}>
-          Log résumé or career changes here — no need to name contacts. Each update can optionally turn into
-          matched outreach, AI-drafted messages, and follow-up reminders when you&apos;re ready.
-        </p>
+    <PageShell>
+      <PageHero
+        eyebrow="Resume"
+        title="Resume"
+        subtitle="Log résumé or career changes here — no need to name contacts. Each update can optionally turn into matched outreach, AI-drafted messages, and follow-up reminders when you're ready."
+      >
         {loadError && (
-          <p style={{ color: "#ffc96b", fontSize: 13, marginTop: 10 }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
             API offline — saving locally. Run the server (with ANTHROPIC_API_KEY for best matching) to sync and use AI recommendations.
           </p>
         )}
-        {actionError && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>}
-      </div>
+        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
+      </PageHero>
 
-      <div
+      <SectionLabel>Résumé last updated</SectionLabel>
+      <ContentCard
         style={{
-          background: "#111118",
-          border: "1px solid rgba(184,255,87,0.2)",
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 24,
+          border: "1px solid var(--gb-accent-soft)",
         }}
+        padding="24px"
       >
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
-          Résumé last updated
-        </div>
-        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", marginBottom: 14, lineHeight: 1.55, fontFamily: font.body }}>
+        <CardTitle>Résumé last updated</CardTitle>
+        <p style={{ fontSize: 13, color: "var(--gb-text-faint)", marginBottom: 14, lineHeight: 1.55, fontFamily: font.body }}>
           When did you last refresh your résumé? We&apos;ll optionally suggest contacts you haven&apos;t messaged
           since then — with draft messages and reminders in Notifications when you want them.
         </p>
@@ -699,15 +662,15 @@ export default function Updates({ setPage, setComposePrefill }) {
             type="date"
             value={resumeDate}
             onChange={(e) => setResumeDate(e.target.value)}
-            style={{ ...inputStyle, width: "auto" }}
+            style={{ ...inputStyle(), width: "auto" }}
           />
           <button
             type="button"
             onClick={saveResumeDate}
             disabled={savingResumeDate}
             style={{
-              background: "#b8ff57",
-              color: "#0a0f09",
+              background: "var(--gb-accent-bright)",
+              color: "var(--gb-accent-text-on)",
               border: "1px solid rgba(10,15,9,0.22)",
               boxShadow: "none",
               padding: "10px 20px",
@@ -734,7 +697,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             >
               Share your update
             </div>
-            <p style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", margin: "0 0 12px", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
               These contacts haven&apos;t heard from you since your last résumé update.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -755,7 +718,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                 >
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 2 }}>
                       {[c.role, c.company].filter(Boolean).join(" @ ") || "—"}
                     </div>
                   </div>
@@ -763,9 +726,9 @@ export default function Updates({ setPage, setComposePrefill }) {
                     type="button"
                     onClick={() => openResumeCompose(c)}
                     style={{
-                      background: "rgba(184,255,87,0.12)",
-                      border: "1px solid rgba(184,255,87,0.35)",
-                      color: "#b8ff57",
+                      background: "var(--gb-accent-soft)",
+                      border: "1px solid var(--gb-accent-border)",
+                      color: "var(--gb-accent)",
                       padding: "8px 14px",
                       borderRadius: 8,
                       fontSize: 13,
@@ -784,32 +747,33 @@ export default function Updates({ setPage, setComposePrefill }) {
         )}
 
         {resumeDate && resumeNudgeContacts.length === 0 && contacts.length > 0 && (
-          <p style={{ fontSize: 13, color: "rgba(240,240,245,0.35)", marginTop: 16, marginBottom: 0 }}>
+          <p style={{ fontSize: 13, color: "var(--gb-text-faint)", marginTop: 16, marginBottom: 0 }}>
             You&apos;re caught up — everyone has heard from you since this date.
           </p>
         )}
-      </div>
+      </ContentCard>
 
+      <SectionLabel>Upload by role</SectionLabel>
       <div
         style={{
-          background: "#111118",
-          border: "1px solid rgba(255,255,255,0.08)",
+          background: "var(--gb-bg-elevated)",
+          border: "1px solid var(--gb-border-subtle)",
           borderRadius: 16,
           padding: 24,
           marginBottom: 24,
         }}
       >
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
           Upload your résumé by role
         </div>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
+        <p style={{ color: "var(--gb-text-muted)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
           Upload a résumé for each role you&apos;re targeting — for example, a PM version and a SWE version. Create a
           role bucket below, then drag in a PDF, DOCX, or text file. Contacts are auto-matched from their job role.
           Replacing or removing a résumé saves the previous version to your archive below.
         </p>
 
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.35)", marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", marginBottom: 8 }}>
             CREATE A BUCKET
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -824,16 +788,16 @@ export default function Updates({ setPage, setComposePrefill }) {
                   createBucket(newBucketName)
                 }
               }}
-              style={{ ...inputStyle, maxWidth: 320 }}
+              style={{ ...inputStyle(), maxWidth: 320 }}
             />
             <button
               type="button"
               onClick={() => createBucket(newBucketName)}
               disabled={creatingBucket || !newBucketName.trim()}
               style={{
-                background: newBucketName.trim() && !creatingBucket ? "#b8ff57" : "rgba(184,255,87,0.15)",
-                color: newBucketName.trim() && !creatingBucket ? "#0a0f09" : "rgba(184,255,87,0.4)",
-                border: "1px solid rgba(184,255,87,0.25)",
+                background: newBucketName.trim() && !creatingBucket ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
+                color: newBucketName.trim() && !creatingBucket ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
+                border: "1px solid var(--gb-accent-border)",
                 boxShadow: "none",
                 padding: "10px 18px",
                 borderRadius: 9,
@@ -845,7 +809,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             </button>
           </div>
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: "rgba(240,240,245,0.35)", marginBottom: 8, fontFamily: font.mono }}>
+            <div style={{ fontSize: 11, color: "var(--gb-text-faint)", marginBottom: 8, fontFamily: font.mono }}>
               SUGGESTED ROLES
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -858,9 +822,9 @@ export default function Updates({ setPage, setComposePrefill }) {
                   onClick={() => createBucket(name)}
                   disabled={creatingBucket}
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "rgba(240,240,245,0.65)",
+                    background: "var(--gb-surface-hover)",
+                    border: "1px solid var(--gb-border-strong)",
+                    color: "var(--gb-text-subtle)",
                     padding: "6px 12px",
                     borderRadius: 20,
                     fontSize: 12,
@@ -881,9 +845,9 @@ export default function Updates({ setPage, setComposePrefill }) {
             style={{
               padding: "28px 20px",
               borderRadius: 12,
-              border: "1px dashed rgba(255,255,255,0.1)",
+              border: "1px dashed var(--gb-border-strong)",
               textAlign: "center",
-              color: "rgba(240,240,245,0.35)",
+              color: "var(--gb-text-faint)",
               fontSize: 14,
             }}
           >
@@ -902,7 +866,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   key={bucket.id}
                   style={{
                     borderRadius: 12,
-                    border: "1px solid rgba(184,255,87,0.15)",
+                    border: "1px solid var(--gb-accent-soft)",
                     background: "rgba(184,255,87,0.03)",
                     padding: "16px 18px",
                   }}
@@ -919,7 +883,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   >
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 16 }}>{bucket.name}</div>
-                      <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 4 }}>
+                      <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4 }}>
                         {assignedCount > 0
                           ? `${assignedCount} contact${assignedCount !== 1 ? "s" : ""} assigned`
                           : "No contacts assigned yet — we'll auto-match from their role"}
@@ -931,7 +895,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       style={{
                         background: "transparent",
                         border: "1px solid rgba(255,107,107,0.25)",
-                        color: "#ff6b6b",
+                        color: "var(--gb-danger)",
                         padding: "5px 10px",
                         borderRadius: 7,
                         fontSize: 11,
@@ -963,7 +927,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                             style={{
                               fontSize: 12,
                               fontFamily: font.mono,
-                              color: "rgba(184,255,87,0.65)",
+                              color: "var(--gb-accent-muted)",
                               marginTop: 4,
                             }}
                           >
@@ -976,9 +940,9 @@ export default function Updates({ setPage, setComposePrefill }) {
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <label
                             style={{
-                              background: "rgba(184,255,87,0.12)",
-                              border: "1px solid rgba(184,255,87,0.35)",
-                              color: "#b8ff57",
+                              background: "var(--gb-accent-soft)",
+                              border: "1px solid var(--gb-accent-border)",
+                              color: "var(--gb-accent)",
                               padding: "6px 12px",
                               borderRadius: 8,
                               fontSize: 12,
@@ -1001,7 +965,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                             style={{
                               background: "transparent",
                               border: "1px solid rgba(255,107,107,0.35)",
-                              color: "#ff6b6b",
+                              color: "var(--gb-danger)",
                               padding: "6px 12px",
                               borderRadius: 8,
                               fontSize: 12,
@@ -1016,7 +980,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       <div
                         style={{
                           fontSize: 14,
-                          color: "rgba(240,240,245,0.55)",
+                          color: "var(--gb-text-subtle)",
                           lineHeight: 1.55,
                           whiteSpace: "pre-wrap",
                           maxHeight: expanded ? "none" : 100,
@@ -1035,7 +999,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                             marginTop: 8,
                             background: "transparent",
                             border: "none",
-                            color: "#b8ff57",
+                            color: "var(--gb-accent)",
                             fontSize: 13,
                             cursor: "pointer",
                             padding: 0,
@@ -1058,13 +1022,13 @@ export default function Updates({ setPage, setComposePrefill }) {
                         display: "block",
                         marginTop: 12,
                         border: dragOver
-                          ? "2px dashed rgba(184,255,87,0.55)"
-                          : "2px dashed rgba(255,255,255,0.12)",
+                          ? "2px dashed var(--gb-accent-muted)"
+                          : "2px dashed var(--gb-border)",
                         borderRadius: 10,
                         padding: "24px 16px",
                         textAlign: "center",
                         cursor: uploading ? "not-allowed" : "pointer",
-                        background: dragOver ? "rgba(184,255,87,0.04)" : "rgba(255,255,255,0.02)",
+                        background: dragOver ? "var(--gb-surface-hover)" : "var(--gb-surface-hover)",
                       }}
                     >
                       <input
@@ -1077,7 +1041,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
                         {uploading ? "Processing…" : `Upload ${bucket.name} résumé`}
                       </div>
-                      <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)" }}>
+                      <div style={{ fontSize: 12, color: "var(--gb-text-faint)" }}>
                         PDF, DOCX, TXT, or MD · max 5 MB
                       </div>
                     </label>
@@ -1089,19 +1053,20 @@ export default function Updates({ setPage, setComposePrefill }) {
         )}
       </div>
 
+      <SectionLabel>Résumé archive</SectionLabel>
       <div
         style={{
-          background: "#111118",
+          background: "var(--gb-bg-elevated)",
           border: "1px solid rgba(180,130,255,0.22)",
           borderRadius: 16,
           padding: 24,
           marginBottom: 24,
         }}
       >
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
           Résumé archive
         </div>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
+        <p style={{ color: "var(--gb-text-muted)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
           Past résumés are saved automatically when you upload a new file or remove the current one. Browse by date to
           see how your résumé evolved over time.
         </p>
@@ -1111,9 +1076,9 @@ export default function Updates({ setPage, setComposePrefill }) {
             style={{
               padding: "28px 20px",
               borderRadius: 12,
-              border: "1px dashed rgba(255,255,255,0.1)",
+              border: "1px dashed var(--gb-border-strong)",
               textAlign: "center",
-              color: "rgba(240,240,245,0.35)",
+              color: "var(--gb-text-faint)",
               fontSize: 14,
             }}
           >
@@ -1150,7 +1115,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       <div style={{ fontSize: 12, color: "rgba(180,130,255,0.85)", marginTop: 4, fontFamily: font.mono }}>
                         {item.bucketName}
                       </div>
-                      <div style={{ fontSize: 12, color: "rgba(240,240,245,0.45)", marginTop: 8, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 12, color: "var(--gb-text-muted)", marginTop: 8, lineHeight: 1.5 }}>
                         Uploaded {formatResumeDate(item.uploadedAt)}
                         {item.archivedAt ? ` · archived ${formatResumeDate(item.archivedAt)}` : ""}
                         {" · "}
@@ -1163,9 +1128,9 @@ export default function Updates({ setPage, setComposePrefill }) {
                         onClick={() => restoreArchiveItem(item.bucketId, item.id)}
                         disabled={Boolean(archiveActionKey)}
                         style={{
-                          background: restoring ? "rgba(184,255,87,0.12)" : "rgba(184,255,87,0.18)",
-                          border: "1px solid rgba(184,255,87,0.35)",
-                          color: accentNeon,
+                          background: restoring ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
+                          border: "1px solid var(--gb-accent-border)",
+                          color: "var(--gb-accent)",
                           padding: "6px 12px",
                           borderRadius: 8,
                           fontSize: 12,
@@ -1183,7 +1148,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                         style={{
                           background: "transparent",
                           border: "1px solid rgba(255,107,107,0.35)",
-                          color: "#ff6b6b",
+                          color: "var(--gb-danger)",
                           padding: "6px 12px",
                           borderRadius: 8,
                           fontSize: 12,
@@ -1204,7 +1169,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       marginTop: 12,
                       background: "transparent",
                       border: "none",
-                      color: "rgba(240,240,245,0.55)",
+                      color: "var(--gb-text-subtle)",
                       fontSize: 12,
                       cursor: "pointer",
                       padding: 0,
@@ -1222,9 +1187,9 @@ export default function Updates({ setPage, setComposePrefill }) {
                         marginBottom: 0,
                         padding: "14px 16px",
                         borderRadius: 10,
-                        background: "#0a0a0f",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        color: "rgba(240,240,245,0.68)",
+                        background: "var(--gb-bg-input)",
+                        border: "1px solid var(--gb-border-subtle)",
+                        color: "var(--gb-text-secondary)",
                         fontSize: 12,
                         lineHeight: 1.55,
                         whiteSpace: "pre-wrap",
@@ -1246,9 +1211,9 @@ export default function Updates({ setPage, setComposePrefill }) {
                 onClick={() => setShowAllArchiveItems((v) => !v)}
                 style={{
                   alignSelf: "flex-start",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "rgba(240,240,245,0.75)",
+                  background: "var(--gb-surface-hover)",
+                  border: "1px solid var(--gb-border)",
+                  color: "var(--gb-text-secondary)",
                   padding: "10px 16px",
                   borderRadius: 9,
                   fontFamily: font.body,
@@ -1267,9 +1232,10 @@ export default function Updates({ setPage, setComposePrefill }) {
         )}
       </div>
 
+      <SectionLabel>Suggested improvements</SectionLabel>
       <div
         style={{
-          background: "#111118",
+          background: "var(--gb-bg-elevated)",
           border: "1px solid rgba(91,228,216,0.2)",
           borderRadius: 16,
           padding: 24,
@@ -1287,10 +1253,10 @@ export default function Updates({ setPage, setComposePrefill }) {
           }}
         >
           <div>
-            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 6 }}>
+            <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 6 }}>
               Suggested improvements
             </div>
-            <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, lineHeight: 1.5, maxWidth: 620, margin: 0 }}>
+            <p style={{ color: "var(--gb-text-muted)", fontSize: 14, lineHeight: 1.5, maxWidth: 620, margin: 0 }}>
               AI feedback tailored to your career goals — rewording, stronger activities, metrics, and more.
             </p>
           </div>
@@ -1326,7 +1292,7 @@ export default function Updates({ setPage, setComposePrefill }) {
 
         {careerGoals && resumeBuckets.some((b) => b.text?.trim()) && (
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)", marginRight: 10 }}>
+            <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", marginRight: 10 }}>
               RÉSUMÉ BUCKET
             </label>
             <select
@@ -1337,7 +1303,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                 setSuggestions([])
                 setSuggestionsError(null)
               }}
-              style={{ ...inputStyle, width: "auto", maxWidth: 320, display: "inline-block" }}
+              style={{ ...inputStyle(), width: "auto", maxWidth: 320, display: "inline-block" }}
             >
               {resumeBuckets
                 .filter((b) => b.text?.trim())
@@ -1350,12 +1316,12 @@ export default function Updates({ setPage, setComposePrefill }) {
           </div>
         )}
         {!careerGoals && (
-          <p style={{ color: "#ffc96b", fontSize: 13, margin: "0 0 8px" }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, margin: "0 0 8px" }}>
             Set career goals in your profile (top-right avatar) to unlock suggestions.
           </p>
         )}
         {careerGoals && !resumeBuckets.some((b) => b.text?.trim()) && (
-          <p style={{ color: "#ffc96b", fontSize: 13, margin: "0 0 8px" }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, margin: "0 0 8px" }}>
             Upload a résumé to a role bucket above to get tailored feedback.
           </p>
         )}
@@ -1364,7 +1330,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             style={{
               fontSize: 12,
               fontFamily: font.mono,
-              color: "rgba(184,255,87,0.65)",
+              color: "var(--gb-accent-muted)",
               marginBottom: suggestions.length || suggestionsError ? 14 : 0,
             }}
           >
@@ -1373,7 +1339,7 @@ export default function Updates({ setPage, setComposePrefill }) {
         )}
 
         {suggestionsError && (
-          <p style={{ color: "#ff6b6b", fontSize: 13, margin: "8px 0 0" }}>{suggestionsError}</p>
+          <p style={{ color: "var(--gb-danger)", fontSize: 13, margin: "8px 0 0" }}>{suggestionsError}</p>
         )}
 
         {suggestions.length > 0 && (
@@ -1384,8 +1350,8 @@ export default function Updates({ setPage, setComposePrefill }) {
                 <div
                   key={s.id}
                   style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "var(--gb-surface-hover)",
+                    border: "1px solid var(--gb-border-subtle)",
                     borderRadius: 12,
                     padding: "16px 18px",
                   }}
@@ -1414,7 +1380,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     >
                       {meta.label}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(240,240,245,0.85)" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gb-text-strong)" }}>
                       {s.section}
                     </span>
                   </div>
@@ -1424,7 +1390,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                         style={{
                           fontSize: 10,
                           fontFamily: font.mono,
-                          color: "rgba(240,240,245,0.35)",
+                          color: "var(--gb-text-faint)",
                           marginBottom: 4,
                           textTransform: "uppercase",
                           letterSpacing: "0.06em",
@@ -1435,7 +1401,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       <div
                         style={{
                           fontSize: 13,
-                          color: "rgba(240,240,245,0.45)",
+                          color: "var(--gb-text-muted)",
                           lineHeight: 1.5,
                           fontStyle: "italic",
                         }}
@@ -1450,7 +1416,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                         style={{
                           fontSize: 10,
                           fontFamily: font.mono,
-                          color: "rgba(184,255,87,0.55)",
+                          color: "var(--gb-accent-muted)",
                           marginBottom: 4,
                           textTransform: "uppercase",
                           letterSpacing: "0.06em",
@@ -1461,7 +1427,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       <div
                         style={{
                           fontSize: 14,
-                          color: "rgba(240,240,245,0.85)",
+                          color: "var(--gb-text-strong)",
                           lineHeight: 1.55,
                           whiteSpace: "pre-wrap",
                         }}
@@ -1471,7 +1437,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     </div>
                   )}
                   {s.rationale && (
-                    <div style={{ fontSize: 13, color: "rgba(240,240,245,0.5)", lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 13, color: "var(--gb-text-subtle)", lineHeight: 1.5 }}>
                       {s.rationale}
                     </div>
                   )}
@@ -1482,19 +1448,20 @@ export default function Updates({ setPage, setComposePrefill }) {
         )}
       </div>
 
+      <SectionLabel>Career update</SectionLabel>
       <div
         style={{
-          background: "#111118",
-          border: "1px solid rgba(184,255,87,0.15)",
+          background: "var(--gb-bg-elevated)",
+          border: "1px solid var(--gb-accent-soft)",
           borderRadius: 16,
           padding: 24,
           marginBottom: 36,
         }}
       >
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
           Career update
         </div>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 14, marginBottom: 16, lineHeight: 1.55, maxWidth: 680 }}>
+        <p style={{ color: "var(--gb-text-muted)", fontSize: 14, marginBottom: 16, lineHeight: 1.55, maxWidth: 680 }}>
           Describe a résumé or career change in plain language. You don&apos;t have to message anyone right away —
           saving an update is the first step toward optional outreach later.
         </p>
@@ -1507,8 +1474,8 @@ export default function Updates({ setPage, setComposePrefill }) {
             marginBottom: 20,
             padding: "14px 16px",
             borderRadius: 12,
-            background: "rgba(184,255,87,0.04)",
-            border: "1px solid rgba(184,255,87,0.14)",
+            background: "var(--gb-surface-hover)",
+            border: "1px solid var(--gb-accent-soft)",
           }}
         >
           {[
@@ -1533,15 +1500,15 @@ export default function Updates({ setPage, setComposePrefill }) {
                 style={{
                   fontSize: 11,
                   fontFamily: font.mono,
-                  color: "rgba(184,255,87,0.75)",
+                  color: "var(--gb-accent-muted)",
                   letterSpacing: "0.08em",
                   marginBottom: 6,
                 }}
               >
                 STEP {item.step}
               </div>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: "#f0f0f5" }}>{item.title}</div>
-              <div style={{ fontSize: 12, color: "rgba(240,240,245,0.45)", lineHeight: 1.5 }}>{item.detail}</div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: "var(--gb-text)" }}>{item.title}</div>
+              <div style={{ fontSize: 12, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>{item.detail}</div>
             </div>
           ))}
         </div>
@@ -1552,7 +1519,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               style={{
                 fontSize: 11,
                 fontFamily: font.mono,
-                color: "rgba(240,240,245,0.4)",
+                color: "var(--gb-text-faint)",
                 display: "block",
                 marginBottom: 6,
               }}
@@ -1563,7 +1530,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               placeholder="e.g. Added ML internship, shipped dashboard redesign"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              style={inputStyle}
+              style={inputStyle()}
             />
           </div>
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -1572,14 +1539,14 @@ export default function Updates({ setPage, setComposePrefill }) {
                 style={{
                   fontSize: 11,
                   fontFamily: font.mono,
-                  color: "rgba(240,240,245,0.4)",
+                  color: "var(--gb-text-faint)",
                   display: "block",
                   marginBottom: 6,
                 }}
               >
                 EFFECTIVE DATE
               </label>
-              <input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} style={inputStyle} />
+              <input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} style={inputStyle()} />
             </div>
           </div>
           <div>
@@ -1587,7 +1554,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               style={{
                 fontSize: 11,
                 fontFamily: font.mono,
-                color: "rgba(240,240,245,0.4)",
+                color: "var(--gb-text-faint)",
                 display: "block",
                 marginBottom: 6,
               }}
@@ -1599,7 +1566,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               rows={7}
-              style={{ ...inputStyle, resize: "vertical", minHeight: 140 }}
+              style={{ ...inputStyle(), resize: "vertical", minHeight: 140 }}
             />
           </div>
           <button
@@ -1607,9 +1574,9 @@ export default function Updates({ setPage, setComposePrefill }) {
             disabled={saving || !title.trim() || !details.trim()}
             style={{
               alignSelf: "flex-start",
-              background: saving || !title.trim() || !details.trim() ? "rgba(184,255,87,0.2)" : "#b8ff57",
-              color: saving || !title.trim() || !details.trim() ? "rgba(184,255,87,0.4)" : "#0a0f09",
-              border: saving || !title.trim() || !details.trim() ? "1px solid rgba(184,255,87,0.25)" : "1px solid rgba(10,15,9,0.22)",
+              background: saving || !title.trim() || !details.trim() ? "var(--gb-accent-soft)" : "var(--gb-accent-bright)",
+              color: saving || !title.trim() || !details.trim() ? "var(--gb-accent-muted)" : "var(--gb-accent-text-on)",
+              border: saving || !title.trim() || !details.trim() ? "1px solid var(--gb-accent-border)" : "1px solid rgba(10,15,9,0.22)",
               boxShadow: "none",
               padding: "11px 22px",
               borderRadius: 9,
@@ -1619,31 +1586,32 @@ export default function Updates({ setPage, setComposePrefill }) {
           >
             {saving ? "Saving…" : "Save update & see matches"}
           </button>
-          <p style={{ margin: 0, fontSize: 12, color: "rgba(240,240,245,0.38)", lineHeight: 1.5, maxWidth: 560 }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--gb-text-faint)", lineHeight: 1.5, maxWidth: 560 }}>
             After saving, you can review optional message drafts. Set reminders anytime from the Reminders tab — we
             also surface nudges in Notifications when follow-ups are due.
           </p>
         </form>
       </div>
 
+      <SectionLabel>History</SectionLabel>
       <div style={{ marginBottom: 10 }}>
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>History</div>
-        <p style={{ margin: 0, fontSize: 13, color: "rgba(240,240,245,0.4)", lineHeight: 1.5, maxWidth: 680 }}>
+        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>History</div>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)", lineHeight: 1.5, maxWidth: 680 }}>
           Past updates stay here. Re-open any entry for optional message ideas, then draft in Compose or add a
           reminder when you&apos;re ready to reach out.
         </p>
       </div>
       {loading ? (
-        <div style={{ color: "rgba(240,240,245,0.35)" }}>Loading…</div>
+        <div style={{ color: "var(--gb-text-faint)" }}>Loading…</div>
       ) : updates.length === 0 ? (
         <div
           style={{
-            background: "#111118",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: "var(--gb-bg-elevated)",
+            border: "1px solid var(--gb-surface-active)",
             borderRadius: 14,
             padding: 36,
             textAlign: "center",
-            color: "rgba(240,240,245,0.35)",
+            color: "var(--gb-text-faint)",
           }}
         >
           No updates yet — add your first one above.
@@ -1654,8 +1622,8 @@ export default function Updates({ setPage, setComposePrefill }) {
             <div
               key={u.id}
               style={{
-                background: "#111118",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: "var(--gb-bg-elevated)",
+                border: "1px solid var(--gb-border-subtle)",
                 borderRadius: 14,
                 padding: "18px 20px",
                 display: "flex",
@@ -1667,7 +1635,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{u.title}</div>
-                <div style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(184,255,87,0.65)", marginTop: 6 }}>
+                <div style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-accent-muted)", marginTop: 6 }}>
                   Effective {u.effectiveDate || "—"}
                   {u.createdAt ? ` · logged ${new Date(u.createdAt).toLocaleDateString()}` : ""}
                 </div>
@@ -1675,7 +1643,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   style={{
                     marginTop: 12,
                     fontSize: 14,
-                    color: "rgba(240,240,245,0.55)",
+                    color: "var(--gb-text-subtle)",
                     lineHeight: 1.55,
                     whiteSpace: "pre-wrap",
                   }}
@@ -1688,9 +1656,9 @@ export default function Updates({ setPage, setComposePrefill }) {
                   type="button"
                   onClick={() => showOutreachForUpdate(u)}
                   style={{
-                    background: "rgba(184,255,87,0.1)",
+                    background: "var(--gb-accent-soft)",
                     border: "1px solid rgba(184,255,87,0.3)",
-                    color: "#b8ff57",
+                    color: "var(--gb-accent)",
                     padding: "6px 12px",
                     borderRadius: 8,
                     fontSize: 12,
@@ -1708,7 +1676,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   style={{
                     background: "transparent",
                     border: "1px solid rgba(255,107,107,0.35)",
-                    color: "#ff6b6b",
+                    color: "var(--gb-danger)",
                     padding: "6px 12px",
                     borderRadius: 8,
                     fontSize: 12,
@@ -1746,7 +1714,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             style={{
               width: "min(680px, 100%)",
               maxHeight: "min(90vh, 760px)",
-              background: "#111118",
+              background: "var(--gb-bg-elevated)",
               border: "1px solid rgba(255,201,107,0.35)",
               borderRadius: 18,
               boxShadow: "0 24px 80px rgba(0,0,0,0.55)",
@@ -1756,7 +1724,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: "22px 24px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ padding: "22px 24px 16px", borderBottom: "1px solid var(--gb-border-subtle)" }}>
               <div
                 id="rel-title"
                 style={{
@@ -1776,17 +1744,17 @@ export default function Updates({ setPage, setComposePrefill }) {
                     ? "Update saved — no matches yet"
                     : "Recommended outreach"}
               </div>
-              <p style={{ margin: "12px 0 0", fontSize: 14, color: "rgba(240,240,245,0.5)", lineHeight: 1.5 }}>
+              <p style={{ margin: "12px 0 0", fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5 }}>
                 {relevanceModal.notice === "no_contacts" ? (
                   <>
                     Your update was saved, but there are no contacts yet. Add people on the{" "}
-                    <strong style={{ color: "#b8ff57" }}>Contacts</strong> page first — include their role,
+                    <strong style={{ color: "var(--gb-accent)" }}>Contacts</strong> page first — include their role,
                     company, and notes so we can recommend who to message.
                   </>
                 ) : relevanceModal.notice === "no_matches" ? (
                   <>
                     Your update was saved. We couldn&apos;t find strong contact matches yet — fill in{" "}
-                    <strong style={{ color: "#b8ff57" }}>role, company, and notes</strong> on your contacts
+                    <strong style={{ color: "var(--gb-accent)" }}>role, company, and notes</strong> on your contacts
                     (e.g. a consultant for a consulting club update) and try again.
                   </>
                 ) : (
@@ -1801,13 +1769,13 @@ export default function Updates({ setPage, setComposePrefill }) {
                   marginTop: 12,
                   padding: "10px 12px",
                   borderRadius: 10,
-                  background: "rgba(184,255,87,0.06)",
-                  border: "1px solid rgba(184,255,87,0.12)",
+                  background: "var(--gb-accent-soft)",
+                  border: "1px solid var(--gb-accent-soft)",
                   fontSize: 13,
-                  color: "rgba(240,240,245,0.75)",
+                  color: "var(--gb-text-secondary)",
                 }}
               >
-                <strong style={{ color: "#b8ff57" }}>{relevanceModal.update.title}</strong>
+                <strong style={{ color: "var(--gb-accent)" }}>{relevanceModal.update.title}</strong>
               </div>
             </div>
             <div style={{ padding: "16px 24px", overflowY: "auto", flex: 1 }}>
@@ -1819,7 +1787,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     background: "rgba(255,201,107,0.06)",
                     border: "1px solid rgba(255,201,107,0.2)",
                     fontSize: 14,
-                    color: "rgba(240,240,245,0.65)",
+                    color: "var(--gb-text-subtle)",
                     lineHeight: 1.55,
                   }}
                 >
@@ -1837,12 +1805,12 @@ export default function Updates({ setPage, setComposePrefill }) {
                     marginBottom: 16,
                     padding: "14px 16px",
                     borderRadius: 12,
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "var(--gb-surface-hover)",
+                    border: "1px solid var(--gb-border-subtle)",
                   }}
                 >
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{row.name}</div>
-                  <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 2 }}>
                     {[row.role, row.company].filter(Boolean).join(" @ ") || "—"}
                   </div>
                   <div
@@ -1856,7 +1824,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     This fits well with {row.name.split(/\s+/)[0] || row.name}
                     {outreach.loading ? " — generating your message…" : ":"}
                   </div>
-                  <ul style={{ margin: "10px 0 0", paddingLeft: 18, color: "rgba(240,240,245,0.55)", fontSize: 12, lineHeight: 1.5 }}>
+                  <ul style={{ margin: "10px 0 0", paddingLeft: 18, color: "var(--gb-text-subtle)", fontSize: 12, lineHeight: 1.5 }}>
                     {row.reasons.map((r, i) => (
                       <li key={i}>{r}</li>
                     ))}
@@ -1866,18 +1834,18 @@ export default function Updates({ setPage, setComposePrefill }) {
                       marginTop: 14,
                       padding: "14px 16px",
                       borderRadius: 10,
-                      background: "rgba(184,255,87,0.04)",
-                      border: "1px solid rgba(184,255,87,0.15)",
+                      background: "var(--gb-surface-hover)",
+                      border: "1px solid var(--gb-accent-soft)",
                       minHeight: 80,
                     }}
                   >
                     {outreach.loading && (
-                      <div style={{ fontSize: 13, fontFamily: font.mono, color: "rgba(240,240,245,0.4)" }}>
+                      <div style={{ fontSize: 13, fontFamily: font.mono, color: "var(--gb-text-faint)" }}>
                         ✨ Composing message…
                       </div>
                     )}
                     {outreach.error && (
-                      <div style={{ fontSize: 13, color: "#ff6b6b", lineHeight: 1.5 }}>{outreach.error}</div>
+                      <div style={{ fontSize: 13, color: "var(--gb-danger)", lineHeight: 1.5 }}>{outreach.error}</div>
                     )}
                     {outreach.message && !outreach.loading && (
                       <>
@@ -1898,7 +1866,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                             fontFamily: font.mono,
                             fontSize: 12,
                             lineHeight: 1.65,
-                            color: "#f0f0f5",
+                            color: "var(--gb-text)",
                             whiteSpace: "pre-wrap",
                             wordBreak: "break-word",
                             margin: 0,
@@ -1917,10 +1885,10 @@ export default function Updates({ setPage, setComposePrefill }) {
                       style={{
                         background:
                           copiedContactId === row.contactId
-                            ? "rgba(184,255,87,0.2)"
-                            : "rgba(184,255,87,0.12)",
-                        border: "1px solid rgba(184,255,87,0.35)",
-                        color: outreach.message && !outreach.loading ? "#b8ff57" : "rgba(184,255,87,0.35)",
+                            ? "var(--gb-accent-soft)"
+                            : "var(--gb-accent-soft)",
+                        border: "1px solid var(--gb-accent-border)",
+                        color: outreach.message && !outreach.loading ? "var(--gb-accent)" : "var(--gb-accent-border)",
                         padding: "8px 14px",
                         borderRadius: 8,
                         fontSize: 13,
@@ -1937,8 +1905,8 @@ export default function Updates({ setPage, setComposePrefill }) {
                       disabled={outreach.loading}
                       style={{
                         background: "transparent",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        color: outreach.loading ? "rgba(240,240,245,0.3)" : "rgba(240,240,245,0.65)",
+                        border: "1px solid var(--gb-border)",
+                        color: outreach.loading ? "var(--gb-text-dim)" : "var(--gb-text-subtle)",
                         padding: "8px 14px",
                         borderRadius: 8,
                         fontSize: 13,
@@ -1956,7 +1924,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             <div
               style={{
                 padding: "14px 24px",
-                borderTop: "1px solid rgba(255,255,255,0.06)",
+                borderTop: "1px solid var(--gb-surface-active)",
                 display: "flex",
                 justifyContent: "flex-end",
                 gap: 10,
@@ -1969,12 +1937,12 @@ export default function Updates({ setPage, setComposePrefill }) {
                   if (relevanceModal.notice === "no_contacts") setPage("contacts")
                 }}
                 style={{
-                  background: relevanceModal.notice === "no_contacts" ? "#b8ff57" : "rgba(255,255,255,0.08)",
+                  background: relevanceModal.notice === "no_contacts" ? "var(--gb-accent-bright)" : "var(--gb-border-subtle)",
                   border:
                     relevanceModal.notice === "no_contacts"
                       ? "1px solid rgba(10,15,9,0.22)"
-                      : "1px solid rgba(255,255,255,0.12)",
-                  color: relevanceModal.notice === "no_contacts" ? "#0a0f09" : "#f0f0f5",
+                      : "1px solid var(--gb-border)",
+                  color: relevanceModal.notice === "no_contacts" ? "var(--gb-accent-text-on)" : "var(--gb-text)",
                   padding: "9px 18px",
                   borderRadius: 9,
                   fontSize: 13,
@@ -1989,6 +1957,6 @@ export default function Updates({ setPage, setComposePrefill }) {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

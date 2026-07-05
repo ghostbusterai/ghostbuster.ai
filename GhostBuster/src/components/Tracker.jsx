@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { font } from "../theme"
+import { inputStyle } from "../uiStyles"
+import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
 
 const CHANNELS = ["Email", "LinkedIn", "In-person", "Call", "Other"]
 
 /** Visual encoding for the graphical timeline */
 const CHANNEL_TIMELINE = {
-  Email: { stroke: "#b8ff57", glow: "rgba(184,255,87,0.5)", fill: "rgba(184,255,87,0.12)", mark: "✉" },
+  Email: { stroke: "var(--gb-accent)", glow: "rgba(184,255,87,0.5)", fill: "var(--gb-accent-soft)", mark: "✉" },
   LinkedIn: { stroke: "#6eb5ff", glow: "rgba(110,181,255,0.45)", fill: "rgba(110,181,255,0.12)", mark: "in" },
   "In-person": { stroke: "#c4a5ff", glow: "rgba(196,165,255,0.4)", fill: "rgba(196,165,255,0.1)", mark: "◎" },
   Call: { stroke: "#5be4d8", glow: "rgba(91,228,216,0.45)", fill: "rgba(91,228,216,0.12)", mark: "📞" },
@@ -108,9 +110,9 @@ function sortContactsForTracker(list, logs, sortBy) {
 /** green = on track, yellow = due soon, red = overdue, gray = no baseline */
 function warmthStatus(daysSince) {
   if (daysSince === Infinity) return { key: "none", label: "No touch logged", color: "#6b7280", bg: "rgba(107,114,128,0.15)" }
-  if (daysSince <= 21) return { key: "green", label: "Warm", color: "#b8ff57", bg: "rgba(184,255,87,0.12)" }
-  if (daysSince <= 45) return { key: "yellow", label: "Check in soon", color: "#ffc96b", bg: "rgba(255,201,107,0.12)" }
-  return { key: "red", label: "Overdue", color: "#ff6b6b", bg: "rgba(255,107,107,0.12)" }
+  if (daysSince <= 21) return { key: "green", label: "Warm", color: "var(--gb-accent)", bg: "var(--gb-accent-soft)" }
+  if (daysSince <= 45) return { key: "yellow", label: "Check in soon", color: "var(--gb-warning)", bg: "rgba(255,201,107,0.12)" }
+  return { key: "red", label: "Overdue", color: "var(--gb-danger)", bg: "rgba(255,107,107,0.12)" }
 }
 
 function daysSince(ms) {
@@ -306,76 +308,40 @@ export default function Tracker() {
     }
   }
 
-  const inputStyle = {
-    background: "#0a0a0f",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 8,
-    padding: "10px 14px",
-    color: "#f0f0f5",
-    fontSize: 14,
-    fontFamily: font.body,
-    width: "100%",
-    outline: "none",
-  }
-
   return (
-    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-      <div style={{ marginBottom: 32 }}>
-        <div
-          style={{
-            fontSize: 11,
-            fontFamily: font.mono,
-            letterSpacing: "0.14em",
-            color: "rgba(240,240,245,0.3)",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}
-        >
-          Relationship health
-        </div>
-        <h1
-          style={{
-            fontFamily: font.display,
-            fontWeight: 800,
-            fontSize: 36,
-            letterSpacing: "-1px",
-            marginBottom: 8,
-          }}
-        >
-          Tracker
-        </h1>
-        <p style={{ color: "rgba(240,240,245,0.45)", fontSize: 15, maxWidth: 420, lineHeight: 1.45, fontFamily: font.body }}>
-          Who&apos;s warm, who needs a nudge. Filter and sort below.
-        </p>
+    <PageShell>
+      <PageHero
+        eyebrow="Relationship health"
+        title="Tracker"
+        subtitle="Who's warm, who needs a nudge. Filter and sort below."
+      >
         {loadError && (
-          <p style={{ color: "#ffc96b", fontSize: 13, marginTop: 10 }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
             API offline — using local copy. Run the server to sync across devices.
           </p>
         )}
-        {actionError && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>}
-      </div>
+        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
+      </PageHero>
 
       {/* Warmth legend */}
-      <div
+      <SectionLabel>How warmth works</SectionLabel>
+      <ContentCard
         style={{
-          marginBottom: 20,
-          padding: "16px 18px",
-          borderRadius: 12,
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--gb-bg-elevated)",
+          border: "1px solid var(--gb-border)",
         }}
+        padding="16px 18px"
+        marginBottom={20}
       >
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-          How warmth works
-        </div>
-        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", margin: "0 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
+        <CardTitle>How warmth works</CardTitle>
+        <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
           Each contact gets a color based on how long it&apos;s been since you last logged outreach with them.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {[
-            { c: "#b8ff57", label: "Warm", detail: "Last touch within 21 days" },
+            { c: "var(--gb-accent)", label: "Warm", detail: "Last touch within 21 days" },
             { c: "#ffc96b", label: "Check in soon", detail: "22–45 days since last touch" },
-            { c: "#ff6b6b", label: "Overdue", detail: "More than 45 days since last touch" },
+            { c: "var(--gb-danger)", label: "Overdue", detail: "More than 45 days since last touch" },
             { c: "#6b7280", label: "No touch logged", detail: "No outreach recorded yet" },
           ].map((x) => (
             <span
@@ -385,10 +351,10 @@ export default function Tracker() {
                 alignItems: "flex-start",
                 gap: 8,
                 fontSize: 12,
-                color: "rgba(240,240,245,0.7)",
+                color: "var(--gb-text-secondary)",
                 padding: "8px 12px",
                 borderRadius: 8,
-                background: "rgba(255,255,255,0.04)",
+                background: "var(--gb-surface-hover)",
                 maxWidth: 220,
               }}
             >
@@ -403,24 +369,26 @@ export default function Tracker() {
                 }}
               />
               <span>
-                <strong style={{ color: "#f0f0f5" }}>{x.label}</strong>
-                <span style={{ display: "block", color: "rgba(240,240,245,0.4)", marginTop: 2, lineHeight: 1.35 }}>
+                <strong style={{ color: "var(--gb-text)" }}>{x.label}</strong>
+                <span style={{ display: "block", color: "var(--gb-text-faint)", marginTop: 2, lineHeight: 1.35 }}>
                   {x.detail}
                 </span>
               </span>
             </span>
           ))}
         </div>
-      </div>
+      </ContentCard>
 
       {/* Filter + sort */}
-      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+      <SectionLabel>Filter & sort</SectionLabel>
+      <ContentCard padding="18px 18px 14px" marginBottom={20}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)" }}>CONTACT</label>
+          <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)" }}>CONTACT</label>
           <select
             value={filterContactId}
             onChange={(e) => setFilterContactId(e.target.value)}
-            style={{ ...inputStyle, maxWidth: 320 }}
+            style={{ ...inputStyle(), maxWidth: 320 }}
           >
             <option value="">All contacts</option>
             {contacts.map((c) => (
@@ -432,14 +400,15 @@ export default function Tracker() {
           </select>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <label style={{ fontSize: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.4)" }}>SORT</label>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ ...inputStyle, maxWidth: 280 }}>
+          <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)" }}>SORT</label>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ ...inputStyle(), maxWidth: 280 }}>
             <option value="warmth">Warmth — needs attention first</option>
             <option value="touch">Last touch — oldest first</option>
             <option value="name">Name — A to Z</option>
           </select>
         </div>
       </div>
+      </ContentCard>
 
       {filteredSingle && sortedFilteredContacts[0] && (
         <div
@@ -447,31 +416,28 @@ export default function Tracker() {
             marginBottom: 18,
             padding: "14px 18px",
             borderRadius: 12,
-            background: "rgba(184,255,87,0.06)",
-            border: "1px solid rgba(184,255,87,0.15)",
+            background: "var(--gb-accent-soft)",
+            border: "1px solid var(--gb-accent-soft)",
             fontSize: 14,
-            color: "rgba(240,240,245,0.75)",
+            color: "var(--gb-text-secondary)",
           }}
         >
-          <strong style={{ color: "#f0f0f5" }}>{sortedFilteredContacts[0].name}</strong> only
+          <strong style={{ color: "var(--gb-text)" }}>{sortedFilteredContacts[0].name}</strong> only
         </div>
       )}
 
       {/* Log touchpoint */}
-      <div
+      <SectionLabel>Log outreach</SectionLabel>
+      <ContentCard
         style={{
-          background: "#111118",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 28,
+          border: "1px solid var(--gb-border-subtle)",
         }}
+        padding="24px"
+        marginBottom={28}
       >
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 17, marginBottom: 16 }}>
-          Log outreach
-        </div>
+        <CardTitle>Log outreach</CardTitle>
         <form onSubmit={saveLog} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <select value={logContactId} onChange={(e) => setLogContactId(e.target.value)} style={inputStyle} required>
+          <select value={logContactId} onChange={(e) => setLogContactId(e.target.value)} style={inputStyle()} required>
             <option value="">Contact *</option>
             {contacts.map((c) => (
               <option key={c.id} value={String(c.id)}>
@@ -479,8 +445,8 @@ export default function Tracker() {
               </option>
             ))}
           </select>
-          <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} style={inputStyle} required />
-          <select value={logChannel} onChange={(e) => setLogChannel(e.target.value)} style={inputStyle}>
+          <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} style={inputStyle()} required />
+          <select value={logChannel} onChange={(e) => setLogChannel(e.target.value)} style={inputStyle()}>
             {CHANNELS.map((ch) => (
               <option key={ch} value={ch}>
                 {ch}
@@ -491,17 +457,17 @@ export default function Tracker() {
             placeholder="Short note (optional)"
             value={logNote}
             onChange={(e) => setLogNote(e.target.value)}
-            style={inputStyle}
+            style={inputStyle()}
           />
           <div style={{ gridColumn: "1 / -1" }}>
             <button
               type="submit"
               disabled={!logContactId || savingLog}
               style={{
-                background: logContactId && !savingLog ? "#b8ff57" : "rgba(184,255,87,0.2)",
-                color: logContactId && !savingLog ? "#0a0f09" : "rgba(184,255,87,0.4)",
+                background: logContactId && !savingLog ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
+                color: logContactId && !savingLog ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
                 border:
-                  logContactId && !savingLog ? "1px solid rgba(10,15,9,0.22)" : "1px solid rgba(184,255,87,0.2)",
+                  logContactId && !savingLog ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-accent-border)",
                 boxShadow: "none",
                 padding: "10px 22px",
                 borderRadius: 9,
@@ -513,27 +479,28 @@ export default function Tracker() {
             </button>
           </div>
         </form>
-      </div>
+      </ContentCard>
 
       {/* Per-contact warmth */}
+      <SectionLabel>Connection warmth</SectionLabel>
       <div style={{ marginBottom: 6 }}>
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18 }}>Connection warmth</div>
-        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", margin: "6px 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
+        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18 }}>Connection warmth</div>
+        <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: "6px 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
           Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each
           week for the past 12 weeks.
         </p>
       </div>
       {loading ? (
-        <div style={{ color: "rgba(240,240,245,0.35)" }}>Loading…</div>
+        <div style={{ color: "var(--gb-text-faint)" }}>Loading…</div>
       ) : sortedFilteredContacts.length === 0 ? (
         <div
           style={{
-            background: "#111118",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: "var(--gb-bg-elevated)",
+            border: "1px solid var(--gb-surface-active)",
             borderRadius: 14,
             padding: 40,
             textAlign: "center",
-            color: "rgba(240,240,245,0.35)",
+            color: "var(--gb-text-faint)",
           }}
         >
           {contacts.length === 0 ? "Add contacts first, then log outreach here." : "No contacts match this filter."}
@@ -553,8 +520,8 @@ export default function Tracker() {
               <div
                 key={c.id}
                 style={{
-                  background: "#111118",
-                  border: `1px solid ${w.key === "green" ? "rgba(184,255,87,0.25)" : w.key === "yellow" ? "rgba(255,201,107,0.25)" : w.key === "red" ? "rgba(255,107,107,0.25)" : "rgba(255,255,255,0.06)"}`,
+                  background: "var(--gb-bg-elevated)",
+                  border: `1px solid ${w.key === "green" ? "rgba(184,255,87,0.25)" : w.key === "yellow" ? "rgba(255,201,107,0.25)" : w.key === "red" ? "rgba(255,107,107,0.25)" : "var(--gb-surface-active)"}`,
                   borderRadius: 14,
                   padding: "18px 20px",
                 }}
@@ -599,22 +566,22 @@ export default function Tracker() {
                       style={{
                         fontSize: 11,
                         fontFamily: font.mono,
-                        color: "rgba(184,255,87,0.55)",
+                        color: "var(--gb-accent-muted)",
                         marginTop: 4,
                         letterSpacing: 0.3,
                       }}
                     >
                       Open communication timeline →
                     </div>
-                    <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", marginTop: 2, fontFamily: font.body }}>
+                    <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 2, fontFamily: font.body }}>
                       {[c.role, c.company].filter(Boolean).join(" @ ")}
                     </div>
-                    <div style={{ fontSize: 13, color: "rgba(240,240,245,0.55)", marginTop: 10, fontFamily: font.body, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 13, color: "var(--gb-text-subtle)", marginTop: 10, fontFamily: font.body, lineHeight: 1.5 }}>
                       {lastMs
                         ? `Last outreach: ${new Date(lastMs).toLocaleDateString()} (${formatDaysAgo(d)})`
                         : "Last outreach: none logged yet"}
                     </div>
-                    <div style={{ fontSize: 12, color: "rgba(240,240,245,0.4)", marginTop: 4, fontFamily: font.body, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4, fontFamily: font.body, lineHeight: 1.5 }}>
                       {formatOutreachWindow(n7, 7)} · {formatOutreachWindow(n30, 30)} · {formatOutreachWindow(n90, 90)}
                       {avgGap != null && ` · about ${avgGap} days between touches on average`}
                     </div>
@@ -625,7 +592,7 @@ export default function Tracker() {
                           fontFamily: font.mono,
                           letterSpacing: "0.06em",
                           textTransform: "uppercase",
-                          color: "rgba(240,240,245,0.35)",
+                          color: "var(--gb-text-faint)",
                           marginBottom: 6,
                         }}
                       >
@@ -648,8 +615,8 @@ export default function Tracker() {
                               flex: 1,
                               height: 22,
                               borderRadius: 4,
-                              background: on ? "rgba(184,255,87,0.55)" : "rgba(255,255,255,0.06)",
-                              border: on ? "1px solid rgba(184,255,87,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                              background: on ? "var(--gb-accent-muted)" : "var(--gb-surface-active)",
+                              border: on ? "1px solid rgba(184,255,87,0.4)" : "1px solid var(--gb-surface-active)",
                             }}
                           />
                         ))}
@@ -660,7 +627,7 @@ export default function Tracker() {
                           justifyContent: "space-between",
                           maxWidth: 420,
                           fontSize: 10,
-                          color: "rgba(240,240,245,0.3)",
+                          color: "var(--gb-text-dim)",
                           marginTop: 4,
                           fontFamily: font.mono,
                         }}
@@ -668,7 +635,7 @@ export default function Tracker() {
                         <span>12 weeks ago</span>
                         <span>This week</span>
                       </div>
-                      <div style={{ fontSize: 11, color: "rgba(240,240,245,0.35)", marginTop: 4, fontFamily: font.body }}>
+                      <div style={{ fontSize: 11, color: "var(--gb-text-faint)", marginTop: 4, fontFamily: font.body }}>
                         Bright bar = you logged outreach that week. Dim bar = no logged outreach.
                       </div>
                     </div>
@@ -686,7 +653,7 @@ export default function Tracker() {
                       }}
                     >
                       <strong>{w.label}</strong>
-                      <span style={{ color: "rgba(240,240,245,0.5)", fontWeight: 400 }}> · {warmthDetail(d)}</span>
+                      <span style={{ color: "var(--gb-text-subtle)", fontWeight: 400 }}> · {warmthDetail(d)}</span>
                     </div>
                   </div>
                 </div>
@@ -697,23 +664,24 @@ export default function Tracker() {
       )}
 
       {/* Recent logs table */}
+      <SectionLabel style={{ marginTop: 26 }}>Touchpoint history</SectionLabel>
       <div style={{ margin: "36px 0 14px" }}>
-        <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 18 }}>Touchpoint history</div>
-        <p style={{ fontSize: 13, color: "rgba(240,240,245,0.4)", margin: "6px 0 0", lineHeight: 1.5, fontFamily: font.body }}>
+        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18 }}>Touchpoint history</div>
+        <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: "6px 0 0", lineHeight: 1.5, fontFamily: font.body }}>
           A log of every outreach you record above. Newest first — click a row to open that contact&apos;s timeline.
         </p>
       </div>
       {filteredLogs.length === 0 ? (
-        <div style={{ color: "rgba(240,240,245,0.35)", fontSize: 14 }}>No logs yet — add one above.</div>
+        <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>No logs yet — add one above.</div>
       ) : (
-        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--gb-surface-active)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr style={{ background: "rgba(255,255,255,0.04)", textAlign: "left" }}>
-                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>When</th>
-                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>Contact</th>
-                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>How you reached out</th>
-                <th style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.45)" }}>Notes</th>
+              <tr style={{ background: "var(--gb-surface-hover)", textAlign: "left" }}>
+                <th style={{ padding: 12, fontFamily: font.mono, color: "var(--gb-text-muted)" }}>When</th>
+                <th style={{ padding: 12, fontFamily: font.mono, color: "var(--gb-text-muted)" }}>Contact</th>
+                <th style={{ padding: 12, fontFamily: font.mono, color: "var(--gb-text-muted)" }}>How you reached out</th>
+                <th style={{ padding: 12, fontFamily: font.mono, color: "var(--gb-text-muted)" }}>Notes</th>
                 <th style={{ padding: 12 }} />
               </tr>
             </thead>
@@ -725,23 +693,23 @@ export default function Tracker() {
                     key={l.id}
                     onClick={() => setTimelineContactId(l.contactId)}
                     style={{
-                      borderTop: "1px solid rgba(255,255,255,0.06)",
+                      borderTop: "1px solid var(--gb-surface-active)",
                       cursor: "pointer",
                       transition: "background 0.12s",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(184,255,87,0.04)"
+                      e.currentTarget.style.background = "var(--gb-surface-hover)"
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = "transparent"
                     }}
                   >
-                    <td style={{ padding: 12, fontFamily: font.mono, color: "rgba(240,240,245,0.7)" }}>
+                    <td style={{ padding: 12, fontFamily: font.mono, color: "var(--gb-text-secondary)" }}>
                       {l.contactedAt}
                     </td>
                     <td style={{ padding: 12 }}>{person?.name || "—"}</td>
-                    <td style={{ padding: 12, color: "rgba(240,240,245,0.55)" }}>{l.channel || "—"}</td>
-                    <td style={{ padding: 12, color: "rgba(240,240,245,0.45)", maxWidth: 280 }}>{l.note || "—"}</td>
+                    <td style={{ padding: 12, color: "var(--gb-text-subtle)" }}>{l.channel || "—"}</td>
+                    <td style={{ padding: 12, color: "var(--gb-text-muted)", maxWidth: 280 }}>{l.note || "—"}</td>
                     <td style={{ padding: 12 }} onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
@@ -749,7 +717,7 @@ export default function Tracker() {
                         style={{
                           background: "transparent",
                           border: "1px solid rgba(255,107,107,0.3)",
-                          color: "#ff6b6b",
+                          color: "var(--gb-danger)",
                           padding: "4px 10px",
                           borderRadius: 6,
                           fontSize: 12,
@@ -789,8 +757,8 @@ export default function Tracker() {
             style={{
               width: "min(720px, 100%)",
               maxHeight: "min(88vh, 760px)",
-              background: "#111118",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "var(--gb-bg-elevated)",
+              border: "1px solid var(--gb-border-strong)",
               borderRadius: 18,
               boxShadow: "0 24px 80px rgba(0,0,0,0.55)",
               display: "flex",
@@ -802,7 +770,7 @@ export default function Tracker() {
             <div
               style={{
                 padding: "22px 24px 18px",
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderBottom: "1px solid var(--gb-border-subtle)",
                 display: "flex",
                 alignItems: "flex-start",
                 justifyContent: "space-between",
@@ -813,7 +781,7 @@ export default function Tracker() {
                 <h2
                   id="timeline-title"
                   style={{
-                    fontFamily: font.display,
+                    fontFamily: font.h2,
                     fontWeight: 800,
                     fontSize: 22,
                     margin: 0,
@@ -822,8 +790,8 @@ export default function Tracker() {
                 >
                   Communication timeline
                 </h2>
-                <div style={{ fontSize: 15, fontWeight: 600, marginTop: 6, color: "#f0f0f5" }}>{timelineContact.name}</div>
-                <div style={{ fontSize: 13, color: "rgba(240,240,245,0.45)", marginTop: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, marginTop: 6, color: "var(--gb-text)" }}>{timelineContact.name}</div>
+                <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 4 }}>
                   {[timelineContact.role, timelineContact.company].filter(Boolean).join(" @ ")}
                   {!timelineContact.role && !timelineContact.company ? "—" : ""}
                 </div>
@@ -832,15 +800,15 @@ export default function Tracker() {
                     style={{
                       marginTop: 12,
                       fontSize: 12,
-                      color: "rgba(240,240,245,0.5)",
+                      color: "var(--gb-text-subtle)",
                       lineHeight: 1.5,
                       padding: "10px 12px",
                       borderRadius: 10,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: "var(--gb-surface-hover)",
+                      border: "1px solid var(--gb-surface-active)",
                     }}
                   >
-                    <span style={{ fontFamily: font.mono, color: "rgba(240,240,245,0.35)" }}>NOTES · </span>
+                    <span style={{ fontFamily: font.mono, color: "var(--gb-text-faint)" }}>NOTES · </span>
                     {timelineContact.notes}
                   </div>
                 ) : null}
@@ -854,9 +822,9 @@ export default function Tracker() {
                   width: 40,
                   height: 40,
                   borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#f0f0f5",
+                  border: "1px solid var(--gb-border)",
+                  background: "var(--gb-surface-muted)",
+                  color: "var(--gb-text)",
                   fontSize: 20,
                   lineHeight: 1,
                   cursor: "pointer",
@@ -868,8 +836,8 @@ export default function Tracker() {
 
             <div style={{ padding: "16px 24px 24px", overflowY: "auto", flex: 1 }}>
               {timelineEntries.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 16px", color: "rgba(240,240,245,0.4)", fontSize: 14 }}>
-                  No touchpoints logged for this contact yet. Use <strong style={{ color: "rgba(240,240,245,0.65)" }}>Log outreach</strong> above
+                <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--gb-text-faint)", fontSize: 14 }}>
+                  No touchpoints logged for this contact yet. Use <strong style={{ color: "var(--gb-text-subtle)" }}>Log outreach</strong> above
                   to record when you reach out and what you discussed — it will appear here.
                 </div>
               ) : (
@@ -882,7 +850,7 @@ export default function Tracker() {
                         padding: "16px 14px 20px",
                         borderRadius: 14,
                         background: "linear-gradient(165deg, rgba(184,255,87,0.08), rgba(10,10,18,0.6))",
-                        border: "1px solid rgba(184,255,87,0.12)",
+                        border: "1px solid var(--gb-accent-soft)",
                       }}
                     >
                       <div
@@ -890,7 +858,7 @@ export default function Tracker() {
                           fontSize: 10,
                           fontFamily: font.mono,
                           letterSpacing: 1.2,
-                          color: "rgba(240,240,245,0.4)",
+                          color: "var(--gb-text-faint)",
                           marginBottom: 10,
                           textTransform: "uppercase",
                         }}
@@ -907,7 +875,7 @@ export default function Tracker() {
                             top: 38,
                             height: 14,
                             borderRadius: 8,
-                            background: "linear-gradient(90deg, rgba(184,255,87,0.12), rgba(91,228,216,0.15), rgba(184,255,87,0.08))",
+                            background: "linear-gradient(90deg, var(--gb-accent-soft), rgba(91,228,216,0.15), rgba(184,255,87,0.08))",
                             filter: "blur(6px)",
                             opacity: 0.85,
                           }}
@@ -920,8 +888,8 @@ export default function Tracker() {
                             top: 40,
                             height: 8,
                             borderRadius: 4,
-                            background: "linear-gradient(90deg, rgba(255,255,255,0.08), rgba(184,255,87,0.2), rgba(91,228,216,0.18))",
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            background: "linear-gradient(90deg, var(--gb-border-subtle), var(--gb-accent-soft), rgba(91,228,216,0.18))",
+                            border: "1px solid var(--gb-surface-active)",
                           }}
                         />
                         {/* “Now” cap */}
@@ -934,8 +902,8 @@ export default function Tracker() {
                             width: 3,
                             height: 22,
                             borderRadius: 2,
-                            background: "rgba(240,240,245,0.5)",
-                            boxShadow: "0 0 12px rgba(240,240,245,0.35)",
+                            background: "var(--gb-text-subtle)",
+                            boxShadow: "0 0 12px var(--gb-text-faint)",
                           }}
                         />
                         <span
@@ -945,7 +913,7 @@ export default function Tracker() {
                             top: 58,
                             fontSize: 9,
                             fontFamily: font.mono,
-                            color: "rgba(240,240,245,0.35)",
+                            color: "var(--gb-text-faint)",
                           }}
                         >
                           now
@@ -995,7 +963,7 @@ export default function Tracker() {
                           paddingRight: 4,
                           fontSize: 10,
                           fontFamily: font.mono,
-                          color: "rgba(240,240,245,0.32)",
+                          color: "var(--gb-text-faint)",
                         }}
                       >
                         <span>
@@ -1010,7 +978,7 @@ export default function Tracker() {
                           gap: "10px 14px",
                           marginTop: 12,
                           paddingTop: 10,
-                          borderTop: "1px solid rgba(255,255,255,0.06)",
+                          borderTop: "1px solid var(--gb-surface-active)",
                         }}
                       >
                         {CHANNELS.map((ch) => {
@@ -1024,7 +992,7 @@ export default function Tracker() {
                                 gap: 6,
                                 fontSize: 10,
                                 fontFamily: font.mono,
-                                color: "rgba(240,240,245,0.38)",
+                                color: "var(--gb-text-faint)",
                               }}
                             >
                               <span
@@ -1051,7 +1019,7 @@ export default function Tracker() {
                       fontSize: 10,
                       fontFamily: font.mono,
                       letterSpacing: 1.2,
-                      color: "rgba(240,240,245,0.4)",
+                      color: "var(--gb-text-faint)",
                       marginBottom: 14,
                       textTransform: "uppercase",
                     }}
@@ -1093,7 +1061,7 @@ export default function Tracker() {
                                 style={{
                                   width: 5,
                                   borderRadius: 3,
-                                  background: `linear-gradient(180deg, ${meta.stroke}55, rgba(255,255,255,0.04))`,
+                                  background: `linear-gradient(180deg, ${meta.stroke}55, var(--gb-surface-hover))`,
                                   boxShadow: `inset 0 0 8px ${meta.glow}`,
                                   flexShrink: 0,
                                 }}
@@ -1107,9 +1075,9 @@ export default function Tracker() {
                                     borderRadius: 20,
                                     fontSize: 10,
                                     fontFamily: font.mono,
-                                    color: "rgba(240,240,245,0.4)",
-                                    background: "rgba(255,255,255,0.04)",
-                                    border: "1px solid rgba(255,255,255,0.06)",
+                                    color: "var(--gb-text-faint)",
+                                    background: "var(--gb-surface-hover)",
+                                    border: "1px solid var(--gb-surface-active)",
                                   }}
                                 >
                                   {gapDays} days between
@@ -1124,7 +1092,7 @@ export default function Tracker() {
                               alignItems: "flex-start",
                               padding: "14px 16px",
                               borderRadius: 14,
-                              background: "linear-gradient(135deg, rgba(255,255,255,0.05), rgba(10,10,18,0.3))",
+                              background: "linear-gradient(135deg, var(--gb-surface-muted), rgba(10,10,18,0.3))",
                               border: `1px solid ${meta.stroke}33`,
                               boxShadow: `0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.2)`,
                             }}
@@ -1174,14 +1142,14 @@ export default function Tracker() {
                                 >
                                   {entry.channel || "Channel"}
                                 </span>
-                                <span style={{ fontSize: 11, color: "rgba(240,240,245,0.25)" }}>#{idx + 1}</span>
+                                <span style={{ fontSize: 11, color: "var(--gb-text-dim)" }}>#{idx + 1}</span>
                               </div>
                               <div
                                 style={{
                                   marginTop: 12,
                                   fontSize: 14,
                                   lineHeight: 1.55,
-                                  color: entry.note ? "rgba(240,240,245,0.9)" : "rgba(240,240,245,0.32)",
+                                  color: entry.note ? "var(--gb-text-strong)" : "var(--gb-text-faint)",
                                   fontStyle: entry.note ? "normal" : "italic",
                                 }}
                               >
@@ -1199,10 +1167,10 @@ export default function Tracker() {
             <div
               style={{
                 padding: "12px 24px",
-                borderTop: "1px solid rgba(255,255,255,0.06)",
+                borderTop: "1px solid var(--gb-surface-active)",
                 fontSize: 11,
                 fontFamily: font.mono,
-                color: "rgba(240,240,245,0.35)",
+                color: "var(--gb-text-faint)",
               }}
             >
               Press Esc or click outside to close · {timelineEntries.length} touchpoint{timelineEntries.length !== 1 ? "s" : ""}
@@ -1210,6 +1178,6 @@ export default function Tracker() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

@@ -9,7 +9,7 @@ import ProfileMenu from "./components/ProfileMenu"
 import SettingsMenu from "./components/SettingsMenu"
 import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
-import { font, accentNeon } from "./theme"
+import { font } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 
@@ -85,16 +85,16 @@ export default function App() {
         minHeight: "100vh",
         width: "100%",
         maxWidth: "100%",
-        background: "#0a0a0f",
-        color: "#f0f0f5",
+        background: "var(--gb-bg)",
+        color: "var(--gb-text)",
         fontFamily: font.body,
       }}
     >
       <header
         style={{
           flexShrink: 0,
-          background: "#0a0a0f",
-          borderBottom: "1px solid rgba(255,255,255,0.12)",
+          background: "var(--gb-header-bg)",
+          borderBottom: "1px solid var(--gb-border)",
           zIndex: 10,
         }}
       >
@@ -113,8 +113,8 @@ export default function App() {
               display: "flex",
               alignItems: "center",
               gap: 10,
-              color: "#f0f0f5",
-              fontFamily: font.display,
+              color: "var(--gb-text)",
+              fontFamily: font.h1,
               fontWeight: 800,
               fontSize: 16,
               letterSpacing: "-0.3px",
@@ -130,7 +130,7 @@ export default function App() {
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
-                boxShadow: "0 0 0 1px rgba(184, 255, 87, 0.18)",
+                boxShadow: "0 0 0 1px var(--gb-accent-border)",
               }}
             >
               <GhostBusterLogo size={30} />
@@ -166,7 +166,7 @@ export default function App() {
                     margin: 0,
                     border: "none",
                     background: "transparent",
-                    color: active ? "#f0f0f5" : "rgba(240,240,245,0.55)",
+                    color: active ? "var(--gb-text)" : "var(--gb-text-subtle)",
                     fontSize: 11,
                     fontFamily: font.mono,
                     fontWeight: active ? 600 : 500,
@@ -174,7 +174,7 @@ export default function App() {
                     textTransform: "uppercase",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
-                    borderBottom: active ? `2px solid ${accentNeon}` : "2px solid transparent",
+                    borderBottom: active ? "2px solid var(--gb-accent-bright)" : "2px solid transparent",
                     boxSizing: "border-box",
                     transition: "color 0.15s, border-color 0.15s",
                   }}
@@ -207,7 +207,7 @@ export default function App() {
           flex: 1,
           width: "100%",
           maxWidth: "100%",
-          padding: "32px clamp(16px, 3vw, 40px) 48px",
+          padding: "24px clamp(16px, 3vw, 32px) 40px",
           overflowY: "auto",
           minWidth: 0,
         }}

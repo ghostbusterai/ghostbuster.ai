@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
-import { font, accentNeon } from "../theme"
+import { font } from "../theme"
 import Settings from "./Settings"
 
 function GearIcon() {
@@ -61,9 +61,9 @@ export default function SettingsMenu({
           width: 40,
           height: 40,
           borderRadius: 10,
-          border: open ? "1px solid rgba(184,255,87,0.35)" : "1px solid rgba(255,255,255,0.1)",
-          background: open ? "rgba(184,255,87,0.1)" : "rgba(255,255,255,0.04)",
-          color: open ? accentNeon : "rgba(240,240,245,0.75)",
+          border: open ? "1px solid var(--gb-accent-border)" : "1px solid var(--gb-border-strong)",
+          background: open ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
+          color: open ? "var(--gb-accent)" : "var(--gb-text-secondary)",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
@@ -85,10 +85,10 @@ export default function SettingsMenu({
             right: 0,
             width: "min(420px, calc(100vw - 32px))",
             maxHeight: "min(85vh, 720px)",
-            background: "#111118",
-            border: "1px solid rgba(255,255,255,0.1)",
+            background: "var(--gb-bg-elevated)",
+            border: "1px solid var(--gb-border-strong)",
             borderRadius: 14,
-            boxShadow: "0 16px 48px rgba(0,0,0,0.45)",
+            boxShadow: "var(--gb-shadow-panel)",
             zIndex: 100,
             display: "flex",
             flexDirection: "column",
@@ -98,13 +98,13 @@ export default function SettingsMenu({
           <div
             style={{
               padding: "16px 18px",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              borderBottom: "1px solid var(--gb-border-subtle)",
               flexShrink: 0,
             }}
           >
             <div
               style={{
-                fontFamily: font.display,
+                fontFamily: font.h2,
                 fontWeight: 800,
                 fontSize: 17,
                 letterSpacing: "-0.3px",
@@ -116,7 +116,7 @@ export default function SettingsMenu({
               style={{
                 margin: "6px 0 0",
                 fontSize: 13,
-                color: "rgba(240,240,245,0.45)",
+                color: "var(--gb-text-muted)",
                 lineHeight: 1.45,
               }}
             >

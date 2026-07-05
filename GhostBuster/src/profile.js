@@ -1,6 +1,7 @@
 export const LS_PROFILE = "gb_profile"
 export const GETTING_STARTED_SESSION_KEY = "gb_getting_started_dismissed"
 export const GETTING_STARTED_RESTORED_EVENT = "gb_getting_started_restored"
+export const PROFILE_UPDATED_EVENT = "gb_profile_updated"
 
 export const DEFAULT_PROFILE = {
   name: "",
@@ -29,7 +30,9 @@ export function readLocalProfile() {
 }
 
 export function saveLocalProfile(profile) {
-  localStorage.setItem(LS_PROFILE, JSON.stringify(normalizeProfile(profile)))
+  const next = normalizeProfile(profile)
+  localStorage.setItem(LS_PROFILE, JSON.stringify(next))
+  window.dispatchEvent(new CustomEvent(PROFILE_UPDATED_EVENT, { detail: next }))
 }
 
 export function profileInitials(name) {

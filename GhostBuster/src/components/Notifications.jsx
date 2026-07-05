@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { font } from "../theme"
+import { PageShell, PageHero, SectionLabel, ContentCard } from "../layout"
 import {
   getReminderUrgency,
   getReminderUrgencyStyle,
@@ -66,62 +67,35 @@ export default function Notifications({ setPage }) {
   ].filter((p) => p.show)
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-      <div style={{ marginBottom: 28 }}>
-        <div
-          style={{
-            fontSize: 11,
-            fontFamily: font.mono,
-            letterSpacing: "0.14em",
-            color: "rgba(240,240,245,0.3)",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}
-        >
-          Inbox
-        </div>
-        <h1
-          style={{
-            fontFamily: font.display,
-            fontWeight: 800,
-            fontSize: 36,
-            letterSpacing: "-1px",
-            marginBottom: 8,
-          }}
-        >
-          Notifications
-        </h1>
-        <p
-          style={{
-            color: "rgba(240,240,245,0.45)",
-            fontSize: 15,
-            fontFamily: font.body,
-            maxWidth: 560,
-            lineHeight: 1.55,
-            margin: 0,
-          }}
-        >
-          {loading
+    <PageShell>
+      <PageHero
+        eyebrow="Inbox"
+        title="Notifications"
+        subtitle={
+          loading
             ? "Loading…"
             : summary.pending === 0
               ? "You're all caught up — no pending reminders."
-              : `${summary.pending} pending reminder${summary.pending !== 1 ? "s" : ""} need your attention.`}
-        </p>
+              : `${summary.pending} pending reminder${summary.pending !== 1 ? "s" : ""} need your attention.`
+        }
+      >
         {loadError && (
-          <p style={{ color: "#ffc96b", fontSize: 13, marginTop: 10 }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
             API offline — showing local copy.
           </p>
         )}
-        {actionError && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{actionError}</p>}
-      </div>
+        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
+      </PageHero>
 
       {summaryPills.length > 0 && (
-        <div
+        <>
+          <SectionLabel>Summary</SectionLabel>
+          <ContentCard padding="14px 14px 12px" marginBottom={24}>
+          <div
           style={{
             display: "flex",
             flexWrap: "wrap",
             gap: 8,
-            marginBottom: 24,
           }}
         >
           {summaryPills.map((pill) => {
@@ -155,19 +129,22 @@ export default function Notifications({ setPage }) {
             )
           })}
         </div>
+          </ContentCard>
+        </>
       )}
 
+      <SectionLabel>Pending reminders</SectionLabel>
       {loading ? (
-        <div style={{ color: "rgba(240,240,245,0.35)" }}>Loading notifications…</div>
+        <div style={{ color: "var(--gb-text-faint)" }}>Loading notifications…</div>
       ) : pending.length === 0 ? (
         <div
           style={{
-            background: "#111118",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: "var(--gb-bg-elevated)",
+            border: "1px solid var(--gb-surface-active)",
             borderRadius: 14,
             padding: 48,
             textAlign: "center",
-            color: "rgba(240,240,245,0.35)",
+            color: "var(--gb-text-faint)",
             fontSize: 14,
           }}
         >
@@ -214,7 +191,7 @@ export default function Notifications({ setPage }) {
                     </span>
                     <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16 }}>{r.contactName}</span>
                   </div>
-                  <div style={{ fontSize: 14, color: "rgba(240,240,245,0.55)", lineHeight: 1.5 }}>{reason}</div>
+                  <div style={{ fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5 }}>{reason}</div>
                   <div
                     style={{
                       fontSize: 12,
@@ -231,9 +208,9 @@ export default function Notifications({ setPage }) {
                     type="button"
                     onClick={() => markDone(r.id)}
                     style={{
-                      background: "rgba(184,255,87,0.12)",
-                      border: "1px solid rgba(184,255,87,0.35)",
-                      color: "#b8ff57",
+                      background: "var(--gb-accent-soft)",
+                      border: "1px solid var(--gb-accent-border)",
+                      color: "var(--gb-accent)",
                       padding: "8px 14px",
                       borderRadius: 8,
                       fontSize: 13,
@@ -249,8 +226,8 @@ export default function Notifications({ setPage }) {
                     onClick={() => setPage("reminders")}
                     style={{
                       background: "transparent",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "rgba(240,240,245,0.6)",
+                      border: "1px solid var(--gb-border-strong)",
+                      color: "var(--gb-text-subtle)",
                       padding: "8px 14px",
                       borderRadius: 8,
                       fontSize: 13,
@@ -274,8 +251,8 @@ export default function Notifications({ setPage }) {
           onClick={() => setPage("reminders")}
           style={{
             background: "transparent",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(240,240,245,0.55)",
+            border: "1px solid var(--gb-border-strong)",
+            color: "var(--gb-text-subtle)",
             padding: "10px 18px",
             borderRadius: 9,
             fontSize: 13,
@@ -287,6 +264,6 @@ export default function Notifications({ setPage }) {
           Manage all reminders →
         </button>
       </div>
-    </div>
+    </PageShell>
   )
 }
