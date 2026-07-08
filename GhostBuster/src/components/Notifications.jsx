@@ -59,7 +59,6 @@ export default function Notifications({ setPage }) {
   }
 
   const summaryPills = [
-    { key: "critical", label: "Critical", count: summary.critical, show: summary.critical > 0 },
     { key: "overdue", label: "Overdue", count: summary.overdue, show: summary.overdue > 0 },
     { key: "today", label: "Due today", count: summary.today, show: summary.today > 0 },
     { key: "soon", label: "Due soon", count: summary.soon, show: summary.soon > 0 },
@@ -209,7 +208,7 @@ export default function Notifications({ setPage }) {
                     onClick={() => markDone(r.id)}
                     style={{
                       background: "var(--gb-accent-soft)",
-                      border: "1px solid var(--gb-accent-border)",
+                      border: "1px solid var(--gb-border-subtle)",
                       color: "var(--gb-accent)",
                       padding: "8px 14px",
                       borderRadius: 8,

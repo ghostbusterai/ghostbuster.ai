@@ -648,7 +648,7 @@ export default function Updates({ setPage, setComposePrefill }) {
       <SectionLabel>Résumé last updated</SectionLabel>
       <ContentCard
         style={{
-          border: "1px solid var(--gb-accent-soft)",
+          border: "1px solid var(--gb-border-subtle)",
         }}
         padding="24px"
       >
@@ -727,7 +727,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     onClick={() => openResumeCompose(c)}
                     style={{
                       background: "var(--gb-accent-soft)",
-                      border: "1px solid var(--gb-accent-border)",
+                      border: "1px solid var(--gb-border-subtle)",
                       color: "var(--gb-accent)",
                       padding: "8px 14px",
                       borderRadius: 8,
@@ -797,7 +797,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               style={{
                 background: newBucketName.trim() && !creatingBucket ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
                 color: newBucketName.trim() && !creatingBucket ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
-                border: "1px solid var(--gb-accent-border)",
+                border: "1px solid var(--gb-border-subtle)",
                 boxShadow: "none",
                 padding: "10px 18px",
                 borderRadius: 9,
@@ -866,7 +866,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   key={bucket.id}
                   style={{
                     borderRadius: 12,
-                    border: "1px solid var(--gb-accent-soft)",
+                    border: "1px solid var(--gb-border-subtle)",
                     background: "rgba(184,255,87,0.03)",
                     padding: "16px 18px",
                   }}
@@ -941,7 +941,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                           <label
                             style={{
                               background: "var(--gb-accent-soft)",
-                              border: "1px solid var(--gb-accent-border)",
+                              border: "1px solid var(--gb-border-subtle)",
                               color: "var(--gb-accent)",
                               padding: "6px 12px",
                               borderRadius: 8,
@@ -1129,7 +1129,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                         disabled={Boolean(archiveActionKey)}
                         style={{
                           background: restoring ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
-                          border: "1px solid var(--gb-accent-border)",
+                          border: "1px solid var(--gb-border-subtle)",
                           color: "var(--gb-accent)",
                           padding: "6px 12px",
                           borderRadius: 8,
@@ -1452,7 +1452,7 @@ export default function Updates({ setPage, setComposePrefill }) {
       <div
         style={{
           background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-accent-soft)",
+          border: "1px solid var(--gb-border-subtle)",
           borderRadius: 16,
           padding: 24,
           marginBottom: 36,
@@ -1475,7 +1475,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             padding: "14px 16px",
             borderRadius: 12,
             background: "var(--gb-surface-hover)",
-            border: "1px solid var(--gb-accent-soft)",
+            border: "1px solid var(--gb-border-subtle)",
           }}
         >
           {[
@@ -1576,7 +1576,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               alignSelf: "flex-start",
               background: saving || !title.trim() || !details.trim() ? "var(--gb-accent-soft)" : "var(--gb-accent-bright)",
               color: saving || !title.trim() || !details.trim() ? "var(--gb-accent-muted)" : "var(--gb-accent-text-on)",
-              border: saving || !title.trim() || !details.trim() ? "1px solid var(--gb-accent-border)" : "1px solid rgba(10,15,9,0.22)",
+              border: saving || !title.trim() || !details.trim() ? "1px solid var(--gb-border-subtle)" : "1px solid rgba(10,15,9,0.22)",
               boxShadow: "none",
               padding: "11px 22px",
               borderRadius: 9,
@@ -1657,7 +1657,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   onClick={() => showOutreachForUpdate(u)}
                   style={{
                     background: "var(--gb-accent-soft)",
-                    border: "1px solid rgba(184,255,87,0.3)",
+                    border: "1px solid var(--gb-border-subtle)",
                     color: "var(--gb-accent)",
                     padding: "6px 12px",
                     borderRadius: 8,
@@ -1770,7 +1770,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   padding: "10px 12px",
                   borderRadius: 10,
                   background: "var(--gb-accent-soft)",
-                  border: "1px solid var(--gb-accent-soft)",
+                  border: "1px solid var(--gb-border-subtle)",
                   fontSize: 13,
                   color: "var(--gb-text-secondary)",
                 }}
@@ -1835,7 +1835,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       padding: "14px 16px",
                       borderRadius: 10,
                       background: "var(--gb-surface-hover)",
-                      border: "1px solid var(--gb-accent-soft)",
+                      border: "1px solid var(--gb-border-subtle)",
                       minHeight: 80,
                     }}
                   >
@@ -1887,7 +1887,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                           copiedContactId === row.contactId
                             ? "var(--gb-accent-soft)"
                             : "var(--gb-accent-soft)",
-                        border: "1px solid var(--gb-accent-border)",
+                        border: "1px solid var(--gb-border-subtle)",
                         color: outreach.message && !outreach.loading ? "var(--gb-accent)" : "var(--gb-accent-border)",
                         padding: "8px 14px",
                         borderRadius: 8,

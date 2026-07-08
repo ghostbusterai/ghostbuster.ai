@@ -248,7 +248,7 @@ export default function ContactHub() {
           transition: "border-color 0.15s",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = c.pinned ? "rgba(255,201,107,0.35)" : "rgba(184,255,87,0.2)"
+          e.currentTarget.style.borderColor = c.pinned ? "rgba(255,201,107,0.35)" : "var(--gb-border-subtle)"
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.borderColor = c.pinned ? "rgba(255,201,107,0.22)" : "var(--gb-surface-active)"
@@ -445,7 +445,7 @@ export default function ContactHub() {
           <ContentCard
             style={{
               background: isAdding ? "rgba(184,255,87,0.06)" : "rgba(184,255,87,0.04)",
-              border: isAdding ? "1px solid rgba(184,255,87,0.35)" : "1px solid rgba(184,255,87,0.22)",
+              border: isAdding ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-subtle)",
             }}
           >
             <div
@@ -512,7 +512,7 @@ export default function ContactHub() {
           <SectionLabel>Add / edit contact</SectionLabel>
           <ContentCard
             style={{
-              border: editId ? "1px solid var(--gb-border)" : "1px solid rgba(184,255,87,0.28)",
+              border: "1px solid var(--gb-border-subtle)",
             }}
             padding="28px"
             marginBottom={28}
@@ -734,7 +734,7 @@ export default function ContactHub() {
                     onClick={() => setFilterCompany("All")}
                     style={{
                       background: filterCompany === "All" ? "rgba(184,255,87,0.14)" : "var(--gb-surface-hover)",
-                      border: filterCompany === "All" ? "1px solid rgba(184,255,87,0.35)" : "1px solid var(--gb-border-strong)",
+                      border: filterCompany === "All" ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-strong)",
                       color: filterCompany === "All" ? "var(--gb-accent)" : "var(--gb-text-subtle)",
                       padding: "6px 12px",
                       borderRadius: 20,
@@ -753,7 +753,7 @@ export default function ContactHub() {
                       onClick={() => setFilterCompany(name)}
                       style={{
                         background: filterCompany === name ? "rgba(184,255,87,0.14)" : "var(--gb-surface-hover)",
-                        border: filterCompany === name ? "1px solid rgba(184,255,87,0.35)" : "1px solid var(--gb-border-strong)",
+                        border: filterCompany === name ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-strong)",
                         color: filterCompany === name ? "var(--gb-accent)" : "var(--gb-text-subtle)",
                         padding: "6px 12px",
                         borderRadius: 20,

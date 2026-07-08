@@ -130,7 +130,7 @@ export default function App() {
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
-                boxShadow: "0 0 0 1px var(--gb-accent-border)",
+                boxShadow: "0 0 0 1px var(--gb-border-subtle)",
               }}
             >
               <GhostBusterLogo size={30} />

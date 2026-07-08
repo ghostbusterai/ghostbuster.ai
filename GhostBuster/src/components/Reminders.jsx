@@ -209,9 +209,9 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       >
         {!listLoading && (
           <p style={{ color: "var(--gb-text-muted)", fontSize: 14, fontFamily: font.body, marginTop: 8, marginBottom: 0 }}>
-            {summary.overdue + summary.critical > 0 && (
+            {summary.overdue > 0 && (
               <span style={{ color: "var(--gb-danger)" }}>
-                {summary.critical + summary.overdue} overdue ·{" "}
+                {summary.overdue} overdue ·{" "}
               </span>
             )}
             <span style={{ color: "var(--gb-text-faint)" }}>
@@ -245,7 +245,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
           <ContentCard
           style={{
             background: googleStatus.connected ? "var(--gb-accent-soft)" : "var(--gb-bg-elevated)",
-            border: `1px solid ${googleStatus.connected ? "var(--gb-accent-soft)" : "var(--gb-border-subtle)"}`,
+            border: `1px solid var(--gb-border-subtle)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -287,7 +287,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
               onClick={connectGoogleCalendar}
               style={{
                 background: "var(--gb-accent-soft)",
-                border: "1px solid var(--gb-accent-border)",
+                border: "1px solid var(--gb-border-subtle)",
                 color: "var(--gb-accent)",
                 padding: "8px 14px",
                 borderRadius: 8,
@@ -311,7 +311,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
         {["pending", "done", "all"].map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{
             padding: "7px 18px", borderRadius: 8, border: "1px solid",
-            borderColor: filter === f ? "var(--gb-accent-border)" : "var(--gb-border-subtle)",
+            borderColor: filter === f ? "var(--gb-border-strong)" : "var(--gb-border-subtle)",
             background: filter === f ? "var(--gb-accent-soft)" : "transparent",
             color: filter === f ? "var(--gb-accent)" : "var(--gb-text-faint)",
             fontSize: 13, fontFamily: font.mono, cursor: "pointer",
@@ -327,7 +327,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
         <>
           <SectionLabel>Add reminder</SectionLabel>
           <ContentCard style={{
-            border: "1px solid var(--gb-accent-soft)",
+            border: "1px solid var(--gb-border-subtle)",
           }} padding="28px" marginBottom={28}>
           <CardTitle>New Reminder</CardTitle>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -436,7 +436,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                   title={r.done ? "Mark as not done" : "Mark as done"}
                   style={{
                   width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                  border: `2px solid ${r.done ? "var(--gb-accent-bright)" : style.border}`,
+                  border: `2px solid ${r.done ? "var(--gb-border-strong)" : style.border}`,
                   background: r.done ? "var(--gb-accent-bright)" : "transparent",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 12, color: "var(--gb-accent-text-on)",

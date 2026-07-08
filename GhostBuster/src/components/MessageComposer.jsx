@@ -322,7 +322,7 @@ export default function MessageComposer({
                 onClick={() => selectScenario(s)}
                 style={{
                   background: active ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
-                  border: active ? "1px solid rgba(184,255,87,0.4)" : "1px solid var(--gb-border-strong)",
+                  border: active ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-strong)",
                   color: active ? "var(--gb-accent)" : "var(--gb-text-secondary)",
                   padding: "8px 14px",
                   borderRadius: 20,
@@ -366,7 +366,7 @@ export default function MessageComposer({
             {contact && (
               <div style={{
                 marginTop: 10, padding: "12px 14px", borderRadius: 9,
-                background: "rgba(184,255,87,0.05)", border: "1px solid var(--gb-accent-soft)",
+                background: "var(--gb-surface-hover)", border: "1px solid var(--gb-border-subtle)",
                 fontSize: 13, color: "var(--gb-text-subtle)", lineHeight: 1.6
               }}>
                 {contact.role && <div>🏷 {contact.role}</div>}
@@ -455,7 +455,7 @@ export default function MessageComposer({
                     disabled={loading}
                     style={{
                       background: loading ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
-                      border: "1px solid var(--gb-accent-border)",
+                      border: "1px solid var(--gb-border-subtle)",
                       color: loading ? "rgba(184,255,87,0.45)" : "var(--gb-accent)",
                       padding: "8px 14px",
                       borderRadius: 8,
@@ -533,7 +533,7 @@ export default function MessageComposer({
             style={{
               background: situation && !loading ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
               color: situation && !loading ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
-              border: situation && !loading ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-accent-border)",
+              border: situation && !loading ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-border-subtle)",
               boxShadow: "none",
               padding: "13px 28px",
               borderRadius: 10,
@@ -558,7 +558,7 @@ export default function MessageComposer({
             </p>
           )}
           <div style={{
-            background: "var(--gb-bg-elevated)", border: `1px solid ${result ? "var(--gb-accent-soft)" : "var(--gb-surface-active)"}`,
+            background: "var(--gb-bg-elevated)", border: `1px solid ${result ? "var(--gb-border-subtle)" : "var(--gb-surface-active)"}`,
             borderRadius: 14, padding: result && !loading ? 16 : 24, minHeight: 320,
             display: "flex", flexDirection: "column", justifyContent: result && !loading ? "flex-start" : "center",
             alignItems: result && !loading ? "stretch" : "center",
@@ -595,14 +595,14 @@ export default function MessageComposer({
                     fontSize: 13,
                     lineHeight: 1.8,
                     resize: "vertical",
-                    border: "1px solid var(--gb-accent-soft)",
+                    border: "1px solid var(--gb-border-subtle)",
                     background: "var(--gb-bg-input)",
                   }}
                 />
                 <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                   <button onClick={copy} style={{
                     background: copied ? "var(--gb-accent-soft)" : "var(--gb-surface-muted)",
-                    border: "1px solid", borderColor: copied ? "rgba(184,255,87,0.3)" : "var(--gb-border-strong)",
+                    border: "1px solid", borderColor: copied ? "var(--gb-border-strong)" : "var(--gb-border-strong)",
                     color: copied ? "var(--gb-accent)" : "var(--gb-text-subtle)",
                     padding: "8px 18px", borderRadius: 8, fontSize: 13,
                     cursor: "pointer", fontFamily: font.mono, transition: "all 0.15s",
@@ -636,7 +636,7 @@ export default function MessageComposer({
                     <div style={{
                       marginBottom: 12, padding: "10px 12px", borderRadius: 8, fontSize: 13, lineHeight: 1.5,
                       background: gmailNotice.type === "success" ? "rgba(184,255,87,0.08)" : "rgba(255,107,107,0.08)",
-                      border: `1px solid ${gmailNotice.type === "success" ? "rgba(184,255,87,0.25)" : "rgba(255,107,107,0.25)"}`,
+                      border: `1px solid ${gmailNotice.type === "success" ? "var(--gb-border-subtle)" : "rgba(255,107,107,0.25)"}`,
                       color: gmailNotice.type === "success" ? "var(--gb-accent)" : "var(--gb-danger)",
                     }}>
                       {gmailNotice.text}
@@ -693,7 +693,7 @@ export default function MessageComposer({
                           disabled={gmailBusy != null}
                           style={{
                             background: gmailBusy === "draft" ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
-                            border: "1px solid var(--gb-accent-border)",
+                            border: "1px solid var(--gb-border-subtle)",
                             color: gmailBusy != null ? "rgba(184,255,87,0.45)" : "var(--gb-accent)",
                             padding: "8px 16px", borderRadius: 8, fontSize: 13,
                             cursor: gmailBusy != null ? "not-allowed" : "pointer",

@@ -61,13 +61,11 @@ export function daysOverdue(reminder) {
   return days < 0 ? Math.abs(days) : 0
 }
 
-/** critical | overdue | today | soon | upcoming | done */
+/** overdue | today | soon | upcoming | done */
 export function getReminderUrgency(reminder) {
   if (!reminder || reminder.done) return "done"
   const status = getReminderDueStatus(reminder)
-  if (status.overdue) {
-    return daysOverdue(reminder) >= 7 ? "critical" : "overdue"
-  }
+  if (status.overdue) return "overdue"
   if (status.dueToday) return "today"
   const days = daysUntilDue(reminder)
   if (days !== null && days > 0 && days <= 3) return "soon"
@@ -75,29 +73,20 @@ export function getReminderUrgency(reminder) {
 }
 
 function urgencyRank(urgency) {
-  const order = { critical: 0, overdue: 1, today: 2, soon: 3, upcoming: 4, done: 5 }
-  return order[urgency] ?? 4
+  const order = { overdue: 0, today: 1, soon: 2, upcoming: 3, done: 4 }
+  return order[urgency] ?? 3
 }
 
 export function getReminderUrgencyStyle(urgency) {
   switch (urgency) {
-    case "critical":
+    case "overdue":
       return {
-        label: "Critical",
+        label: "Overdue",
         color: "var(--gb-danger)",
         bg: "rgba(255,107,107,0.16)",
         border: "rgba(255,107,107,0.7)",
         cardBg: "rgba(255,107,107,0.07)",
         shadow: "0 0 0 1px rgba(255,107,107,0.2), 0 8px 28px rgba(255,107,107,0.12)",
-      }
-    case "overdue":
-      return {
-        label: "Overdue",
-        color: "#ff8787",
-        bg: "rgba(255,107,107,0.12)",
-        border: "rgba(255,107,107,0.5)",
-        cardBg: "rgba(255,107,107,0.04)",
-        shadow: "0 0 0 1px rgba(255,107,107,0.12), 0 6px 20px rgba(255,107,107,0.08)",
       }
     case "today":
       return {
@@ -140,12 +129,12 @@ export function getReminderUrgencyStyle(urgency) {
 
 export function summarizePendingReminders(reminders) {
   const pending = (reminders || []).filter((r) => !r.done)
-  const summary = { pending: pending.length, critical: 0, overdue: 0, today: 0, soon: 0, upcoming: 0 }
+  const summary = { pending: pending.length, overdue: 0, today: 0, soon: 0, upcoming: 0 }
   for (const r of pending) {
     const u = getReminderUrgency(r)
     if (summary[u] !== undefined) summary[u] += 1
   }
-  summary.attention = summary.critical + summary.overdue + summary.today
+  summary.attention = summary.overdue + summary.today
   return summary
 }
 
@@ -153,11 +142,10 @@ export function reminderDueLabel(reminder) {
   const urgency = getReminderUrgency(reminder)
   const due = parseDueDay(reminder?.dueDate)
   const formatted = due ? due.toLocaleDateString() : reminder?.dueDate || "No date"
-  if (urgency === "critical") {
+  if (urgency === "overdue") {
     const d = daysOverdue(reminder)
     return d > 0 ? `${d} day${d !== 1 ? "s" : ""} overdue · ${formatted}` : `Overdue · ${formatted}`
   }
-  if (urgency === "overdue") return `Overdue · ${formatted}`
   if (urgency === "today") return `Due today · ${formatted}`
   if (urgency === "soon") {
     const d = daysUntilDue(reminder)

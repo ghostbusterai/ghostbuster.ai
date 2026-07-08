@@ -61,7 +61,7 @@ export default function SettingsMenu({
           width: 40,
           height: 40,
           borderRadius: 10,
-          border: open ? "1px solid var(--gb-accent-border)" : "1px solid var(--gb-border-strong)",
+          border: open ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-strong)",
           background: open ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
           color: open ? "var(--gb-accent)" : "var(--gb-text-secondary)",
           cursor: "pointer",

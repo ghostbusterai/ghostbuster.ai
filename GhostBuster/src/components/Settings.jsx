@@ -18,7 +18,7 @@ import {
 } from "../preferences"
 import { getReminderUrgencyStyle } from "../reminderUtils"
 
-const REMINDER_URGENCY = ["critical", "overdue", "today", "soon", "upcoming"]
+const REMINDER_URGENCY = ["overdue", "today", "soon", "upcoming"]
 
 const WARMTH_LEGEND = [
   { c: "var(--gb-accent)", label: "Warm", detail: "Last touch within 21 days" },
@@ -189,7 +189,7 @@ export default function Settings({
         </p>
       )}
 
-      <section style={sectionCard("var(--gb-accent-border)", embedded)}>
+      <section style={sectionCard(undefined, embedded)}>
         <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
           Appearance
         </div>
@@ -214,7 +214,7 @@ export default function Settings({
                   borderRadius: 10,
                   cursor: "pointer",
                   background: active ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
-                  border: active ? "1px solid var(--gb-accent-border)" : "1px solid var(--gb-border)",
+                  border: active ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border)",
                   boxShadow: "none",
                 }}
               >
@@ -348,7 +348,7 @@ export default function Settings({
         </button>
       </section>
 
-      <section style={sectionCard("rgba(184,255,87,0.14)", embedded)}>
+      <section style={sectionCard(undefined, embedded)}>
         <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
           Compose defaults
         </div>
@@ -466,7 +466,7 @@ export default function Settings({
                   onClick={connectGoogle}
                   style={{
                     background: "var(--gb-accent-soft)",
-                    border: "1px solid var(--gb-accent-border)",
+                    border: "1px solid var(--gb-border-subtle)",
                     color: "var(--gb-accent)",
                     padding: "8px 14px",
                     borderRadius: 8,
@@ -530,11 +530,9 @@ export default function Settings({
           {REMINDER_URGENCY.map((u) => {
             const style = getReminderUrgencyStyle(u)
             const detail =
-              u === "critical"
-                ? "7+ days overdue"
-                : u === "overdue"
-                  ? "Past due date"
-                  : u === "today"
+              u === "overdue"
+                ? "Past due date"
+                : u === "today"
                     ? "Due today"
                     : u === "soon"
                       ? "Due within 3 days"

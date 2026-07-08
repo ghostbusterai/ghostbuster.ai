@@ -15,14 +15,14 @@ export default function NotificationBell({ setPage, currentPage }) {
         if (cancelled) return
         const summary = summarizePendingReminders(reminders || [])
         setCount(summary.pending)
-        setUrgent(summary.critical > 0 || summary.overdue > 0)
+        setUrgent(summary.overdue > 0)
       } catch {
         if (cancelled) return
         try {
           const reminders = JSON.parse(localStorage.getItem("gb_reminders") || "[]")
           const summary = summarizePendingReminders(reminders)
           setCount(summary.pending)
-          setUrgent(summary.critical > 0 || summary.overdue > 0)
+          setUrgent(summary.overdue > 0)
         } catch {
           setCount(0)
           setUrgent(false)
@@ -50,7 +50,7 @@ export default function NotificationBell({ setPage, currentPage }) {
         width: 40,
         height: 40,
         borderRadius: 10,
-        border: active ? "1px solid var(--gb-accent-border)" : "1px solid var(--gb-border-strong)",
+        border: active ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-strong)",
         background: active ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
         color: active ? "var(--gb-accent)" : "var(--gb-text-secondary)",
         cursor: "pointer",

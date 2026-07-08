@@ -144,7 +144,7 @@ export default function ProfileMenu() {
           width: 38,
           height: 38,
           borderRadius: "50%",
-          border: open ? "2px solid var(--gb-accent)" : "1px solid var(--gb-border)",
+          border: open ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border)",
           background: open ? "var(--gb-accent-soft)" : "var(--gb-surface-active)",
           color: initials ? "var(--gb-accent)" : "var(--gb-text-secondary)",
           display: "flex",

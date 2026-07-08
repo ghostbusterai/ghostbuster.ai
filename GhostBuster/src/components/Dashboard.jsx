@@ -36,7 +36,7 @@ const GETTING_STARTED_STEPS = [
 function tintedCard(rgb, borderAlpha = 0.2) {
   return {
     background: `color-mix(in srgb, rgb(${rgb}) 14%, var(--gb-bg-elevated))`,
-    border: `1px solid rgba(${rgb},${borderAlpha})`,
+    border: "1px solid var(--gb-border-subtle)",
     boxShadow: `var(--gb-inset-highlight), 0 12px 40px -12px rgba(${rgb},0.22)`,
   }
 }
@@ -334,8 +334,8 @@ export default function Dashboard({ setPage }) {
       trend: overdueReminders.length > 0 ? `${overdueReminders.length} overdue` : reminderSummary.today > 0 ? `${reminderSummary.today} due today` : null,
       tag: reminderSummary.attention > 0 ? "Urgent" : null,
       icon: "reminders",
-      color: reminderSummary.critical > 0 ? "var(--gb-danger)" : overdueReminders.length > 0 ? "#ff8787" : "var(--gb-warning)",
-      rgb: reminderSummary.critical > 0 ? "255, 107, 107" : overdueReminders.length > 0 ? "255, 135, 135" : "255, 201, 107",
+      color: overdueReminders.length > 0 ? "var(--gb-danger)" : "var(--gb-warning)",
+      rgb: overdueReminders.length > 0 ? "255, 107, 107" : "255, 201, 107",
       page: "notifications",
     },
     {
@@ -432,12 +432,13 @@ export default function Dashboard({ setPage }) {
       >
         <div
           style={{
-            fontSize: 10,
-            fontFamily: font.mono,
-            letterSpacing: "0.16em",
-            color: "var(--gb-text-faint)",
+            fontSize: 12,
+            fontFamily: font.body,
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            color: "var(--gb-accent-muted)",
             textTransform: "uppercase",
-            marginBottom: 14,
+            marginBottom: 10,
           }}
         >
           Your career network
@@ -494,11 +495,11 @@ export default function Dashboard({ setPage }) {
         <section
           style={{
             background: "var(--gb-bg-elevated)",
-            border: "1px solid var(--gb-accent-border)",
+            border: "1px solid var(--gb-border)",
             borderRadius: 18,
             padding: "28px 28px 24px",
             marginBottom: 32,
-            boxShadow: "0 0 0 1px var(--gb-accent-soft), 0 16px 48px rgba(0,0,0,0.35)",
+            boxShadow: "var(--gb-shadow-panel)",
             position: "relative",
             fontFamily: font.body,
           }}
@@ -549,28 +550,26 @@ export default function Dashboard({ setPage }) {
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 16,
+              gridTemplateRows: "auto 1fr",
+              columnGap: 16,
+              rowGap: 14,
               marginBottom: 24,
-              alignItems: "start",
+              alignItems: "stretch",
             }}
           >
-            {GETTING_STARTED_STEPS.map((s) => (
-              <div
-                key={s.step}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: 0,
-                }}
-              >
+            {GETTING_STARTED_STEPS.map((s, idx) => (
+              <div key={s.step} style={{ display: "contents" }}>
                 <div
                   style={{
+                    gridColumn: idx + 1,
+                    gridRow: 1,
+                    alignSelf: "start",
+                    justifySelf: "center",
                     width: 32,
                     height: 32,
                     borderRadius: "50%",
                     background: "var(--gb-accent-soft)",
-                    border: "1px solid var(--gb-accent-border)",
+                    border: "1px solid var(--gb-border-subtle)",
                     color: "var(--gb-accent)",
                     fontFamily: font.body,
                     fontWeight: 600,
@@ -579,23 +578,28 @@ export default function Dashboard({ setPage }) {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    flexShrink: 0,
-                    marginBottom: 14,
                   }}
                 >
                   {s.step}
                 </div>
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setPage(s.page)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setPage(s.page)
+                    }
+                  }}
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    textAlign: "left",
-                    width: "100%",
-                    height: "100%",
+                    gridColumn: idx + 1,
+                    gridRow: 2,
+                    display: "grid",
+                    gridTemplateRows: "45px auto 1fr auto",
+                    gap: 10,
                     minHeight: 160,
+                    height: "100%",
                     background: "var(--gb-surface-hover)",
                     border: "1px solid var(--gb-border-subtle)",
                     borderRadius: 14,
@@ -605,10 +609,11 @@ export default function Dashboard({ setPage }) {
                     fontFamily: font.body,
                     boxShadow: "none",
                     transition: "border-color 0.15s, background 0.15s",
+                    textAlign: "left",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--gb-accent-border)"
-                    e.currentTarget.style.background = "var(--gb-accent-soft)"
+                    e.currentTarget.style.borderColor = "var(--gb-border)"
+                    e.currentTarget.style.background = "var(--gb-surface-active)"
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = "var(--gb-border-subtle)"
@@ -617,43 +622,50 @@ export default function Dashboard({ setPage }) {
                 >
                   <div
                     style={{
+                      gridRow: 1,
                       fontFamily: font.body,
                       fontWeight: 600,
                       fontSize: 16,
                       lineHeight: 1.4,
-                      minHeight: 44,
-                      marginBottom: 10,
                       width: "100%",
                       color: "var(--gb-text)",
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      alignSelf: "start",
                     }}
                   >
                     {s.title}
                   </div>
                   <div
                     style={{
+                      gridRow: 2,
                       fontSize: 14,
                       fontFamily: font.body,
                       color: "var(--gb-text-secondary)",
                       lineHeight: 1.65,
-                      flex: 1,
                       width: "100%",
+                      alignSelf: "start",
                     }}
                   >
                     {s.detail}
                   </div>
                   <div
                     style={{
+                      gridRow: 4,
                       fontSize: 14,
                       fontFamily: font.body,
                       fontWeight: 600,
                       color: "var(--gb-accent)",
-                      marginTop: 14,
+                      paddingTop: 4,
                       width: "100%",
+                      alignSelf: "end",
                     }}
                   >
                     {s.cta} →
                   </div>
-                </button>
+                </div>
               </div>
             ))}
           </div>
@@ -740,19 +752,15 @@ export default function Dashboard({ setPage }) {
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
                 <span
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 12,
-                    background: `rgba(${s.rgb}, 0.14)`,
-                    border: `1px solid rgba(${s.rgb}, 0.24)`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     flexShrink: 0,
+                    lineHeight: 1,
                   }}
                   aria-hidden
                 >
-                  <SnapshotIcon name={s.icon} color={s.color} />
+                  <SnapshotIcon name={s.icon} color={s.color} size={22} />
                 </span>
                 {s.tag && (
                   <span

@@ -46,6 +46,39 @@ function daysBetweenTouchpoints(prevMs, nextMs) {
   return Math.max(0, Math.round((nextMs - prevMs) / (24 * 60 * 60 * 1000)))
 }
 
+/** One marker per calendar day so same-day touchpoints never stack overlapping labels. */
+function buildTimelineDayMarkers(entries, timelineAxis) {
+  if (!timelineAxis || !entries.length) return []
+
+  const { t0, span } = timelineAxis
+  const dayMap = new Map()
+
+  for (const entry of entries) {
+    const ms = parseDay(entry.contactedAt)
+    const dayKey = ms > 0 ? new Date(ms).toDateString() : `unknown-${entry.id}`
+    if (!dayMap.has(dayKey)) {
+      dayMap.set(dayKey, { ms: ms || t0, entries: [] })
+    }
+    dayMap.get(dayKey).entries.push(entry)
+  }
+
+  return [...dayMap.values()]
+    .sort((a, b) => a.ms - b.ms)
+    .map((group) => {
+      const pct = group.ms > 0 ? ((group.ms - t0) / span) * 100 : 0
+      const channels = group.entries.map((e) => e.channel || "Other")
+      const meta = timelineChannelMeta(group.entries[group.entries.length - 1].channel)
+      return {
+        ms: group.ms,
+        entries: group.entries,
+        pct: Math.min(86, Math.max(4, pct)),
+        channels,
+        meta,
+        tip: `${formatTouchDate(group.ms)} · ${channels.join(", ")}`,
+      }
+    })
+}
+
 
 const LS_LOGS = "gb_outreach_logs"
 
@@ -278,6 +311,11 @@ export default function Tracker() {
     return { t0, t1, span, now: Date.now() }
   }, [timelineEntries])
 
+  const timelineDayMarkers = useMemo(
+    () => (timelineAxis ? buildTimelineDayMarkers(timelineEntries, timelineAxis) : []),
+    [timelineEntries, timelineAxis]
+  )
+
   useEffect(() => {
     setHistoryView("recent")
   }, [filterContactId])
@@ -478,7 +516,7 @@ export default function Tracker() {
             padding: "14px 18px",
             borderRadius: 12,
             background: "var(--gb-accent-soft)",
-            border: "1px solid var(--gb-accent-soft)",
+            border: "1px solid var(--gb-border-subtle)",
             fontSize: 14,
             color: "var(--gb-text-secondary)",
           }}
@@ -528,7 +566,7 @@ export default function Tracker() {
                 background: logContactId && !savingLog ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
                 color: logContactId && !savingLog ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
                 border:
-                  logContactId && !savingLog ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-accent-border)",
+                  logContactId && !savingLog ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-border-subtle)",
                 boxShadow: "none",
                 padding: "10px 22px",
                 borderRadius: 9,
@@ -579,7 +617,7 @@ export default function Tracker() {
                 key={c.id}
                 style={{
                   background: "var(--gb-bg-elevated)",
-                  border: `1px solid ${w.key === "green" ? "rgba(184,255,87,0.25)" : w.key === "yellow" ? "rgba(255,201,107,0.25)" : w.key === "red" ? "rgba(255,107,107,0.25)" : "var(--gb-surface-active)"}`,
+                  border: `1px solid ${w.key === "yellow" ? "rgba(255,201,107,0.25)" : w.key === "red" ? "rgba(255,107,107,0.25)" : "var(--gb-surface-active)"}`,
                   borderRadius: 14,
                   padding: "18px 20px",
                 }}
@@ -674,7 +712,7 @@ export default function Tracker() {
                               height: 22,
                               borderRadius: 4,
                               background: on ? "var(--gb-accent-muted)" : "var(--gb-surface-active)",
-                              border: on ? "1px solid rgba(184,255,87,0.4)" : "1px solid var(--gb-surface-active)",
+                              border: on ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-surface-active)",
                             }}
                           />
                         ))}
@@ -1067,15 +1105,15 @@ export default function Tracker() {
                         Relationship over time
                       </div>
                       <div style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)", marginBottom: 14 }}>
-                        Each dot is one logged touchpoint. Left is earliest, right is today.
+                        Each dot is one day you logged outreach. Hover a dot to see how you reached out. Left is earliest, right is today.
                       </div>
-                      <div style={{ position: "relative", height: 40, marginTop: 4, paddingRight: 28 }}>
+                      <div style={{ position: "relative", height: 36, marginTop: 4, paddingRight: 32, marginBottom: 8 }}>
                         <div
                           style={{
                             position: "absolute",
                             left: 8,
-                            right: 28,
-                            top: 18,
+                            right: 32,
+                            top: 16,
                             height: 4,
                             borderRadius: 4,
                             background: "var(--gb-border-subtle)",
@@ -1083,61 +1121,84 @@ export default function Tracker() {
                         />
                         <div
                           title="Today"
+                          aria-hidden
                           style={{
                             position: "absolute",
-                            right: 24,
-                            top: 12,
+                            right: 28,
+                            top: 10,
                             width: 2,
                             height: 16,
                             borderRadius: 2,
                             background: "var(--gb-text-muted)",
                           }}
                         />
-                        {timelineEntries.map((entry, axisIdx) => {
-                          const t = parseDay(entry.contactedAt)
-                          const { t0, span } = timelineAxis
-                          const raw = t > 0 ? ((t - t0) / span) * 100 : 0
-                          const priorSameDay = timelineEntries
-                            .slice(0, axisIdx)
-                            .filter((o) => parseDay(o.contactedAt) === t && t > 0).length
-                          const pct = Math.min(88, Math.max(4, raw + priorSameDay * 2.8))
-                          const meta = timelineChannelMeta(entry.channel)
-                          const tip = t
-                            ? `${new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} · ${entry.channel || "Touchpoint"}`
-                            : `${entry.contactedAt} · ${entry.channel || "Touchpoint"}`
-                          return (
+                        {timelineDayMarkers.map((marker) => (
+                          <div
+                            key={marker.ms}
+                            title={marker.tip}
+                            style={{
+                              position: "absolute",
+                              left: `calc(8px + (100% - 40px) * ${marker.pct / 100})`,
+                              top: 8,
+                              transform: "translateX(-50%)",
+                              width: 18,
+                              height: 18,
+                            }}
+                          >
                             <div
-                              key={`axis-${entry.id}`}
-                              title={tip}
                               style={{
-                                position: "absolute",
-                                left: `calc(8px + (100% - 36px) * ${pct / 100})`,
-                                top: 12,
-                                transform: "translateX(-50%)",
-                                width: 14,
-                                height: 14,
+                                width: 16,
+                                height: 16,
                                 borderRadius: "50%",
-                                background: meta.fill,
-                                border: `2px solid ${meta.stroke}`,
-                                boxShadow: `0 0 10px ${meta.glow}`,
+                                background: marker.meta.fill,
+                                border: `2px solid ${marker.meta.stroke}`,
+                                boxShadow: `0 0 10px ${marker.meta.glow}`,
                               }}
                             />
-                          )
-                        })}
+                            {marker.entries.length > 1 && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: -5,
+                                  right: -7,
+                                  minWidth: 16,
+                                  height: 16,
+                                  padding: "0 4px",
+                                  borderRadius: 999,
+                                  background: "var(--gb-bg-elevated)",
+                                  border: "1px solid var(--gb-border)",
+                                  color: "var(--gb-text)",
+                                  fontFamily: font.h1,
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  lineHeight: "14px",
+                                  textAlign: "center",
+                                }}
+                              >
+                                {marker.entries.length}
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
                       <div
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
-                          marginTop: 10,
+                          gap: 16,
                           fontSize: 11,
                           fontFamily: font.h1,
                           color: "var(--gb-text-muted)",
                         }}
                       >
-                        <span>{formatTouchDate(timelineAxis.t0)}</span>
-                        <span>Today</span>
+                        <span style={{ minWidth: 0 }}>{formatTouchDate(timelineAxis.t0)}</span>
+                        <span style={{ flexShrink: 0 }}>Today</span>
                       </div>
+                      {timelineDayMarkers.some((m) => m.entries.length > 1) && (
+                        <div style={{ fontFamily: font.h1, fontSize: 11, color: "var(--gb-text-muted)", marginTop: 10 }}>
+                          Number badges show multiple touchpoints logged on the same day.
+                        </div>
+                      )}
                     </div>
                   )}
 
