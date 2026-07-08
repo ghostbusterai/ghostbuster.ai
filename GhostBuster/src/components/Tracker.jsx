@@ -544,13 +544,10 @@ export default function Tracker() {
 
       {/* Per-contact warmth */}
       <SectionLabel>Connection warmth</SectionLabel>
-      <div style={{ marginBottom: 6 }}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18 }}>Connection warmth</div>
-        <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: "6px 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
-          Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each
-          week for the past 12 weeks.
-        </p>
-      </div>
+      <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: "0 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
+        Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each
+        week for the past 12 weeks.
+      </p>
       {loading ? (
         <div style={{ color: "var(--gb-text-faint)" }}>Loading…</div>
       ) : sortedFilteredContacts.length === 0 ? (
@@ -728,20 +725,17 @@ export default function Tracker() {
       <SectionLabel style={{ marginTop: 26 }}>Touchpoint history</SectionLabel>
       <div
         style={{
-          margin: "36px 0 14px",
+          margin: "0 0 14px",
           display: "flex",
-          alignItems: "flex-start",
+          alignItems: "flex-end",
           justifyContent: "space-between",
           gap: 16,
           flexWrap: "wrap",
         }}
       >
-        <div>
-          <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18 }}>Touchpoint history</div>
-          <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: "6px 0 0", lineHeight: 1.5, fontFamily: font.body }}>
-            A log of every outreach you record above. Newest first — click a row to open that contact&apos;s timeline.
-          </p>
-        </div>
+        <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: 0, lineHeight: 1.5, fontFamily: font.body, flex: "1 1 240px" }}>
+          A log of every outreach you record above. Newest first — click a row to open that contact&apos;s timeline.
+        </p>
         {filteredLogs.length > TOUCHPOINT_HISTORY_PREVIEW && (
           <label
             style={{
@@ -1075,13 +1069,13 @@ export default function Tracker() {
                       <div style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)", marginBottom: 14 }}>
                         Each dot is one logged touchpoint. Left is earliest, right is today.
                       </div>
-                      <div style={{ position: "relative", height: 56, marginTop: 4 }}>
+                      <div style={{ position: "relative", height: 40, marginTop: 4, paddingRight: 28 }}>
                         <div
                           style={{
                             position: "absolute",
                             left: 8,
-                            right: 8,
-                            top: 24,
+                            right: 28,
+                            top: 18,
                             height: 4,
                             borderRadius: 4,
                             background: "var(--gb-border-subtle)",
@@ -1091,26 +1085,14 @@ export default function Tracker() {
                           title="Today"
                           style={{
                             position: "absolute",
-                            right: 8,
-                            top: 18,
+                            right: 24,
+                            top: 12,
                             width: 2,
                             height: 16,
                             borderRadius: 2,
                             background: "var(--gb-text-muted)",
                           }}
                         />
-                        <span
-                          style={{
-                            position: "absolute",
-                            right: 0,
-                            top: 38,
-                            fontSize: 10,
-                            fontFamily: font.h1,
-                            color: "var(--gb-text-muted)",
-                          }}
-                        >
-                          Today
-                        </span>
                         {timelineEntries.map((entry, axisIdx) => {
                           const t = parseDay(entry.contactedAt)
                           const { t0, span } = timelineAxis
@@ -1118,47 +1100,28 @@ export default function Tracker() {
                           const priorSameDay = timelineEntries
                             .slice(0, axisIdx)
                             .filter((o) => parseDay(o.contactedAt) === t && t > 0).length
-                          const pct = Math.min(92, Math.max(4, raw + priorSameDay * 2.8))
+                          const pct = Math.min(88, Math.max(4, raw + priorSameDay * 2.8))
                           const meta = timelineChannelMeta(entry.channel)
                           const tip = t
-                            ? new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
-                            : entry.contactedAt
+                            ? `${new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} · ${entry.channel || "Touchpoint"}`
+                            : `${entry.contactedAt} · ${entry.channel || "Touchpoint"}`
                           return (
                             <div
                               key={`axis-${entry.id}`}
-                              title={`${tip} · ${entry.channel || "Touchpoint"}`}
+                              title={tip}
                               style={{
                                 position: "absolute",
-                                left: `calc(8px + (100% - 16px) * ${pct / 100})`,
-                                top: 18,
+                                left: `calc(8px + (100% - 36px) * ${pct / 100})`,
+                                top: 12,
                                 transform: "translateX(-50%)",
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: 6,
+                                width: 14,
+                                height: 14,
+                                borderRadius: "50%",
+                                background: meta.fill,
+                                border: `2px solid ${meta.stroke}`,
+                                boxShadow: `0 0 10px ${meta.glow}`,
                               }}
-                            >
-                              <div
-                                style={{
-                                  width: 14,
-                                  height: 14,
-                                  borderRadius: "50%",
-                                  background: meta.fill,
-                                  border: `2px solid ${meta.stroke}`,
-                                  boxShadow: `0 0 10px ${meta.glow}`,
-                                }}
-                              />
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  fontFamily: font.h1,
-                                  color: "var(--gb-text-muted)",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {entry.channel || "Other"}
-                              </span>
-                            </div>
+                            />
                           )
                         })}
                       </div>
@@ -1166,7 +1129,7 @@ export default function Tracker() {
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
-                          marginTop: 18,
+                          marginTop: 10,
                           fontSize: 11,
                           fontFamily: font.h1,
                           color: "var(--gb-text-muted)",
@@ -1178,16 +1141,7 @@ export default function Tracker() {
                     </div>
                   )}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      flexWrap: "wrap",
-                      marginBottom: 12,
-                    }}
-                  >
+                  <div style={{ marginBottom: 12 }}>
                     <div
                       style={{
                         fontFamily: font.h1,
@@ -1197,10 +1151,20 @@ export default function Tracker() {
                       }}
                     >
                       Touchpoints
-                      <span style={{ fontWeight: 500, color: "var(--gb-text-muted)", marginLeft: 8 }}>
-                        newest first
-                      </span>
                     </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        flexWrap: "wrap",
+                        marginTop: 4,
+                      }}
+                    >
+                      <div style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)" }}>
+                        Newest first
+                      </div>
                     {timelineEntriesNewest.length > TOUCHPOINT_HISTORY_PREVIEW && (
                       <label
                         style={{
@@ -1231,6 +1195,7 @@ export default function Tracker() {
                         </select>
                       </label>
                     )}
+                    </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {visibleModalTouchpoints.map((entry, idx) => {
