@@ -5,6 +5,7 @@ import { inputStyle } from "../uiStyles"
 import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
 
 const CHANNELS = ["Email", "LinkedIn", "In-person", "Call", "Other"]
+const TOUCHPOINT_HISTORY_PREVIEW = 5
 
 /** Visual encoding for the graphical timeline */
 const CHANNEL_TIMELINE = {
@@ -19,12 +20,32 @@ function timelineChannelMeta(ch) {
   return CHANNEL_TIMELINE[ch] || CHANNEL_TIMELINE.Other
 }
 
-/** Vertical gap between nodes scales with days between touchpoints (capped). */
-function connectorHeightPx(prevMs, nextMs) {
-  if (!prevMs || !nextMs) return 22
-  const days = (nextMs - prevMs) / (24 * 60 * 60 * 1000)
-  return Math.min(120, Math.max(20, 14 + days * 3.2))
+function formatTouchDate(ms) {
+  if (!ms) return "Unknown date"
+  return new Date(ms).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
 }
+
+function formatRelativeTouch(ms) {
+  if (!ms) return ""
+  const days = Math.floor((Date.now() - ms) / (24 * 60 * 60 * 1000))
+  if (days <= 0) return "Today"
+  if (days === 1) return "Yesterday"
+  if (days < 7) return `${days} days ago`
+  if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) === 1 ? "" : "s"} ago`
+  if (days < 365) return `${Math.floor(days / 30)} month${Math.floor(days / 30) === 1 ? "" : "s"} ago`
+  return `${Math.floor(days / 365)} year${Math.floor(days / 365) === 1 ? "" : "s"} ago`
+}
+
+function daysBetweenTouchpoints(prevMs, nextMs) {
+  if (!prevMs || !nextMs) return 0
+  return Math.max(0, Math.round((nextMs - prevMs) / (24 * 60 * 60 * 1000)))
+}
+
 
 const LS_LOGS = "gb_outreach_logs"
 
@@ -157,6 +178,8 @@ export default function Tracker() {
 
   /** When set, show full-screen timeline for this contact's logged touchpoints */
   const [timelineContactId, setTimelineContactId] = useState(null)
+  const [historyView, setHistoryView] = useState("recent")
+  const [modalTouchpointView, setModalTouchpointView] = useState("recent")
 
   async function loadAll() {
     setLoadError(null)
@@ -194,6 +217,13 @@ export default function Tracker() {
     return [...base].sort((a, b) => parseDay(b.contactedAt) - parseDay(a.contactedAt))
   }, [logs, filterContactId])
 
+  const visibleHistoryLogs = useMemo(() => {
+    if (historyView === "all") return filteredLogs
+    return filteredLogs.slice(0, TOUCHPOINT_HISTORY_PREVIEW)
+  }, [filteredLogs, historyView])
+
+  const hiddenHistoryCount = Math.max(0, filteredLogs.length - TOUCHPOINT_HISTORY_PREVIEW)
+
   const sortedFilteredContacts = useMemo(
     () => sortContactsForTracker(filteredContacts, logs, sortBy),
     [filteredContacts, logs, sortBy]
@@ -206,13 +236,36 @@ export default function Tracker() {
     [contacts, timelineContactId]
   )
 
-  /** Oldest first so the timeline reads past → present */
+  /** Oldest first for the horizontal axis */
   const timelineEntries = useMemo(() => {
     if (timelineContactId == null) return []
     return logs
       .filter((l) => l.contactId === timelineContactId)
       .sort((a, b) => parseDay(a.contactedAt) - parseDay(b.contactedAt))
   }, [logs, timelineContactId])
+
+  /** Newest first for the readable history list */
+  const timelineEntriesNewest = useMemo(() => [...timelineEntries].reverse(), [timelineEntries])
+
+  const visibleModalTouchpoints = useMemo(() => {
+    if (modalTouchpointView === "all") return timelineEntriesNewest
+    return timelineEntriesNewest.slice(0, TOUCHPOINT_HISTORY_PREVIEW)
+  }, [timelineEntriesNewest, modalTouchpointView])
+
+  const hiddenModalTouchpointCount = Math.max(0, timelineEntriesNewest.length - TOUCHPOINT_HISTORY_PREVIEW)
+
+  const timelineSummary = useMemo(() => {
+    if (!timelineEntries.length) return null
+    const times = timelineEntries.map((e) => parseDay(e.contactedAt)).filter((t) => t > 0)
+    const firstMs = times.length ? Math.min(...times) : 0
+    const lastMs = times.length ? Math.max(...times) : 0
+    return {
+      count: timelineEntries.length,
+      firstMs,
+      lastMs,
+      spanDays: firstMs && lastMs ? daysBetweenTouchpoints(firstMs, lastMs) : 0,
+    }
+  }, [timelineEntries])
 
   /** For horizontal axis: map real dates to % along the bar */
   const timelineAxis = useMemo(() => {
@@ -224,6 +277,14 @@ export default function Tracker() {
     const span = Math.max(t1 - t0, 86400000)
     return { t0, t1, span, now: Date.now() }
   }, [timelineEntries])
+
+  useEffect(() => {
+    setHistoryView("recent")
+  }, [filterContactId])
+
+  useEffect(() => {
+    setModalTouchpointView("recent")
+  }, [timelineContactId])
 
   useEffect(() => {
     if (timelineContactId == null) return
@@ -571,7 +632,7 @@ export default function Tracker() {
                         letterSpacing: 0.3,
                       }}
                     >
-                      Open communication timeline →
+                      View outreach history →
                     </div>
                     <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 2, fontFamily: font.body }}>
                       {[c.role, c.company].filter(Boolean).join(" @ ")}
@@ -665,11 +726,53 @@ export default function Tracker() {
 
       {/* Recent logs table */}
       <SectionLabel style={{ marginTop: 26 }}>Touchpoint history</SectionLabel>
-      <div style={{ margin: "36px 0 14px" }}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18 }}>Touchpoint history</div>
-        <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: "6px 0 0", lineHeight: 1.5, fontFamily: font.body }}>
-          A log of every outreach you record above. Newest first — click a row to open that contact&apos;s timeline.
-        </p>
+      <div
+        style={{
+          margin: "36px 0 14px",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18 }}>Touchpoint history</div>
+          <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: "6px 0 0", lineHeight: 1.5, fontFamily: font.body }}>
+            A log of every outreach you record above. Newest first — click a row to open that contact&apos;s timeline.
+          </p>
+        </div>
+        {filteredLogs.length > TOUCHPOINT_HISTORY_PREVIEW && (
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontFamily: font.h1,
+              fontSize: 12,
+              color: "var(--gb-text-muted)",
+              flexShrink: 0,
+            }}
+          >
+            Show
+            <select
+              value={historyView}
+              onChange={(e) => setHistoryView(e.target.value)}
+              style={{
+                ...inputStyle,
+                width: "auto",
+                minWidth: 132,
+                padding: "8px 10px",
+                fontSize: 12,
+                fontFamily: font.h1,
+                cursor: "pointer",
+              }}
+            >
+              <option value="recent">Recent {TOUCHPOINT_HISTORY_PREVIEW}</option>
+              <option value="all">All ({filteredLogs.length})</option>
+            </select>
+          </label>
+        )}
       </div>
       {filteredLogs.length === 0 ? (
         <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>No logs yet — add one above.</div>
@@ -686,7 +789,7 @@ export default function Tracker() {
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map((l) => {
+              {visibleHistoryLogs.map((l) => {
                 const person = contacts.find((x) => x.id === l.contactId)
                 return (
                   <tr
@@ -732,6 +835,41 @@ export default function Tracker() {
               })}
             </tbody>
           </table>
+          {historyView === "recent" && hiddenHistoryCount > 0 && (
+            <div
+              style={{
+                padding: "12px 14px",
+                borderTop: "1px solid var(--gb-border-subtle)",
+                background: "var(--gb-surface-hover)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)" }}>
+                Showing the {TOUCHPOINT_HISTORY_PREVIEW} most recent touchpoints
+              </span>
+              <button
+                type="button"
+                onClick={() => setHistoryView("all")}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--gb-border)",
+                  background: "var(--gb-bg-elevated)",
+                  color: "var(--gb-text)",
+                  fontFamily: font.h1,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Show {hiddenHistoryCount} more
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -778,37 +916,60 @@ export default function Tracker() {
               }}
             >
               <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontFamily: font.h1,
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "var(--gb-text-muted)",
+                    marginBottom: 8,
+                  }}
+                >
+                  Outreach history
+                </div>
                 <h2
                   id="timeline-title"
                   style={{
                     fontFamily: font.h2,
                     fontWeight: 800,
-                    fontSize: 22,
+                    fontSize: 24,
                     margin: 0,
                     letterSpacing: "-0.5px",
                   }}
                 >
-                  Communication timeline
+                  {timelineContact.name}
                 </h2>
-                <div style={{ fontSize: 15, fontWeight: 600, marginTop: 6, color: "var(--gb-text)" }}>{timelineContact.name}</div>
-                <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 4 }}>
-                  {[timelineContact.role, timelineContact.company].filter(Boolean).join(" @ ")}
-                  {!timelineContact.role && !timelineContact.company ? "—" : ""}
-                </div>
+                {(timelineContact.role || timelineContact.company) && (
+                  <div style={{ fontFamily: font.h1, fontSize: 14, color: "var(--gb-text-secondary)", marginTop: 6 }}>
+                    {[timelineContact.role, timelineContact.company].filter(Boolean).join(" · ")}
+                  </div>
+                )}
                 {timelineContact.notes ? (
                   <div
                     style={{
-                      marginTop: 12,
-                      fontSize: 12,
-                      color: "var(--gb-text-subtle)",
-                      lineHeight: 1.5,
-                      padding: "10px 12px",
-                      borderRadius: 10,
+                      marginTop: 14,
+                      fontSize: 13,
+                      color: "var(--gb-text-secondary)",
+                      lineHeight: 1.55,
+                      padding: "12px 14px",
+                      borderRadius: 12,
                       background: "var(--gb-surface-hover)",
-                      border: "1px solid var(--gb-surface-active)",
+                      border: "1px solid var(--gb-border-subtle)",
                     }}
                   >
-                    <span style={{ fontFamily: font.mono, color: "var(--gb-text-faint)" }}>NOTES · </span>
+                    <div
+                      style={{
+                        fontFamily: font.h1,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "var(--gb-text-muted)",
+                        marginBottom: 4,
+                      }}
+                    >
+                      How you met
+                    </div>
                     {timelineContact.notes}
                   </div>
                 ) : null}
@@ -836,87 +997,119 @@ export default function Tracker() {
 
             <div style={{ padding: "16px 24px 24px", overflowY: "auto", flex: 1 }}>
               {timelineEntries.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--gb-text-faint)", fontSize: 14 }}>
-                  No touchpoints logged for this contact yet. Use <strong style={{ color: "var(--gb-text-subtle)" }}>Log outreach</strong> above
-                  to record when you reach out and what you discussed — it will appear here.
+                <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--gb-text-muted)", fontSize: 14, fontFamily: font.h1, lineHeight: 1.6 }}>
+                  No outreach logged yet. Use <strong style={{ color: "var(--gb-text)" }}>Log outreach</strong> on the Tracker page
+                  to record when you reach out — it will show up here.
                 </div>
               ) : (
                 <>
-                  {/* Horizontal “swimlane” — position = real calendar time */}
-                  {timelineAxis && (
+                  {timelineSummary && (
                     <div
                       style={{
-                        marginBottom: 28,
-                        padding: "16px 14px 20px",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: 10,
+                        marginBottom: 22,
+                      }}
+                    >
+                      {[
+                        {
+                          label: "Touchpoints",
+                          value: `${timelineSummary.count}`,
+                        },
+                        {
+                          label: "Last contact",
+                          value: timelineSummary.lastMs ? formatRelativeTouch(timelineSummary.lastMs) : "—",
+                        },
+                        {
+                          label: timelineSummary.count > 1 ? "Relationship span" : "First logged",
+                          value:
+                            timelineSummary.count > 1 && timelineSummary.spanDays > 0
+                              ? `${timelineSummary.spanDays} day${timelineSummary.spanDays === 1 ? "" : "s"}`
+                              : timelineSummary.firstMs
+                                ? formatTouchDate(timelineSummary.firstMs)
+                                : "—",
+                        },
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          style={{
+                            padding: "12px 14px",
+                            borderRadius: 12,
+                            background: "var(--gb-surface-muted)",
+                            border: "1px solid var(--gb-border-subtle)",
+                          }}
+                        >
+                          <div style={{ fontFamily: font.h1, fontSize: 11, color: "var(--gb-text-muted)", marginBottom: 4 }}>
+                            {item.label}
+                          </div>
+                          <div style={{ fontFamily: font.h1, fontSize: 16, fontWeight: 700, color: "var(--gb-text)" }}>
+                            {item.value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {timelineAxis && timelineEntries.length >= 2 && (
+                    <div
+                      style={{
+                        marginBottom: 24,
+                        padding: "16px 14px",
                         borderRadius: 14,
-                        background: "linear-gradient(165deg, rgba(184,255,87,0.08), rgba(10,10,18,0.6))",
-                        border: "1px solid var(--gb-accent-soft)",
+                        background: "var(--gb-surface-muted)",
+                        border: "1px solid var(--gb-border-subtle)",
                       }}
                     >
                       <div
                         style={{
-                          fontSize: 10,
-                          fontFamily: font.mono,
-                          letterSpacing: 1.2,
-                          color: "var(--gb-text-faint)",
-                          marginBottom: 10,
-                          textTransform: "uppercase",
+                          fontFamily: font.h1,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "var(--gb-text)",
+                          marginBottom: 4,
                         }}
                       >
-                        Activity across time
+                        Relationship over time
                       </div>
-                      <div style={{ position: "relative", height: 72, marginTop: 4 }}>
-                        {/* glow under track */}
+                      <div style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)", marginBottom: 14 }}>
+                        Each dot is one logged touchpoint. Left is earliest, right is today.
+                      </div>
+                      <div style={{ position: "relative", height: 56, marginTop: 4 }}>
                         <div
                           style={{
                             position: "absolute",
                             left: 8,
                             right: 8,
-                            top: 38,
-                            height: 14,
-                            borderRadius: 8,
-                            background: "linear-gradient(90deg, var(--gb-accent-soft), rgba(91,228,216,0.15), rgba(184,255,87,0.08))",
-                            filter: "blur(6px)",
-                            opacity: 0.85,
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: 8,
-                            right: 8,
-                            top: 40,
-                            height: 8,
+                            top: 24,
+                            height: 4,
                             borderRadius: 4,
-                            background: "linear-gradient(90deg, var(--gb-border-subtle), var(--gb-accent-soft), rgba(91,228,216,0.18))",
-                            border: "1px solid var(--gb-surface-active)",
+                            background: "var(--gb-border-subtle)",
                           }}
                         />
-                        {/* “Now” cap */}
                         <div
                           title="Today"
                           style={{
                             position: "absolute",
-                            right: 4,
-                            top: 34,
-                            width: 3,
-                            height: 22,
+                            right: 8,
+                            top: 18,
+                            width: 2,
+                            height: 16,
                             borderRadius: 2,
-                            background: "var(--gb-text-subtle)",
-                            boxShadow: "0 0 12px var(--gb-text-faint)",
+                            background: "var(--gb-text-muted)",
                           }}
                         />
                         <span
                           style={{
                             position: "absolute",
                             right: 0,
-                            top: 58,
-                            fontSize: 9,
-                            fontFamily: font.mono,
-                            color: "var(--gb-text-faint)",
+                            top: 38,
+                            fontSize: 10,
+                            fontFamily: font.h1,
+                            color: "var(--gb-text-muted)",
                           }}
                         >
-                          now
+                          Today
                         </span>
                         {timelineEntries.map((entry, axisIdx) => {
                           const t = parseDay(entry.contactedAt)
@@ -925,13 +1118,10 @@ export default function Tracker() {
                           const priorSameDay = timelineEntries
                             .slice(0, axisIdx)
                             .filter((o) => parseDay(o.contactedAt) === t && t > 0).length
-                          const pct = Math.min(94, Math.max(3, raw + priorSameDay * 2.8))
+                          const pct = Math.min(92, Math.max(4, raw + priorSameDay * 2.8))
                           const meta = timelineChannelMeta(entry.channel)
                           const tip = t
-                            ? new Date(t).toLocaleString(undefined, {
-                                dateStyle: "medium",
-                                timeStyle: undefined,
-                              })
+                            ? new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
                             : entry.contactedAt
                           return (
                             <div
@@ -940,17 +1130,35 @@ export default function Tracker() {
                               style={{
                                 position: "absolute",
                                 left: `calc(8px + (100% - 16px) * ${pct / 100})`,
-                                top: 32,
+                                top: 18,
                                 transform: "translateX(-50%)",
-                                width: 18,
-                                height: 18,
-                                borderRadius: "50%",
-                                background: meta.fill,
-                                border: `3px solid ${meta.stroke}`,
-                                boxShadow: `0 0 14px ${meta.glow}`,
-                                cursor: "default",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: 6,
                               }}
-                            />
+                            >
+                              <div
+                                style={{
+                                  width: 14,
+                                  height: 14,
+                                  borderRadius: "50%",
+                                  background: meta.fill,
+                                  border: `2px solid ${meta.stroke}`,
+                                  boxShadow: `0 0 10px ${meta.glow}`,
+                                }}
+                              />
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontFamily: font.h1,
+                                  color: "var(--gb-text-muted)",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {entry.channel || "Other"}
+                              </span>
+                            </div>
                           )
                         })}
                       </div>
@@ -958,222 +1166,208 @@ export default function Tracker() {
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
-                          marginTop: 4,
-                          paddingLeft: 4,
-                          paddingRight: 4,
-                          fontSize: 10,
-                          fontFamily: font.mono,
-                          color: "var(--gb-text-faint)",
+                          marginTop: 18,
+                          fontSize: 11,
+                          fontFamily: font.h1,
+                          color: "var(--gb-text-muted)",
                         }}
                       >
-                        <span>
-                          {new Date(timelineAxis.t0).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                        </span>
-                        <span style={{ color: "rgba(184,255,87,0.45)" }}>dots = logged touchpoints</span>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: "10px 14px",
-                          marginTop: 12,
-                          paddingTop: 10,
-                          borderTop: "1px solid var(--gb-surface-active)",
-                        }}
-                      >
-                        {CHANNELS.map((ch) => {
-                          const m = timelineChannelMeta(ch)
-                          return (
-                            <span
-                              key={ch}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 6,
-                                fontSize: 10,
-                                fontFamily: font.mono,
-                                color: "var(--gb-text-faint)",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  width: 8,
-                                  height: 8,
-                                  borderRadius: "50%",
-                                  background: m.fill,
-                                  border: `2px solid ${m.stroke}`,
-                                  boxShadow: `0 0 6px ${m.glow}`,
-                                }}
-                              />
-                              {ch}
-                            </span>
-                          )
-                        })}
+                        <span>{formatTouchDate(timelineAxis.t0)}</span>
+                        <span>Today</span>
                       </div>
                     </div>
                   )}
 
-                  {/* Vertical spine: connector height ∝ days between events */}
                   <div
                     style={{
-                      fontSize: 10,
-                      fontFamily: font.mono,
-                      letterSpacing: 1.2,
-                      color: "var(--gb-text-faint)",
-                      marginBottom: 14,
-                      textTransform: "uppercase",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      flexWrap: "wrap",
+                      marginBottom: 12,
                     }}
                   >
-                    Detail · oldest at top
+                    <div
+                      style={{
+                        fontFamily: font.h1,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "var(--gb-text)",
+                      }}
+                    >
+                      Touchpoints
+                      <span style={{ fontWeight: 500, color: "var(--gb-text-muted)", marginLeft: 8 }}>
+                        newest first
+                      </span>
+                    </div>
+                    {timelineEntriesNewest.length > TOUCHPOINT_HISTORY_PREVIEW && (
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          fontFamily: font.h1,
+                          fontSize: 12,
+                          color: "var(--gb-text-muted)",
+                        }}
+                      >
+                        Show
+                        <select
+                          value={modalTouchpointView}
+                          onChange={(e) => setModalTouchpointView(e.target.value)}
+                          style={{
+                            ...inputStyle,
+                            width: "auto",
+                            minWidth: 132,
+                            padding: "8px 10px",
+                            fontSize: 12,
+                            fontFamily: font.h1,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="recent">Recent {TOUCHPOINT_HISTORY_PREVIEW}</option>
+                          <option value="all">All ({timelineEntriesNewest.length})</option>
+                        </select>
+                      </label>
+                    )}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch" }}>
-                    {timelineEntries.map((entry, idx) => {
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {visibleModalTouchpoints.map((entry, idx) => {
                       const d = parseDay(entry.contactedAt)
-                      const label = d
-                        ? new Date(d).toLocaleDateString(undefined, {
-                            weekday: "short",
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : entry.contactedAt
                       const meta = timelineChannelMeta(entry.channel)
-                      const prevMs = idx > 0 ? parseDay(timelineEntries[idx - 1].contactedAt) : 0
-                      const gapH = idx > 0 ? connectorHeightPx(prevMs, d || prevMs) : 0
-                      const gapDays =
-                        idx > 0 && prevMs && d
-                          ? Math.max(0, Math.round((d - prevMs) / (24 * 60 * 60 * 1000)))
-                          : 0
+                      const olderEntry = visibleModalTouchpoints[idx + 1]
+                      const olderMs = olderEntry ? parseDay(olderEntry.contactedAt) : 0
+                      const gapDays = olderMs && d ? daysBetweenTouchpoints(olderMs, d) : 0
 
                       return (
-                        <div key={entry.id} style={{ display: "flex", flexDirection: "column", alignItems: "stretch" }}>
-                          {idx > 0 && (
+                        <div key={entry.id}>
+                          {gapDays >= 7 && (
                             <div
                               style={{
                                 display: "flex",
-                                alignItems: "stretch",
-                                marginLeft: 22,
-                                minHeight: gapH,
-                                marginBottom: 2,
+                                alignItems: "center",
+                                gap: 10,
+                                margin: "0 0 10px 12px",
+                                fontFamily: font.h1,
+                                fontSize: 11,
+                                color: "var(--gb-text-muted)",
                               }}
                             >
-                              <div
-                                style={{
-                                  width: 5,
-                                  borderRadius: 3,
-                                  background: `linear-gradient(180deg, ${meta.stroke}55, var(--gb-surface-hover))`,
-                                  boxShadow: `inset 0 0 8px ${meta.glow}`,
-                                  flexShrink: 0,
-                                }}
-                              />
-                              {gapDays >= 8 && (
-                                <div
-                                  style={{
-                                    alignSelf: "center",
-                                    marginLeft: 12,
-                                    padding: "4px 10px",
-                                    borderRadius: 20,
-                                    fontSize: 10,
-                                    fontFamily: font.mono,
-                                    color: "var(--gb-text-faint)",
-                                    background: "var(--gb-surface-hover)",
-                                    border: "1px solid var(--gb-surface-active)",
-                                  }}
-                                >
-                                  {gapDays} days between
-                                </div>
-                              )}
+                              <span style={{ flex: 1, height: 1, background: "var(--gb-border-subtle)" }} />
+                              <span>{gapDays} days later</span>
+                              <span style={{ flex: 1, height: 1, background: "var(--gb-border-subtle)" }} />
                             </div>
                           )}
                           <div
                             style={{
-                              display: "flex",
-                              gap: 16,
-                              alignItems: "flex-start",
                               padding: "14px 16px",
                               borderRadius: 14,
-                              background: "linear-gradient(135deg, var(--gb-surface-muted), rgba(10,10,18,0.3))",
-                              border: `1px solid ${meta.stroke}33`,
-                              boxShadow: `0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.2)`,
+                              background: "var(--gb-bg-panel)",
+                              border: "1px solid var(--gb-border-subtle)",
+                              borderLeft: `4px solid ${meta.stroke}`,
                             }}
                           >
+                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                              <div>
+                                <div style={{ fontFamily: font.h1, fontSize: 15, fontWeight: 700, color: "var(--gb-text)" }}>
+                                  {formatTouchDate(d)}
+                                </div>
+                                {d > 0 && (
+                                  <div style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)", marginTop: 2 }}>
+                                    {formatRelativeTouch(d)}
+                                  </div>
+                                )}
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontFamily: font.h1,
+                                  fontWeight: 600,
+                                  padding: "4px 10px",
+                                  borderRadius: 999,
+                                  background: meta.fill,
+                                  color: meta.stroke,
+                                  border: `1px solid ${meta.stroke}44`,
+                                }}
+                              >
+                                {entry.channel || "Other"}
+                              </span>
+                            </div>
                             <div
                               style={{
-                                width: 48,
-                                height: 48,
-                                borderRadius: 14,
-                                flexShrink: 0,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: entry.channel === "LinkedIn" ? 11 : 20,
-                                fontWeight: entry.channel === "LinkedIn" ? 800 : 400,
-                                fontFamily: entry.channel === "LinkedIn" ? font.mono : font.body,
-                                color: meta.stroke,
-                                background: meta.fill,
-                                border: `2px solid ${meta.stroke}`,
-                                boxShadow: `0 0 20px ${meta.glow}`,
+                                marginTop: 12,
+                                fontSize: 14,
+                                lineHeight: 1.6,
+                                fontFamily: font.h1,
+                                color: entry.note ? "var(--gb-text-secondary)" : "var(--gb-text-muted)",
+                                fontStyle: entry.note ? "normal" : "italic",
                               }}
                             >
-                              {meta.mark}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div
-                                style={{
-                                  fontFamily: font.mono,
-                                  fontSize: 12,
-                                  color: meta.stroke,
-                                  letterSpacing: 0.3,
-                                }}
-                              >
-                                {label}
-                              </div>
-                              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    fontFamily: font.mono,
-                                    padding: "3px 10px",
-                                    borderRadius: 8,
-                                    background: meta.fill,
-                                    color: meta.stroke,
-                                    border: `1px solid ${meta.stroke}44`,
-                                  }}
-                                >
-                                  {entry.channel || "Channel"}
-                                </span>
-                                <span style={{ fontSize: 11, color: "var(--gb-text-dim)" }}>#{idx + 1}</span>
-                              </div>
-                              <div
-                                style={{
-                                  marginTop: 12,
-                                  fontSize: 14,
-                                  lineHeight: 1.55,
-                                  color: entry.note ? "var(--gb-text-strong)" : "var(--gb-text-faint)",
-                                  fontStyle: entry.note ? "normal" : "italic",
-                                }}
-                              >
-                                {entry.note?.trim() ? entry.note : "No context note — add notes when logging outreach to capture the conversation."}
-                              </div>
+                              {entry.note?.trim()
+                                ? entry.note
+                                : "No notes for this touchpoint. Add context when logging outreach so you remember what you discussed."}
                             </div>
                           </div>
                         </div>
                       )
                     })}
                   </div>
+                  {modalTouchpointView === "recent" && hiddenModalTouchpointCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setModalTouchpointView("all")}
+                      style={{
+                        width: "100%",
+                        marginTop: 12,
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        border: "1px solid var(--gb-border)",
+                        background: "var(--gb-surface-muted)",
+                        color: "var(--gb-text)",
+                        fontFamily: font.h1,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Show {hiddenModalTouchpointCount} more touchpoint{hiddenModalTouchpointCount === 1 ? "" : "s"}
+                    </button>
+                  )}
                 </>
               )}
             </div>
             <div
               style={{
                 padding: "12px 24px",
-                borderTop: "1px solid var(--gb-surface-active)",
-                fontSize: 11,
-                fontFamily: font.mono,
-                color: "var(--gb-text-faint)",
+                borderTop: "1px solid var(--gb-border-subtle)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
               }}
             >
-              Press Esc or click outside to close · {timelineEntries.length} touchpoint{timelineEntries.length !== 1 ? "s" : ""}
+              <span style={{ fontSize: 12, fontFamily: font.h1, color: "var(--gb-text-muted)" }}>
+                {timelineEntries.length} touchpoint{timelineEntries.length !== 1 ? "s" : ""} logged
+              </span>
+              <button
+                type="button"
+                onClick={() => setTimelineContactId(null)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--gb-border)",
+                  background: "var(--gb-surface-muted)",
+                  color: "var(--gb-text)",
+                  fontFamily: font.h1,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

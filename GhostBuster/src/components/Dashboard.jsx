@@ -96,9 +96,29 @@ function formatActivityTime(ts) {
 }
 
 function greetingForHour(h = new Date().getHours()) {
-  if (h < 12) return "Good morning"
-  if (h < 17) return "Good afternoon"
-  return "Good evening"
+  if (h >= 5 && h < 12) return "Good morning"
+  if (h >= 12 && h < 17) return "Good afternoon"
+  if (h >= 17 && h < 22) return "Good evening"
+  return "Good night"
+}
+
+function useTimeGreeting() {
+  const [greeting, setGreeting] = useState(() => greetingForHour())
+
+  useEffect(() => {
+    function syncGreeting() {
+      setGreeting((prev) => {
+        const next = greetingForHour()
+        return prev === next ? prev : next
+      })
+    }
+
+    syncGreeting()
+    const id = setInterval(syncGreeting, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  return greeting
 }
 
 function firstName(name) {
@@ -190,6 +210,7 @@ export default function Dashboard({ setPage }) {
     () => readLocalProfile().hideGettingStarted === true
   )
   const [profileName, setProfileName] = useState(() => readLocalProfile().name || "")
+  const greeting = useTimeGreeting()
   const [sessionDismissedTutorial, setSessionDismissedTutorial] = useState(
     () => sessionStorage.getItem(GETTING_STARTED_SESSION_KEY) === "1"
   )
@@ -432,8 +453,8 @@ export default function Dashboard({ setPage }) {
           }}
         >
           {firstName(profileName)
-            ? `${greetingForHour()}, ${firstName(profileName)}`
-            : greetingForHour()}
+            ? `${greeting}, ${firstName(profileName)}`
+            : greeting}
         </h1>
         {dueReminders.length > 0 ? (
           <button
