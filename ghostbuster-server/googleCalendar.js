@@ -32,6 +32,7 @@ function getAuthUrl(returnTo) {
     access_type: "offline",
     prompt: "consent",
     scope: SCOPES,
+    include_granted_scopes: true,
     state,
   })
 }

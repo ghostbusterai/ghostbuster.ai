@@ -26,7 +26,7 @@ function UserIcon() {
   )
 }
 
-export default function ProfileMenu() {
+export default function ProfileMenu({ authUser = null, onLogout = null }) {
   const [open, setOpen] = useState(false)
   const [profile, setProfile] = useState({ ...DEFAULT_PROFILE })
   const [name, setName] = useState("")
@@ -36,6 +36,7 @@ export default function ProfileMenu() {
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(false)
   const [restoringTutorial, setRestoringTutorial] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   const rootRef = useRef(null)
 
   const load = useCallback(async () => {
@@ -126,11 +127,23 @@ export default function ProfileMenu() {
     setOpen(false)
   }
 
-  const initials = profileInitials(profile.name)
+  const displayName = profile.name || authUser?.name || ""
+  const initials = profileInitials(displayName)
   const tutorialHidden = isGettingStartedHidden(profile)
   const dirty =
     name.trim() !== (profile.name || "").trim() ||
     careerGoals.trim() !== (profile.careerGoals || "").trim()
+
+  async function handleSignOut() {
+    if (!onLogout || signingOut) return
+    setSigningOut(true)
+    try {
+      await onLogout()
+    } finally {
+      setSigningOut(false)
+      setOpen(false)
+    }
+  }
 
   return (
     <div ref={rootRef} style={{ position: "relative", flexShrink: 0 }}>
@@ -157,9 +170,22 @@ export default function ProfileMenu() {
           letterSpacing: "0.04em",
           boxShadow: "none",
           transition: "border-color 0.15s, background 0.15s",
+          overflow: "hidden",
+          padding: 0,
         }}
       >
-        {initials || <UserIcon />}
+        {authUser?.picture ? (
+          <img
+            src={authUser.picture}
+            alt=""
+            width={38}
+            height={38}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          initials || <UserIcon />
+        )}
       </button>
 
       {open && (
@@ -195,6 +221,18 @@ export default function ProfileMenu() {
             >
               Your profile
             </div>
+            {authUser?.email && (
+              <p
+                style={{
+                  margin: "6px 0 0",
+                  fontSize: 13,
+                  color: "rgba(240,240,245,0.55)",
+                  lineHeight: 1.45,
+                }}
+              >
+                Signed in as {authUser.email}
+              </p>
+            )}
             <p
               style={{
                 margin: "6px 0 0",
@@ -341,6 +379,30 @@ export default function ProfileMenu() {
               >
                 {restoringTutorial ? "Opening…" : "Show getting started on Home"}
               </button>
+
+              {typeof onLogout === "function" && (
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  style={{
+                    width: "100%",
+                    marginTop: 10,
+                    background: "transparent",
+                    color: signingOut ? "rgba(255,107,107,0.4)" : "#ff8a8a",
+                    border: "1px solid rgba(255,107,107,0.28)",
+                    padding: "10px 16px",
+                    borderRadius: 9,
+                    fontFamily: font.body,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: signingOut ? "not-allowed" : "pointer",
+                    boxShadow: "none",
+                  }}
+                >
+                  {signingOut ? "Signing out…" : "Sign out"}
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -9,9 +9,12 @@ import ProfileMenu from "./components/ProfileMenu"
 import SettingsMenu from "./components/SettingsMenu"
 import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
+import About from "./components/About"
+import Login from "./components/Login"
 import { font } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
+import { api } from "./api"
 
 const NAV = [
   { id: "dashboard", label: "Home" },
@@ -20,6 +23,7 @@ const NAV = [
   { id: "updates", label: "Resume" },
   { id: "reminders", label: "Reminders" },
   { id: "compose", label: "Compose" },
+  { id: "about", label: "About" },
 ]
 
 export default function App() {
@@ -28,12 +32,21 @@ export default function App() {
   const [googleNotice, setGoogleNotice] = useState(null)
   const [googleNoticeTarget, setGoogleNoticeTarget] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [authUser, setAuthUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authError, setAuthError] = useState(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const auth = params.get("auth")
     const google = params.get("google")
     const returnTo = params.get("page")
     const returnPage = returnTo === "compose" ? "compose" : "reminders"
+
+    if (auth === "error") {
+      setAuthError(params.get("message") || "Could not sign in with Google.")
+    }
+
     if (google === "connected") {
       if (returnTo === "settings") {
         setSettingsOpen(true)
@@ -64,8 +77,28 @@ export default function App() {
         text: params.get("message") || "Could not connect Google account.",
       })
     }
-    if (google) {
+    if (auth || google) {
       window.history.replaceState({}, "", window.location.pathname || "/")
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { user } = await api.getMe()
+        if (!cancelled) {
+          setAuthUser(user)
+          setAuthError(null)
+        }
+      } catch {
+        if (!cancelled) setAuthUser(null)
+      } finally {
+        if (!cancelled) setAuthLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -76,6 +109,39 @@ export default function App() {
     window.addEventListener(GETTING_STARTED_RESTORED_EVENT, goHome)
     return () => window.removeEventListener(GETTING_STARTED_RESTORED_EVENT, goHome)
   }, [])
+
+  async function handleLogout() {
+    try {
+      await api.logout()
+    } catch {
+      /* still clear local session */
+    }
+    setAuthUser(null)
+    setPage("dashboard")
+  }
+
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--gb-bg)",
+          color: "var(--gb-text-muted)",
+          fontFamily: font.body,
+          fontSize: 14,
+        }}
+      >
+        Loading…
+      </div>
+    )
+  }
+
+  if (!authUser) {
+    return <Login error={authError} />
+  }
 
   return (
     <div
@@ -197,7 +263,7 @@ export default function App() {
                 setGoogleNoticeTarget(null)
               }}
             />
-            <ProfileMenu />
+            <ProfileMenu authUser={authUser} onLogout={handleLogout} />
           </div>
         </div>
       </header>
@@ -237,6 +303,7 @@ export default function App() {
             }}
           />
         )}
+        {page === "about" && <About />}
       </main>
     </div>
   )

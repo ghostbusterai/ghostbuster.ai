@@ -172,9 +172,9 @@ exports.getGoogleCalendarStatus = async () => {
 }
 
 exports.saveGoogleCalendarTokens = async (_userId, tokens) => {
-  const refreshToken = tokens?.refresh_token
-  if (!refreshToken) throw new Error("missing_refresh_token")
   const data = read()
+  const refreshToken = tokens?.refresh_token || data.googleCalendar?.refreshToken
+  if (!refreshToken) throw new Error("missing_refresh_token")
   data.googleCalendar = {
     refreshToken,
     connectedAt: new Date().toISOString(),

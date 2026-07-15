@@ -225,6 +225,27 @@ export default function MessageComposer({
     window.location.href = `${BASE}/api/google/auth?returnTo=compose`
   }
 
+  async function refreshGoogleStatus() {
+    try {
+      const status = await api.getGoogleCalendarStatus()
+      setGoogleStatus(status)
+      return status
+    } catch {
+      setGoogleStatus({ connected: false, configured: false })
+      return { connected: false, configured: false }
+    }
+  }
+
+  function handleGmailAuthError(err) {
+    const msg = err.message || ""
+    if (/connect google/i.test(msg)) {
+      setGoogleStatus((prev) => ({ ...prev, connected: false }))
+      refreshGoogleStatus()
+      return "Your Google session expired or was reset. Click Connect Google below, then try again."
+    }
+    return msg || "Something went wrong."
+  }
+
   async function saveGmailDraft() {
     if (!result?.trim()) return
     const to = recipientEmail.trim()
@@ -243,7 +264,7 @@ export default function MessageComposer({
       })
       setGmailNotice({ type: "success", text: "Saved to Gmail drafts. Open Gmail to review and send." })
     } catch (err) {
-      setGmailError(err.message || "Could not save Gmail draft.")
+      setGmailError(handleGmailAuthError(err))
     } finally {
       setGmailBusy(null)
     }
@@ -280,7 +301,7 @@ export default function MessageComposer({
         text: `Email scheduled for ${formatScheduleLabel(scheduled?.sendAt || sendAt.toISOString())}.`,
       })
     } catch (err) {
-      setGmailError(err.message || "Could not schedule email.")
+      setGmailError(handleGmailAuthError(err))
     } finally {
       setGmailBusy(null)
     }
@@ -646,6 +667,17 @@ export default function MessageComposer({
                   {gmailError && (
                     <div style={{ marginBottom: 12, fontSize: 13, color: "var(--gb-danger)", lineHeight: 1.5 }}>
                       ⚠ {gmailError}
+                      {!googleStatus.connected && googleStatus.configured && (
+                        <div style={{ marginTop: 10 }}>
+                          <button type="button" onClick={connectGoogle} style={{
+                            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+                            color: "rgba(240,240,245,0.75)", padding: "8px 16px", borderRadius: 8,
+                            fontSize: 13, cursor: "pointer", fontFamily: font.mono, boxShadow: "none",
+                          }}>
+                            Connect Google
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

@@ -37,6 +37,7 @@ async function request(path, options = {}) {
   try {
     r = await fetch(`${BASE}${path}`, {
       headers,
+      credentials: "include",
       ...options,
     })
   } catch {
@@ -49,14 +50,18 @@ async function request(path, options = {}) {
   if (r.status === 204) return {}
   const text = await r.text()
   const data = parseBody(text, r)
-  if (!r.ok) throw new Error(data.error || r.statusText || `Request failed (${r.status})`)
+  if (!r.ok) {
+    const err = new Error(data.error || r.statusText || `Request failed (${r.status})`)
+    err.status = r.status
+    throw err
+  }
   return data
 }
 
 async function uploadRequest(path, formData) {
   let r
   try {
-    r = await fetch(`${BASE}${path}`, { method: "POST", body: formData })
+    r = await fetch(`${BASE}${path}`, { method: "POST", body: formData, credentials: "include" })
   } catch {
     const hint =
       BASE === ""
@@ -66,11 +71,17 @@ async function uploadRequest(path, formData) {
   }
   const text = await r.text()
   const data = parseBody(text, r)
-  if (!r.ok) throw new Error(data.error || r.statusText || `Request failed (${r.status})`)
+  if (!r.ok) {
+    const err = new Error(data.error || r.statusText || `Request failed (${r.status})`)
+    err.status = r.status
+    throw err
+  }
   return data
 }
 
 export const api = {
+  getMe: () => request("/api/auth/me"),
+  logout: () => request("/api/auth/logout", { method: "POST" }),
   getContacts: () => request("/api/contacts"),
   createContact: (body) => request("/api/contacts", { method: "POST", body: JSON.stringify(body) }),
   updateContact: (id, body) => request(`/api/contacts/${id}`, { method: "PUT", body: JSON.stringify(body) }),
