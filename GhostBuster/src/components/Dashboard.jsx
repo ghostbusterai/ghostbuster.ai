@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, getReminderUrgencyStyle, getReminderUrgency } from "../reminderUtils"
 import { font } from "../theme"
-import { SectionLabel } from "../layout"
+import { CardTitle, ContentCard } from "../layout"
 
 import { readLocalProfile, saveLocalProfile, GETTING_STARTED_SESSION_KEY, GETTING_STARTED_RESTORED_EVENT, PROFILE_UPDATED_EVENT } from "../profile"
 
@@ -483,7 +483,7 @@ export default function Dashboard({ setPage }) {
             due {reminderSummary.today > 0 ? "today" : "soon"} →
           </button>
         ) : (
-          <p style={{ margin: 0, color: "var(--gb-text-muted)", fontSize: 15, lineHeight: 1.5 }}>
+          <p style={{ margin: 0, color: "var(--gb-text-muted)", fontSize: 15, lineHeight: 1.5, fontFamily: font.body }}>
             {isNewUser
               ? "Stay in touch with people you've already met — add them here, then reach out with a message."
               : "Your networking activity at a glance."}
@@ -722,13 +722,13 @@ export default function Dashboard({ setPage }) {
       )}
 
       {/* Snapshot stats */}
-      <SectionLabel>Your snapshot</SectionLabel>
+      <ContentCard marginBottom={28}>
+        <CardTitle>Your snapshot</CardTitle>
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
           gap: 12,
-          marginBottom: 28,
         }}
       >
         {stats.map((s) => {
@@ -810,15 +810,15 @@ export default function Dashboard({ setPage }) {
           )
         })}
       </div>
+      </ContentCard>
 
-      {/* Quick actions */}
-      <SectionLabel>Quick actions</SectionLabel>
+      <ContentCard marginBottom={28}>
+        <CardTitle>Quick actions</CardTitle>
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
           gap: 12,
-          marginBottom: 28,
         }}
       >
         {QUICK_ACTIONS.map((action) => (
@@ -861,19 +861,12 @@ export default function Dashboard({ setPage }) {
           </button>
         ))}
       </div>
+      </ContentCard>
 
       {/* Weekly outreach goal */}
-      <section
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border)",
-          borderRadius: 16,
-          padding: "18px 18px 16px",
-          marginBottom: 28,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-          <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 16 }}>Weekly outreach goal</div>
+      <ContentCard marginBottom={28}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+          <CardTitle style={{ marginBottom: 0, flex: "1 1 auto" }}>Weekly outreach goal</CardTitle>
           <div style={{ fontFamily: font.mono, fontSize: 12, color: "var(--gb-text-muted)" }}>
             {weeklyLogTotal} / {WEEKLY_OUTREACH_GOAL} sent
           </div>
@@ -911,19 +904,11 @@ export default function Dashboard({ setPage }) {
             </div>
           )
         })}
-      </section>
+      </ContentCard>
 
-      {/* Recent activity */}
-      <SectionLabel>Recent activity</SectionLabel>
-      <section
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border)",
-          borderRadius: 16,
-          padding: "6px 8px 8px",
-          marginBottom: 28,
-        }}
-      >
+      <ContentCard padding="18px 18px 16px" marginBottom={28}>
+        <CardTitle>Recent activity</CardTitle>
+      <div style={{ padding: "0 0 2px" }}>
         {activityFeed.length === 0 ? (
           <div
             style={{
@@ -986,32 +971,22 @@ export default function Dashboard({ setPage }) {
             </button>
           ))
         )}
-      </section>
+      </div>
+      </ContentCard>
 
-      {/* Recent contacts */}
-      <SectionLabel>Recent contacts</SectionLabel>
-      <section
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border)",
-          borderRadius: 16,
-          padding: "18px 16px 16px",
-          marginBottom: 8,
-        }}
-      >
+      <ContentCard padding="18px 18px 16px" marginBottom={8}>
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "space-between",
             gap: 12,
             marginBottom: 14,
-            padding: "0 4px",
           }}
         >
-          <p style={{ margin: 0, fontSize: 12, color: "var(--gb-text-faint)", fontFamily: font.mono, lineHeight: 1.4 }}>
-            Sorted by latest touch or date added
-          </p>
+          <CardTitle helper="Sorted by latest touch or date added" style={{ marginBottom: 0, flex: "1 1 auto" }}>
+            Recent contacts
+          </CardTitle>
           <button
             type="button"
             onClick={() => setPage("contacts")}
@@ -1130,7 +1105,7 @@ export default function Dashboard({ setPage }) {
                       {c.name?.[0]?.toUpperCase() || "?"}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, fontFamily: font.display }}>{c.name}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, fontFamily: font.h1 }}>{c.name}</div>
                       <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginBottom: 8, fontFamily: font.body }}>
                         {[c.company, c.role].filter(Boolean).join(" · ") || "No company on file"}
                       </div>
@@ -1207,7 +1182,7 @@ export default function Dashboard({ setPage }) {
               })}
             </div>
           )}
-      </section>
+      </ContentCard>
     </div>
   )
 }

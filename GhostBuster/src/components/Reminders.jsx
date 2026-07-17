@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
-import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
+import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import {
   getReminderUrgency,
   getReminderUrgencyStyle,
@@ -202,7 +202,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
         action={
           <button onClick={() => setShowForm(true)} style={{
             background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
-            padding: "11px 22px", borderRadius: 10, fontFamily: font.display,
+            padding: "11px 22px", borderRadius: 10, fontFamily: font.h1,
             fontWeight: 700, fontSize: 14, cursor: "pointer",
           }}>+ Add Reminder</button>
         }
@@ -241,7 +241,6 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
 
       {!googleLoading && googleStatus.configured && (
         <>
-          <SectionLabel>Google Calendar</SectionLabel>
           <ContentCard
           style={{
             background: googleStatus.connected ? "var(--gb-accent-soft)" : "var(--gb-bg-elevated)",
@@ -254,15 +253,17 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
           }}
           padding="16px 20px"
         >
-          <div>
-            <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15 }}>
+          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+            <CardTitle
+              helper={
+                googleStatus.connected
+                  ? "New reminders with a due date are added to your calendar automatically."
+                  : "Connect to sync reminders as calendar events."
+              }
+              style={{ marginBottom: 0 }}
+            >
               Google Calendar {googleStatus.connected ? "connected" : "not connected"}
-            </div>
-            <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--gb-text-muted)", lineHeight: 1.45 }}>
-              {googleStatus.connected
-                ? "New reminders with a due date are added to your calendar automatically."
-                : "Connect to sync reminders as calendar events."}
-            </p>
+            </CardTitle>
           </div>
           {googleStatus.connected ? (
             <button
@@ -305,8 +306,8 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       )}
 
       {/* Filter tabs */}
-      <SectionLabel>View</SectionLabel>
       <ContentCard padding="14px 14px 12px" marginBottom={24}>
+        <CardTitle style={{ marginBottom: 12 }}>View</CardTitle>
       <div style={{ display: "flex", gap: 8 }}>
         {["pending", "done", "all"].map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{
@@ -325,7 +326,6 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       {/* Add Form */}
       {showForm && (
         <>
-          <SectionLabel>Add reminder</SectionLabel>
           <ContentCard style={{
             border: "1px solid var(--gb-border-subtle)",
           }} padding="28px" marginBottom={28}>
@@ -387,7 +387,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
             <button onClick={save} style={{
               background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
-              padding: "10px 24px", borderRadius: 9, fontFamily: font.display,
+              padding: "10px 24px", borderRadius: 9, fontFamily: font.h1,
               fontWeight: 700, fontSize: 14, cursor: "pointer",
             }}>Save</button>
             <button onClick={() => { setShowForm(false); setForm(emptyReminderForm()) }} style={{
@@ -401,7 +401,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       )}
 
       {/* Reminder List */}
-      <SectionLabel>Your reminders</SectionLabel>
+      <CardTitle>Your reminders</CardTitle>
       {filtered.length === 0 ? (
         <div style={{
           background: "var(--gb-bg-elevated)", border: "1px solid var(--gb-surface-active)",
@@ -447,7 +447,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
 
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15, textDecoration: r.done ? "line-through" : "none" }}>
+                    <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15, textDecoration: r.done ? "line-through" : "none" }}>
                       {r.contactName}
                     </div>
                     {!r.done && (

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
-import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
+import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import { COMPOSE_TONES, readPreferences } from "../preferences"
 import { readLocalProfile } from "../profile"
 import {
@@ -315,21 +315,9 @@ export default function MessageComposer({
         subtitle="Pick a scenario to auto-generate a starter message, then edit it before you copy or send."
       />
 
-      <SectionLabel>Quick scenarios</SectionLabel>
       <ContentCard padding="16px 16px 14px" marginBottom={28}>
+        <CardTitle helper="Click a scenario to generate a starter message.">Quick scenarios</CardTitle>
       <div>
-        <div
-          style={{
-            fontSize: 11,
-            fontFamily: font.mono,
-            color: "var(--gb-text-faint)",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            marginBottom: 10,
-          }}
-        >
-          Quick scenarios — click to generate
-        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {COMPOSE_SITUATIONS.map((s) => {
             const config = getScenarioConfig(s)
@@ -505,7 +493,7 @@ export default function MessageComposer({
           {/* Purpose */}
           <div>
             <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>PURPOSE</label>
-            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.55, fontFamily: font.body }}>
               What you want from this message (e.g. schedule a call, ask for advice, confirm next steps). The draft will aim toward that outcome without being pushy.
             </p>
             <textarea
@@ -528,7 +516,7 @@ export default function MessageComposer({
           {/* Previous communication */}
           <div>
             <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>PREVIOUS COMMUNICATION</label>
-            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.55, fontFamily: font.body }}>
               Paste full threads or detailed notes — the more concrete, the better. Include their wording when you can, open questions, what you promised, and dates they gave. The draft will reference those specifics (up to ~200 words when you add history here).
             </p>
             <textarea
@@ -558,7 +546,7 @@ export default function MessageComposer({
               boxShadow: "none",
               padding: "13px 28px",
               borderRadius: 10,
-              fontFamily: font.display,
+              fontFamily: font.h1,
               fontWeight: 700,
               fontSize: 15,
               cursor: situation && !loading ? "pointer" : "not-allowed",
@@ -574,7 +562,7 @@ export default function MessageComposer({
         <ContentCard style={{ marginBottom: 0 }} padding="18px 18px 16px">
           <CardTitle>Generated message</CardTitle>
           {result && !loading && (
-            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.45 }}>
+            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.45, fontFamily: font.body }}>
               Edit the draft below before copying or sending.
             </p>
           )}
@@ -598,7 +586,7 @@ export default function MessageComposer({
             )}
 
             {exampleNotice && (
-              <p style={{ fontSize: 12, color: "rgba(255,201,107,0.9)", margin: "0 0 8px 0", lineHeight: 1.45 }}>
+              <p style={{ fontSize: 12, color: "rgba(255,201,107,0.9)", margin: "0 0 8px 0", lineHeight: 1.45, fontFamily: font.body }}>
                 {exampleNotice}
               </p>
             )}
@@ -689,7 +677,7 @@ export default function MessageComposer({
 
                   {!googleLoading && googleStatus.configured && !googleStatus.connected && (
                     <div>
-                      <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 10px 0", lineHeight: 1.5 }}>
+                      <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 10px 0", lineHeight: 1.5, fontFamily: font.body }}>
                         Connect Google to use the same account as Calendar reminders.
                       </p>
                       <button type="button" onClick={connectGoogle} style={{

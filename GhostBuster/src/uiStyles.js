@@ -48,7 +48,7 @@ export function primaryBtn() {
     boxShadow: "none",
     padding: "10px 24px",
     borderRadius: 9,
-    fontFamily: font.display,
+    fontFamily: font.h1,
     fontWeight: 700,
     fontSize: 14,
     cursor: "pointer",

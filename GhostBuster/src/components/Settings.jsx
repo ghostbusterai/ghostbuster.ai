@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
 import { useTheme } from "../ThemeContext"
+import { CardTitle } from "../layout"
 import { inputStyle, sectionCard, secondaryBtn } from "../uiStyles"
 import {
   normalizeProfile,
@@ -169,13 +170,13 @@ export default function Settings({
           >
             Settings
           </h1>
-          <p style={{ color: "var(--gb-text-muted)", fontSize: 15, maxWidth: 680, lineHeight: 1.55 }}>
+          <p style={{ color: "var(--gb-text-muted)", fontSize: 15, maxWidth: 680, lineHeight: 1.55, fontFamily: font.body }}>
             Tutorial, reminders, compose defaults, integrations, and how urgency works across the app.
           </p>
         </div>
       )}
       {error && (
-        <p style={{ color: "var(--gb-danger)", fontSize: 13, marginBottom: embedded ? 12 : 10 }}>{error}</p>
+        <p style={{ color: "var(--gb-danger)", fontSize: 13, marginBottom: embedded ? 12 : 10, fontFamily: font.body }}>{error}</p>
       )}
       {googleNoticeLocal && (
         <p
@@ -183,6 +184,7 @@ export default function Settings({
             color: googleNoticeLocal.type === "success" ? "var(--gb-accent)" : "var(--gb-danger)",
             fontSize: 13,
             marginBottom: embedded ? 12 : 10,
+            fontFamily: font.body,
           }}
         >
           {googleNoticeLocal.text}
@@ -190,12 +192,9 @@ export default function Settings({
       )}
 
       <section style={sectionCard(undefined, embedded)}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <CardTitle helper="Choose a dark or light background. Accent colors adjust automatically for readability.">
           Appearance
-        </div>
-        <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
-          Choose a dark or light background. Accent colors adjust automatically for readability.
-        </p>
+        </CardTitle>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
             { id: "dark", label: "Dark", preview: { bg: "#0a0a0f", text: "#f0f0f5", accent: "#b8ff57" } },
@@ -245,10 +244,10 @@ export default function Settings({
                     GhostBuster
                   </span>
                 </div>
-                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 14, color: "var(--gb-text)" }}>
+                <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 14, color: "var(--gb-text)" }}>
                   {label}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 2, fontFamily: font.body }}>
                   {active ? "Active" : `Switch to ${label.toLowerCase()}`}
                 </div>
               </button>
@@ -258,16 +257,17 @@ export default function Settings({
       </section>
 
       <section style={sectionCard(undefined, embedded)}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <CardTitle
+          helper={
+            loading
+              ? "Loading…"
+              : tutorialHidden
+                ? "The Getting started panel is hidden on Home. You can bring it back anytime."
+                : "The Getting started panel is visible on Home."
+          }
+        >
           Home tutorial
-        </div>
-        <p style={{ margin: "0 0 16px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
-          {loading
-            ? "Loading…"
-            : tutorialHidden
-              ? "The Getting started panel is hidden on Home. You can bring it back anytime."
-              : "The Getting started panel is visible on Home."}
-        </p>
+        </CardTitle>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
             type="button"
@@ -312,12 +312,9 @@ export default function Settings({
       </section>
 
       <section style={sectionCard("rgba(255,201,107,0.18)", embedded)}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <CardTitle helper="Default behavior when you add a new follow-up reminder on the Reminders page.">
           Reminders & calendar
-        </div>
-        <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
-          Default behavior when you add a new follow-up reminder on the Reminders page.
-        </p>
+        </CardTitle>
         <label
           style={{
             display: "flex",
@@ -349,12 +346,9 @@ export default function Settings({
       </section>
 
       <section style={sectionCard(undefined, embedded)}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <CardTitle helper="Pre-select your preferred tone when opening Compose. Career goals from your profile can pre-fill background.">
           Compose defaults
-        </div>
-        <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
-          Pre-select your preferred tone when opening Compose. Career goals from your profile can pre-fill background.
-        </p>
+        </CardTitle>
         <div style={{ marginBottom: 14 }}>
           <label
             htmlFor="settings-default-tone"
@@ -414,19 +408,17 @@ export default function Settings({
       </section>
 
       <section style={sectionCard("rgba(91,228,216,0.18)", embedded)}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
-          Google account
-        </div>
+        <CardTitle>Google account</CardTitle>
         {googleLoading ? (
           <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>Loading…</div>
         ) : !googleStatus.configured ? (
-          <p style={{ margin: 0, fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
             Google sign-in is not configured on this server. Calendar sync and Gmail drafts in Compose require
             server setup.
           </p>
         ) : (
           <>
-            <p style={{ margin: "0 0 16px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 16px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
               {googleStatus.connected
                 ? "Connected for Google Calendar reminder sync and Gmail drafts in Compose."
                 : "Connect once to sync reminders to Google Calendar and save or schedule emails from Compose."}
@@ -485,12 +477,9 @@ export default function Settings({
       </section>
 
       <section style={sectionCard(undefined, embedded)}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <CardTitle helper="Tracker and Home use these thresholds to flag contacts who need a check-in.">
           Connection warmth
-        </div>
-        <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
-          Tracker and Home use these thresholds to flag contacts who need a check-in.
-        </p>
+        </CardTitle>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
           {WARMTH_LEGEND.map(({ c, label, detail }) => (
             <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13 }}>
@@ -520,12 +509,9 @@ export default function Settings({
       </section>
 
       <section style={{ ...sectionCard(undefined, embedded), marginBottom: embedded ? 0 : 24 }}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <CardTitle helper="The header bell counts pending reminders. Urgency colors match Reminders and the Notifications page.">
           Notifications
-        </div>
-        <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
-          The header bell counts pending reminders. Urgency colors match Reminders and the Notifications page.
-        </p>
+        </CardTitle>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
           {REMINDER_URGENCY.map((u) => {
             const style = getReminderUrgencyStyle(u)

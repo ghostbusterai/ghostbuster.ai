@@ -1,6 +1,69 @@
 import React from "react"
 import { font } from "./theme"
 
+/** Typography aligned with the Home dashboard */
+export const type = {
+  eyebrow: {
+    fontSize: 12,
+    fontFamily: font.body,
+    fontWeight: 600,
+    letterSpacing: "0.06em",
+    color: "var(--gb-accent-muted)",
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    fontFamily: font.h1,
+    fontWeight: 800,
+    fontSize: 28,
+    letterSpacing: "-0.5px",
+    lineHeight: 1.2,
+  },
+  heroSubtitle: {
+    fontFamily: font.body,
+    fontSize: 15,
+    color: "var(--gb-text-muted)",
+    lineHeight: 1.5,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: font.h1,
+    fontWeight: 700,
+    letterSpacing: "0.14em",
+    color: "var(--gb-accent-muted)",
+    textTransform: "uppercase",
+  },
+  cardTitle: {
+    fontFamily: font.h2,
+    fontWeight: 700,
+    fontSize: 17,
+    color: "var(--gb-accent-muted)",
+  },
+  cardSubtitle: {
+    fontFamily: font.body,
+    fontSize: 13,
+    color: "var(--gb-text-muted)",
+    lineHeight: 1.5,
+  },
+  itemTitle: {
+    fontFamily: font.h1,
+    fontWeight: 700,
+    fontSize: 15,
+  },
+  statValue: {
+    fontFamily: font.h1,
+    fontWeight: 800,
+    fontSize: 28,
+  },
+  body: { fontFamily: font.body },
+  bodyMuted: {
+    fontFamily: font.body,
+    fontSize: 13,
+    color: "var(--gb-text-muted)",
+    lineHeight: 1.5,
+  },
+  meta: { fontFamily: font.mono },
+}
+
 /** Centered column matching Home dashboard width */
 export function PageShell({ children }) {
   return (
@@ -34,44 +97,17 @@ export function PageHero({ eyebrow, title, subtitle, action, children }) {
       >
         <div style={{ flex: "1 1 240px", minWidth: 0 }}>
           {eyebrow && (
-            <div
-              style={{
-                fontSize: 10,
-                fontFamily: font.mono,
-                letterSpacing: "0.16em",
-                color: "var(--gb-text-faint)",
-                textTransform: "uppercase",
-                marginBottom: 10,
-              }}
-            >
+            <div style={{ ...type.eyebrow, marginBottom: 10 }}>
               {eyebrow}
             </div>
           )}
           {title && (
-            <h1
-              style={{
-                fontFamily: font.h1,
-                fontWeight: 800,
-                fontSize: 28,
-                letterSpacing: "-0.5px",
-                margin: "0 0 8px",
-                lineHeight: 1.2,
-              }}
-            >
+            <h1 style={{ ...type.heroTitle, margin: "0 0 8px" }}>
               {title}
             </h1>
           )}
           {subtitle && (
-            <p
-              style={{
-                margin: 0,
-                color: "var(--gb-text-muted)",
-                fontSize: 15,
-                fontFamily: font.body,
-                lineHeight: 1.55,
-                maxWidth: 560,
-              }}
-            >
+            <p style={{ ...type.heroSubtitle, margin: 0, maxWidth: 560 }}>
               {subtitle}
             </p>
           )}
@@ -85,18 +121,7 @@ export function PageHero({ eyebrow, title, subtitle, action, children }) {
 
 export function SectionLabel({ children, style }) {
   return (
-    <div
-      style={{
-        fontSize: 11,
-        fontFamily: font.h1,
-        fontWeight: 700,
-        letterSpacing: "0.14em",
-        color: "#ffffff",
-        textTransform: "uppercase",
-        marginBottom: 12,
-        ...style,
-      }}
-    >
+    <div style={{ ...type.sectionLabel, marginBottom: 12, ...style }}>
       {children}
     </div>
   )
@@ -120,15 +145,15 @@ export function ContentCard({ children, style, padding = "18px 18px 16px", margi
   )
 }
 
-/** In-card section title */
-export function CardTitle({ children, helper }) {
+/** In-card section title — matches Contacts “Search” style site-wide */
+export function CardTitle({ children, helper, style }) {
   return (
-    <div style={{ marginBottom: helper ? 14 : 16 }}>
-      <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: helper ? 6 : 0 }}>
+    <div style={{ marginBottom: helper ? 14 : 16, ...style }}>
+      <div style={{ ...type.cardTitle, marginBottom: helper ? 6 : 0 }}>
         {children}
       </div>
       {helper && (
-        <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
+        <p style={{ ...type.cardSubtitle, margin: 0 }}>
           {helper}
         </p>
       )}

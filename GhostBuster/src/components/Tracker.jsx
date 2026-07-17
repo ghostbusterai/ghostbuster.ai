@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
-import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
+import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 
 const CHANNELS = ["Email", "LinkedIn", "In-person", "Call", "Other"]
 const TOUCHPOINT_HISTORY_PREVIEW = 5
@@ -423,7 +423,6 @@ export default function Tracker() {
       </PageHero>
 
       {/* Warmth legend */}
-      <SectionLabel>How warmth works</SectionLabel>
       <ContentCard
         style={{
           background: "var(--gb-bg-elevated)",
@@ -432,10 +431,9 @@ export default function Tracker() {
         padding="16px 18px"
         marginBottom={20}
       >
-        <CardTitle>How warmth works</CardTitle>
-        <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
-          Each contact gets a color based on how long it&apos;s been since you last logged outreach with them.
-        </p>
+        <CardTitle helper="Each contact gets a color based on how long it's been since you last logged outreach with them.">
+          How warmth works
+        </CardTitle>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {[
             { c: "var(--gb-accent)", label: "Warm", detail: "Last touch within 21 days" },
@@ -479,8 +477,8 @@ export default function Tracker() {
       </ContentCard>
 
       {/* Filter + sort */}
-      <SectionLabel>Filter & sort</SectionLabel>
       <ContentCard padding="18px 18px 14px" marginBottom={20}>
+        <CardTitle style={{ marginBottom: 14 }}>Filter & sort</CardTitle>
       <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)" }}>CONTACT</label>
@@ -526,7 +524,6 @@ export default function Tracker() {
       )}
 
       {/* Log touchpoint */}
-      <SectionLabel>Log outreach</SectionLabel>
       <ContentCard
         style={{
           border: "1px solid var(--gb-border-subtle)",
@@ -570,6 +567,7 @@ export default function Tracker() {
                 boxShadow: "none",
                 padding: "10px 22px",
                 borderRadius: 9,
+                fontFamily: font.h1,
                 fontWeight: 700,
                 cursor: logContactId && !savingLog ? "pointer" : "not-allowed",
               }}
@@ -581,11 +579,9 @@ export default function Tracker() {
       </ContentCard>
 
       {/* Per-contact warmth */}
-      <SectionLabel>Connection warmth</SectionLabel>
-      <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: "0 0 14px", lineHeight: 1.5, fontFamily: font.body }}>
-        Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each
-        week for the past 12 weeks.
-      </p>
+      <CardTitle helper="Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each week for the past 12 weeks.">
+        Connection warmth
+      </CardTitle>
       {loading ? (
         <div style={{ color: "var(--gb-text-faint)" }}>Loading…</div>
       ) : sortedFilteredContacts.length === 0 ? (
@@ -657,7 +653,7 @@ export default function Tracker() {
                     }}
                   />
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 16 }}>{c.name}</div>
+                    <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 16 }}>{c.name}</div>
                     <div
                       style={{
                         fontSize: 11,
@@ -760,20 +756,22 @@ export default function Tracker() {
       )}
 
       {/* Recent logs table */}
-      <SectionLabel style={{ marginTop: 26 }}>Touchpoint history</SectionLabel>
+      <CardTitle
+        helper="A log of every outreach you record above. Newest first — click a row to open that contact's timeline."
+        style={{ marginTop: 26 }}
+      >
+        Touchpoint history
+      </CardTitle>
       <div
         style={{
           margin: "0 0 14px",
           display: "flex",
           alignItems: "flex-end",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           gap: 16,
           flexWrap: "wrap",
         }}
       >
-        <p style={{ fontSize: 13, color: "var(--gb-text-faint)", margin: 0, lineHeight: 1.5, fontFamily: font.body, flex: "1 1 240px" }}>
-          A log of every outreach you record above. Newest first — click a row to open that contact&apos;s timeline.
-        </p>
         {filteredLogs.length > TOUCHPOINT_HISTORY_PREVIEW && (
           <label
             style={{
@@ -983,6 +981,7 @@ export default function Tracker() {
                     style={{
                       marginTop: 14,
                       fontSize: 13,
+                      fontFamily: font.body,
                       color: "var(--gb-text-secondary)",
                       lineHeight: 1.55,
                       padding: "12px 14px",

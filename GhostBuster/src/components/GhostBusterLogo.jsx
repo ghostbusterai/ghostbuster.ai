@@ -1,10 +1,15 @@
 import React from "react"
 
 /**
- * Circular mark: character emerging from an open envelope (theme-aware green line art).
+ * Circular mark: character emerging from an open envelope (original shape, filled colors).
  */
 export default function GhostBusterLogo({ size = 22, className, ...rest }) {
   const sw = 3
+  const ink = "var(--gb-logo-stroke)"
+  const env = "var(--gb-logo-envelope)"
+  const envDeep = "var(--gb-logo-envelope-deep)"
+  const ghost = "var(--gb-logo-ghost)"
+  const feature = "var(--gb-logo-ghost-feature)"
 
   return (
     <svg
@@ -17,14 +22,11 @@ export default function GhostBusterLogo({ size = 22, className, ...rest }) {
       aria-hidden
       {...rest}
     >
-      <circle cx="50" cy="50" r="46" fill="var(--gb-logo-fill)" stroke="var(--gb-logo-stroke)" strokeWidth={sw} />
+      <circle cx="50" cy="50" r="46" fill="var(--gb-logo-fill)" stroke={ink} strokeWidth={sw} />
 
       <path
-        d="M 26.5 63 L 37 29.5 L 53.5 59.5"
-        stroke="var(--gb-logo-stroke)"
-        strokeWidth={sw}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        d="M 26.5 63 L 47 51 L 67.5 63 V 80.5 H 26.5 V 63 Z"
+        fill={envDeep}
       />
 
       <path
@@ -34,32 +36,34 @@ export default function GhostBusterLogo({ size = 22, className, ...rest }) {
            C 56.5 26.5 66 31 68.5 40
            C 70.5 47.5 66 54.5 58 57.5
            C 52 59.5 46 61 42 61.5 Z"
-        stroke="var(--gb-logo-stroke)"
+        stroke={ink}
         strokeWidth={sw}
         strokeLinejoin="round"
-        fill="none"
+        fill={ghost}
       />
 
-      <circle cx="45.5" cy="36" r="2.2" fill="var(--gb-logo-stroke)" />
-      <circle cx="55" cy="37.5" r="2.2" fill="var(--gb-logo-stroke)" />
-      <path
-        d="M 48 42.5 H 57"
-        stroke="var(--gb-logo-stroke)"
-        strokeWidth={sw * 0.7}
-        strokeLinecap="round"
-      />
+      <path d="M 26.5 63 V 80.5 H 67.5 V 63 Z" fill={env} />
 
       <path
         d="M 26.5 63 V 80.5 H 67.5 V 63"
-        stroke="var(--gb-logo-stroke)"
+        stroke={ink}
         strokeWidth={sw}
         strokeLinejoin="round"
       />
       <path
         d="M 26.5 63 L 47 51 L 67.5 63"
-        stroke="var(--gb-logo-stroke)"
+        stroke={ink}
         strokeWidth={sw}
         strokeLinejoin="round"
+      />
+
+      <circle cx="45.5" cy="36" r="2.2" fill={feature} />
+      <circle cx="55" cy="37.5" r="2.2" fill={feature} />
+      <path
+        d="M 48 42.5 H 57"
+        stroke={feature}
+        strokeWidth={sw * 0.7}
+        strokeLinecap="round"
       />
     </svg>
   )

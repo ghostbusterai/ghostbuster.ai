@@ -10,7 +10,7 @@ import { inputStyle } from "../uiStyles"
 import { readLocalProfile, saveLocalProfile } from "../profile"
 import { contactsNeedingResumeNudge, buildResumeShareComposePrefill } from "../resumeNudge"
 import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
-import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
+import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 
 const LS_LOGS = "gb_outreach_logs"
 
@@ -638,25 +638,22 @@ export default function Updates({ setPage, setComposePrefill }) {
         subtitle="Log résumé or career changes here — no need to name contacts. Each update can optionally turn into matched outreach, AI-drafted messages, and follow-up reminders when you're ready."
       >
         {loadError && (
-          <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0, fontFamily: font.body }}>
             API offline — saving locally. Run the server (with ANTHROPIC_API_KEY for best matching) to sync and use AI recommendations.
           </p>
         )}
-        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
+        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0, fontFamily: font.body }}>{actionError}</p>}
       </PageHero>
 
-      <SectionLabel>Résumé last updated</SectionLabel>
       <ContentCard
         style={{
           border: "1px solid var(--gb-border-subtle)",
         }}
         padding="24px"
       >
-        <CardTitle>Résumé last updated</CardTitle>
-        <p style={{ fontSize: 13, color: "var(--gb-text-faint)", marginBottom: 14, lineHeight: 1.55, fontFamily: font.body }}>
-          When did you last refresh your résumé? We&apos;ll optionally suggest contacts you haven&apos;t messaged
-          since then — with draft messages and reminders in Notifications when you want them.
-        </p>
+        <CardTitle helper="When did you last refresh your résumé? We'll optionally suggest contacts you haven't messaged since then — with draft messages and reminders in Notifications when you want them.">
+          Résumé last updated
+        </CardTitle>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <input
             type="date"
@@ -675,6 +672,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               boxShadow: "none",
               padding: "10px 20px",
               borderRadius: 9,
+              fontFamily: font.h1,
               fontWeight: 700,
               cursor: savingResumeDate ? "wait" : "pointer",
             }}
@@ -697,7 +695,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             >
               Share your update
             </div>
-            <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 12px", lineHeight: 1.5, fontFamily: font.body }}>
               These contacts haven&apos;t heard from you since your last résumé update.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -747,30 +745,16 @@ export default function Updates({ setPage, setComposePrefill }) {
         )}
 
         {resumeDate && resumeNudgeContacts.length === 0 && contacts.length > 0 && (
-          <p style={{ fontSize: 13, color: "var(--gb-text-faint)", marginTop: 16, marginBottom: 0 }}>
+          <p style={{ fontSize: 13, color: "var(--gb-text-faint)", marginTop: 16, marginBottom: 0, fontFamily: font.body }}>
             You&apos;re caught up — everyone has heard from you since this date.
           </p>
         )}
       </ContentCard>
 
-      <SectionLabel>Upload by role</SectionLabel>
-      <div
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border-subtle)",
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+      <ContentCard padding="24px">
+        <CardTitle helper="Upload a résumé for each role you're targeting — for example, a PM version and a SWE version. Create a role bucket below, then drag in a PDF, DOCX, or text file. Contacts are auto-matched from their job role. Replacing or removing a résumé saves the previous version to your archive below.">
           Upload your résumé by role
-        </div>
-        <p style={{ color: "var(--gb-text-muted)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
-          Upload a résumé for each role you&apos;re targeting — for example, a PM version and a SWE version. Create a
-          role bucket below, then drag in a PDF, DOCX, or text file. Contacts are auto-matched from their job role.
-          Replacing or removing a résumé saves the previous version to your archive below.
-        </p>
+        </CardTitle>
 
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", marginBottom: 8 }}>
@@ -801,6 +785,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                 boxShadow: "none",
                 padding: "10px 18px",
                 borderRadius: 9,
+                fontFamily: font.h1,
                 fontWeight: 700,
                 cursor: newBucketName.trim() && !creatingBucket ? "pointer" : "not-allowed",
               }}
@@ -882,7 +867,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 16 }}>{bucket.name}</div>
+                      <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 16 }}>{bucket.name}</div>
                       <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4 }}>
                         {assignedCount > 0
                           ? `${assignedCount} contact${assignedCount !== 1 ? "s" : ""} assigned`
@@ -1051,25 +1036,12 @@ export default function Updates({ setPage, setComposePrefill }) {
             })}
           </div>
         )}
-      </div>
+      </ContentCard>
 
-      <SectionLabel>Résumé archive</SectionLabel>
-      <div
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid rgba(180,130,255,0.22)",
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+      <ContentCard padding="24px" style={{ border: "1px solid rgba(180,130,255,0.22)" }}>
+        <CardTitle helper="Past résumés are saved automatically when you upload a new file or remove the current one. Browse by date to see how your résumé evolved over time.">
           Résumé archive
-        </div>
-        <p style={{ color: "var(--gb-text-muted)", fontSize: 14, marginBottom: 18, lineHeight: 1.5, maxWidth: 680 }}>
-          Past résumés are saved automatically when you upload a new file or remove the current one. Browse by date to
-          see how your résumé evolved over time.
-        </p>
+        </CardTitle>
 
         {resumeArchiveItems.length === 0 ? (
           <div
@@ -1111,7 +1083,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15 }}>{item.fileName || "Archived résumé"}</div>
+                      <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15 }}>{item.fileName || "Archived résumé"}</div>
                       <div style={{ fontSize: 12, color: "rgba(180,130,255,0.85)", marginTop: 4, fontFamily: font.mono }}>
                         {item.bucketName}
                       </div>
@@ -1230,18 +1202,9 @@ export default function Updates({ setPage, setComposePrefill }) {
             )}
           </div>
         )}
-      </div>
+      </ContentCard>
 
-      <SectionLabel>Suggested improvements</SectionLabel>
-      <div
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid rgba(91,228,216,0.2)",
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 24,
-        }}
-      >
+      <ContentCard padding="24px" style={{ border: "1px solid rgba(91,228,216,0.2)" }}>
         <div
           style={{
             display: "flex",
@@ -1252,13 +1215,10 @@ export default function Updates({ setPage, setComposePrefill }) {
             marginBottom: 12,
           }}
         >
-          <div>
-            <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 6 }}>
+          <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+            <CardTitle helper="AI feedback tailored to your career goals — rewording, stronger activities, metrics, and more.">
               Suggested improvements
-            </div>
-            <p style={{ color: "var(--gb-text-muted)", fontSize: 14, lineHeight: 1.5, maxWidth: 620, margin: 0 }}>
-              AI feedback tailored to your career goals — rewording, stronger activities, metrics, and more.
-            </p>
+            </CardTitle>
           </div>
           <button
             type="button"
@@ -1316,12 +1276,12 @@ export default function Updates({ setPage, setComposePrefill }) {
           </div>
         )}
         {!careerGoals && (
-          <p style={{ color: "var(--gb-warning)", fontSize: 13, margin: "0 0 8px" }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, margin: "0 0 8px", fontFamily: font.body }}>
             Set career goals in your profile (top-right avatar) to unlock suggestions.
           </p>
         )}
         {careerGoals && !resumeBuckets.some((b) => b.text?.trim()) && (
-          <p style={{ color: "var(--gb-warning)", fontSize: 13, margin: "0 0 8px" }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, margin: "0 0 8px", fontFamily: font.body }}>
             Upload a résumé to a role bucket above to get tailored feedback.
           </p>
         )}
@@ -1339,7 +1299,7 @@ export default function Updates({ setPage, setComposePrefill }) {
         )}
 
         {suggestionsError && (
-          <p style={{ color: "var(--gb-danger)", fontSize: 13, margin: "8px 0 0" }}>{suggestionsError}</p>
+          <p style={{ color: "var(--gb-danger)", fontSize: 13, margin: "8px 0 0", fontFamily: font.body }}>{suggestionsError}</p>
         )}
 
         {suggestions.length > 0 && (
@@ -1446,25 +1406,12 @@ export default function Updates({ setPage, setComposePrefill }) {
             })}
           </div>
         )}
-      </div>
+      </ContentCard>
 
-      <SectionLabel>Career update</SectionLabel>
-      <div
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border-subtle)",
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 36,
-        }}
-      >
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+      <ContentCard padding="24px" marginBottom={36}>
+        <CardTitle helper="Describe a résumé or career change in plain language. You don't have to message anyone right away — saving an update is the first step toward optional outreach later.">
           Career update
-        </div>
-        <p style={{ color: "var(--gb-text-muted)", fontSize: 14, marginBottom: 16, lineHeight: 1.55, maxWidth: 680 }}>
-          Describe a résumé or career change in plain language. You don&apos;t have to message anyone right away —
-          saving an update is the first step toward optional outreach later.
-        </p>
+        </CardTitle>
 
         <div
           style={{
@@ -1580,27 +1527,23 @@ export default function Updates({ setPage, setComposePrefill }) {
               boxShadow: "none",
               padding: "11px 22px",
               borderRadius: 9,
+              fontFamily: font.h1,
               fontWeight: 700,
               cursor: saving || !title.trim() || !details.trim() ? "not-allowed" : "pointer",
             }}
           >
             {saving ? "Saving…" : "Save update & see matches"}
           </button>
-          <p style={{ margin: 0, fontSize: 12, color: "var(--gb-text-faint)", lineHeight: 1.5, maxWidth: 560 }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--gb-text-faint)", lineHeight: 1.5, maxWidth: 560, fontFamily: font.body }}>
             After saving, you can review optional message drafts. Set reminders anytime from the Reminders tab — we
             also surface nudges in Notifications when follow-ups are due.
           </p>
         </form>
-      </div>
+      </ContentCard>
 
-      <SectionLabel>History</SectionLabel>
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>History</div>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)", lineHeight: 1.5, maxWidth: 680 }}>
-          Past updates stay here. Re-open any entry for optional message ideas, then draft in Compose or add a
-          reminder when you&apos;re ready to reach out.
-        </p>
-      </div>
+      <CardTitle helper="Past updates stay here. Re-open any entry for optional message ideas, then draft in Compose or add a reminder when you're ready to reach out.">
+        History
+      </CardTitle>
       {loading ? (
         <div style={{ color: "var(--gb-text-faint)" }}>Loading…</div>
       ) : updates.length === 0 ? (
@@ -1634,7 +1577,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>{u.title}</div>
+                <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 16 }}>{u.title}</div>
                 <div style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-accent-muted)", marginTop: 6 }}>
                   Effective {u.effectiveDate || "—"}
                   {u.createdAt ? ` · logged ${new Date(u.createdAt).toLocaleDateString()}` : ""}
@@ -1728,7 +1671,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               <div
                 id="rel-title"
                 style={{
-                  fontFamily: font.display,
+                  fontFamily: font.h1,
                   fontWeight: 800,
                   fontSize: 21,
                   letterSpacing: "-0.5px",
@@ -1744,7 +1687,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     ? "Update saved — no matches yet"
                     : "Recommended outreach"}
               </div>
-              <p style={{ margin: "12px 0 0", fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5 }}>
+              <p style={{ margin: "12px 0 0", fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5, fontFamily: font.body }}>
                 {relevanceModal.notice === "no_contacts" ? (
                   <>
                     Your update was saved, but there are no contacts yet. Add people on the{" "}
@@ -1809,7 +1752,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     border: "1px solid var(--gb-border-subtle)",
                   }}
                 >
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{row.name}</div>
+                  <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15 }}>{row.name}</div>
                   <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 2 }}>
                     {[row.role, row.company].filter(Boolean).join(" @ ") || "—"}
                   </div>

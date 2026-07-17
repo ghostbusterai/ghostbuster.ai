@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { PageShell, PageHero, SectionLabel, ContentCard } from "../layout"
+import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import {
   getReminderUrgency,
   getReminderUrgencyStyle,
@@ -79,17 +79,17 @@ export default function Notifications({ setPage }) {
         }
       >
         {loadError && (
-          <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
+          <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0, fontFamily: font.body }}>
             API offline — showing local copy.
           </p>
         )}
-        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
+        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0, fontFamily: font.body }}>{actionError}</p>}
       </PageHero>
 
       {summaryPills.length > 0 && (
         <>
-          <SectionLabel>Summary</SectionLabel>
           <ContentCard padding="14px 14px 12px" marginBottom={24}>
+          <CardTitle style={{ marginBottom: 12 }}>Summary</CardTitle>
           <div
           style={{
             display: "flex",
@@ -132,7 +132,7 @@ export default function Notifications({ setPage }) {
         </>
       )}
 
-      <SectionLabel>Pending reminders</SectionLabel>
+      <CardTitle>Pending reminders</CardTitle>
       {loading ? (
         <div style={{ color: "var(--gb-text-faint)" }}>Loading notifications…</div>
       ) : pending.length === 0 ? (
@@ -188,7 +188,7 @@ export default function Notifications({ setPage }) {
                     >
                       {style.label}
                     </span>
-                    <span style={{ fontFamily: font.display, fontWeight: 700, fontSize: 16 }}>{r.contactName}</span>
+                    <span style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 16 }}>{r.contactName}</span>
                   </div>
                   <div style={{ fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5 }}>{reason}</div>
                   <div

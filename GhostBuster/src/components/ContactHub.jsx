@@ -3,7 +3,7 @@ import { api } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
-import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
+import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 
 const EMPTY = {
   name: "", email: "", phone: "", company: "", role: "", notes: "", lastContacted: "",
@@ -265,7 +265,7 @@ export default function ContactHub() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontFamily: font.display,
+                fontFamily: font.h1,
                 fontWeight: 700,
                 fontSize: 16,
                 flexShrink: 0,
@@ -275,7 +275,7 @@ export default function ContactHub() {
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <div style={{ fontFamily: font.display, fontWeight: 700, fontSize: 15 }}>{c.name}</div>
+                <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15 }}>{c.name}</div>
                 {c.pinned && (
                   <span
                     style={{
@@ -434,14 +434,13 @@ export default function ContactHub() {
           )}
         </p>
         {actionError && (
-          <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>
+          <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0, fontFamily: font.body }}>{actionError}</p>
         )}
       </PageHero>
 
       {/* Primary action — add a contact */}
       {!isEditing && (
         <>
-          <SectionLabel>Start here</SectionLabel>
           <ContentCard
             style={{
               background: isAdding ? "rgba(184,255,87,0.06)" : "rgba(184,255,87,0.04)",
@@ -458,26 +457,15 @@ export default function ContactHub() {
           }}
         >
           <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 11,
-                fontFamily: font.mono,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "rgba(184,255,87,0.75)",
-                marginBottom: 6,
-              }}
+            <CardTitle
+              helper={
+                isAdding
+                  ? "Fill in their details in the form below. Role and notes help GhostBuster match résumé updates later."
+                  : "Met someone worth staying in touch with? Add their profile — you can't message or track them until they're saved here."
+              }
             >
-              {isAdding ? "Step 1 on Contacts" : "Start here"}
-            </div>
-            <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>
               {isAdding ? "Add someone you met" : "Add someone to your network"}
-            </div>
-            <p style={{ margin: 0, fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5 }}>
-              {isAdding
-                ? "Fill in their details in the form below. Role and notes help GhostBuster match résumé updates later."
-                : "Met someone worth staying in touch with? Add their profile — you can\u2019t message or track them until they\u2019re saved here."}
-            </p>
+            </CardTitle>
           </div>
           {!isAdding && (
             <button
@@ -490,7 +478,7 @@ export default function ContactHub() {
                 boxShadow: "none",
                 padding: "13px 26px",
                 borderRadius: 10,
-                fontFamily: font.display,
+                fontFamily: font.h1,
                 fontWeight: 700,
                 fontSize: 15,
                 cursor: "pointer",
@@ -498,7 +486,7 @@ export default function ContactHub() {
                 whiteSpace: "nowrap",
               }}
             >
-              + Add someone you met
+              + Add
             </button>
           )}
         </div>
@@ -509,7 +497,6 @@ export default function ContactHub() {
       {/* Add/Edit Form */}
       {showForm && (
         <>
-          <SectionLabel>Add / edit contact</SectionLabel>
           <ContentCard
             style={{
               border: "1px solid var(--gb-border-subtle)",
@@ -519,7 +506,7 @@ export default function ContactHub() {
           >
           <CardTitle>{editId ? "Edit contact" : "New contact"}</CardTitle>
           {!editId && (
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gb-text-faint)", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gb-text-faint)", lineHeight: 1.5, fontFamily: font.body }}>
               Name is required. Everything else helps with smarter outreach and résumé matching.
             </p>
           )}
@@ -559,7 +546,7 @@ export default function ContactHub() {
             </select>
           </div>
           {form.bucketAssignment === "auto" && form.role && (
-            <p style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 8, marginBottom: 0 }}>
+            <p style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 8, marginBottom: 0, fontFamily: font.body }}>
               {suggestedBucketLabel(form.role)
                 ? `Will match to "${suggestedBucketLabel(form.role)}" based on their role.`
                 : "Add role buckets on the Resume tab to enable auto-matching."}
@@ -572,7 +559,7 @@ export default function ContactHub() {
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
             <button onClick={save} style={{
               background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
-              padding: "10px 24px", borderRadius: 9, fontFamily: font.display,
+              padding: "10px 24px", borderRadius: 9, fontFamily: font.h1,
               fontWeight: 700, fontSize: 14, cursor: "pointer",
             }}>Save</button>
             <button onClick={closeForm} style={{
@@ -586,7 +573,6 @@ export default function ContactHub() {
       )}
 
       {/* Search */}
-      <SectionLabel>Search</SectionLabel>
       <ContentCard
         style={{
           background: "var(--gb-bg-elevated)",
@@ -605,23 +591,7 @@ export default function ContactHub() {
             marginBottom: 14,
           }}
         >
-          <div>
-            <div
-              style={{
-                fontSize: 11,
-                fontFamily: font.mono,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "var(--gb-text-faint)",
-                marginBottom: 4,
-              }}
-            >
-              Search
-            </div>
-            <div style={{ fontSize: 14, color: "var(--gb-text-subtle)" }}>
-              Find a contact by name, role, or links
-            </div>
-          </div>
+          <CardTitle helper="Find a contact by name, role, or links">Search</CardTitle>
           {hasActiveSearch && (
             <button
               type="button"
@@ -653,7 +623,6 @@ export default function ContactHub() {
       {/* Filter by company */}
       {contacts.length > 0 && (
         <>
-          <SectionLabel>Filter by company</SectionLabel>
           <ContentCard
             style={{
               background: "var(--gb-bg-elevated)",
@@ -671,23 +640,7 @@ export default function ContactHub() {
               marginBottom: 14,
             }}
           >
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontFamily: font.mono,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: "var(--gb-text-faint)",
-                  marginBottom: 4,
-                }}
-              >
-                Filter by company
-              </div>
-              <div style={{ fontSize: 14, color: "var(--gb-text-subtle)" }}>
-                Show only contacts from one company
-              </div>
-            </div>
+            <CardTitle helper="Show only contacts from one company">Filter by company</CardTitle>
             {hasCompanyFilter && (
               <button
                 type="button"
@@ -770,7 +723,7 @@ export default function ContactHub() {
               )}
             </>
           ) : (
-            <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)", fontFamily: font.body }}>
               No companies yet — add a company when you create or edit a contact.
             </p>
           )}
@@ -779,7 +732,7 @@ export default function ContactHub() {
       )}
 
       {hasActiveFilters && contacts.length > 0 && (
-        <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gb-text-muted)" }}>
+        <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gb-text-muted)", fontFamily: font.body }}>
           Showing {filtered.length} of {contacts.length}
           {hasCompanyFilter && (
             <span>
@@ -797,7 +750,7 @@ export default function ContactHub() {
       )}
 
       {/* Contact List */}
-      <SectionLabel>Your contacts</SectionLabel>
+      <CardTitle>Your contacts</CardTitle>
       {filtered.length === 0 ? (
         <div style={{
           background: "var(--gb-bg-elevated)", border: "1px solid var(--gb-surface-active)",
@@ -810,7 +763,7 @@ export default function ContactHub() {
               <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, color: "var(--gb-text-secondary)", marginBottom: 8 }}>
                 Your network starts with one contact
               </div>
-              <p style={{ margin: "0 0 20px", maxWidth: 420, marginLeft: "auto", marginRight: "auto", lineHeight: 1.55 }}>
+              <p style={{ margin: "0 0 20px", maxWidth: 420, marginLeft: "auto", marginRight: "auto", lineHeight: 1.55, fontFamily: font.body }}>
                 Add someone from a career fair, intro, or coffee chat — then use Compose and Tracker to stay in touch.
               </p>
               {!isAdding && (
@@ -824,13 +777,13 @@ export default function ContactHub() {
                     boxShadow: "none",
                     padding: "12px 24px",
                     borderRadius: 10,
-                    fontFamily: font.display,
+                    fontFamily: font.h1,
                     fontWeight: 700,
                     fontSize: 14,
                     cursor: "pointer",
                   }}
                 >
-                  + Add someone you met
+                  + Add
                 </button>
               )}
             </>
