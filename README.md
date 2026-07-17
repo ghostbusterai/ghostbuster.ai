@@ -21,10 +21,16 @@ The app is deployed as **one Render web service** (`render.yaml`). On each deplo
 
 Push to `main` on GitHub. Render redeploys automatically when the repo is connected.
 
-**Environment variables** (Render dashboard, not in git):
+**Environment variables** (Render dashboard → **Environment**):
 
-- `ANTHROPIC_API_KEY` — optional; required for **Compose** AI drafts
-- `PORT` — set by Render
+| Variable | Required | Notes |
+|----------|----------|--------|
+| `ANTHROPIC_API_KEY` | For Compose AI | Optional otherwise |
+| `MONGODB_URI` | For multi-user + Google sign-in | If unset, the app runs in **legacy single-user mode** (JSON file storage, no Google login) |
+| `SESSION_SECRET` | Recommended in production | Long random string for session cookies |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | For Google sign-in + Calendar/Gmail | Only when `MONGODB_URI` is set |
+
+`PORT`, `APP_URL`, and Google redirect URIs are set in `render.yaml`.
 
 **Send to testers**
 

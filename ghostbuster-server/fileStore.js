@@ -240,14 +240,17 @@ exports.getDueScheduledEmails = async () => {
   const data = read()
   const list = Array.isArray(data.scheduledEmails) ? data.scheduledEmails : []
   const now = Date.now()
-  return list.filter((item) => {
-    if (item.status !== "pending") return false
-    const t = new Date(item.sendAt).getTime()
-    return !Number.isNaN(t) && t <= now
-  })
+  const refreshToken = await exports.getGoogleRefreshToken()
+  return list
+    .filter((item) => {
+      if (item.status !== "pending") return false
+      const t = new Date(item.sendAt).getTime()
+      return !Number.isNaN(t) && t <= now
+    })
+    .map((item) => ({ ...item, userId: "legacy", refreshToken }))
 }
 
-exports.markScheduledEmailSent = async (id, messageId) => {
+exports.markScheduledEmailSent = async (_userId, id, messageId) => {
   const data = read()
   const idx = (data.scheduledEmails || []).findIndex((e) => e.id === id)
   if (idx === -1) return false
@@ -262,7 +265,7 @@ exports.markScheduledEmailSent = async (id, messageId) => {
   return true
 }
 
-exports.markScheduledEmailFailed = async (id, errorMessage) => {
+exports.markScheduledEmailFailed = async (_userId, id, errorMessage) => {
   const data = read()
   const idx = (data.scheduledEmails || []).findIndex((e) => e.id === id)
   if (idx === -1) return false

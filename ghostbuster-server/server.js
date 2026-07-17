@@ -9,7 +9,9 @@ require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
 
 const { connectDb } = require("./db")
-const store = require("./mongoStore")
+const USE_MONGO = Boolean(String(process.env.MONGODB_URI || "").trim())
+const store = USE_MONGO ? require("./mongoStore") : require("./fileStore")
+const LEGACY_USER_ID = "legacy"
 const authGoogle = require("./authGoogle")
 const { maybeMigrateLegacyJson } = require("./migrateLegacy")
 const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
@@ -125,15 +127,19 @@ async function processScheduledEmails() {
 }
 
 async function start() {
-  if (!process.env.MONGODB_URI) {
-    console.error("MONGODB_URI is required. Set it in ghostbuster-server/.env")
-    process.exit(1)
+  if (!USE_MONGO) {
+    console.warn(
+      "MONGODB_URI is not set — running in legacy single-user mode (JSON file storage, no Google sign-in)."
+    )
+    console.warn("Set MONGODB_URI for multi-user MongoDB storage and Google account login.")
   }
   if (!process.env.SESSION_SECRET) {
     console.warn("SESSION_SECRET is not set — using an insecure default (set SESSION_SECRET in .env)")
   }
 
-  await connectDb()
+  if (USE_MONGO) {
+    await connectDb()
+  }
 
   const corsOrigin = process.env.APP_URL
     ? String(process.env.APP_URL).replace(/\/$/, "")
@@ -147,25 +153,35 @@ async function start() {
   app.use(express.json())
   app.set("trust proxy", 1)
 
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "ghostbuster-dev-secret",
-      resave: false,
-      saveUninitialized: false,
-      store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI,
-        ttl: 60 * 60 * 24 * 14,
-      }),
-      cookie: {
-        httpOnly: true,
-        sameSite: "lax",
-        secure:
-          process.env.NODE_ENV === "production" ||
-          String(process.env.APP_URL || "").startsWith("https://"),
-        maxAge: 1000 * 60 * 60 * 24 * 14,
-      },
+  const sessionOptions = {
+    secret: process.env.SESSION_SECRET || "ghostbuster-dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure:
+        process.env.NODE_ENV === "production" ||
+        String(process.env.APP_URL || "").startsWith("https://"),
+      maxAge: 1000 * 60 * 60 * 24 * 14,
+    },
+  }
+  if (USE_MONGO) {
+    sessionOptions.store = MongoStore.create({
+      mongoUrl: process.env.MONGODB_URI,
+      ttl: 60 * 60 * 24 * 14,
     })
-  )
+  }
+  app.use(session(sessionOptions))
+
+  if (!USE_MONGO) {
+    app.use((req, res, next) => {
+      if (req.session && !req.session.userId) {
+        req.session.userId = LEGACY_USER_ID
+      }
+      next()
+    })
+  }
 
   // —— Auth (public) ——
   app.get("/api/auth/google", (req, res) => {
@@ -214,6 +230,21 @@ async function start() {
 
   app.get("/api/auth/me", async (req, res) => {
     try {
+      if (!USE_MONGO) {
+        const profileOut = await store.getProfile(LEGACY_USER_ID)
+        const googleStatus = await store.getGoogleCalendarStatus(LEGACY_USER_ID)
+        return res.json({
+          user: {
+            id: LEGACY_USER_ID,
+            email: "",
+            name: profileOut?.profile?.name || "Guest",
+            picture: "",
+          },
+          googleConnected: Boolean(googleStatus?.connected),
+          loginConfigured: false,
+          legacyMode: true,
+        })
+      }
       if (!req.session?.userId) {
         return res.status(401).json({ error: "Not signed in" })
       }
@@ -247,8 +278,12 @@ async function start() {
   app.get("/api/health", (req, res) => {
     res.json({
       status: "GhostBuster server running",
-      storage: "mongodb",
-      auth: authGoogle.isLoginConfigured() ? "google" : "not-configured",
+      storage: USE_MONGO ? "mongodb" : "json-file",
+      auth: USE_MONGO
+        ? authGoogle.isLoginConfigured()
+          ? "google"
+          : "not-configured"
+        : "legacy-single-user",
       claudeModel: CLAUDE_MODEL,
       endpoints: [
         "/api/auth/google",
@@ -1111,7 +1146,7 @@ Do not add any explanation, just the email.`
       res.json({
         status: "GhostBuster API running (no UI build found)",
         hint: "Run: cd GhostBuster && npm run build — or visit /api/health",
-        storage: "mongodb",
+        storage: USE_MONGO ? "mongodb" : "json-file",
       })
     })
   }
@@ -1121,9 +1156,13 @@ Do not add any explanation, just the email.`
     console.log("GhostBuster API is running — keep this terminal open (Ctrl+C to stop).")
     console.log(`  Local:   http://127.0.0.1:${PORT}/`)
     console.log(`  Network: http://localhost:${PORT}/`)
-    console.log("  Data:   MongoDB (", process.env.MONGODB_URI, ")")
+    if (USE_MONGO) {
+      console.log("  Data:   MongoDB (", process.env.MONGODB_URI, ")")
+    } else {
+      console.log("  Data:   JSON file (ghostbuster-server/data/app-data.json)")
+    }
     if (!apiKey) console.warn("ANTHROPIC_API_KEY is not set — /compose will return 503")
-    if (!authGoogle.isLoginConfigured()) {
+    if (USE_MONGO && !authGoogle.isLoginConfigured()) {
       console.warn("Google login is not configured — set GOOGLE_CLIENT_ID/SECRET and GOOGLE_LOGIN_REDIRECT_URI")
     }
     setInterval(() => {
