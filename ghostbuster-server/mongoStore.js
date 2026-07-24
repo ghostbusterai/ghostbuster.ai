@@ -669,6 +669,100 @@ exports.deleteOutreachLog = async (userId, id) => {
   return result.deletedCount > 0
 }
 
+function stripGhostIt(doc) {
+  if (!doc) return null
+  const { _id, userId, ...rest } = doc
+  return {
+    ...rest,
+    segments: Array.isArray(rest.segments) ? rest.segments : [],
+    summary: rest.summary || null,
+  }
+}
+
+exports.getGhostIts = async (userId) => {
+  const list = await getDb()
+    .collection("ghostIts")
+    .find({ userId: uid(userId) })
+    .sort({ updatedAt: -1 })
+    .toArray()
+  return { ghostIts: list.map(stripGhostIt) }
+}
+
+exports.getGhostIt = async (userId, id) => {
+  const doc = await getDb().collection("ghostIts").findOne({ userId: uid(userId), id })
+  return doc ? { ghostIt: stripGhostIt(doc) } : null
+}
+
+exports.createGhostIt = async (userId, body) => {
+  const now = new Date().toISOString()
+  const title =
+    typeof body?.title === "string" && body.title.trim()
+      ? body.title.trim()
+      : `Meeting ${new Date().toLocaleString()}`
+  const ghostIt = {
+    userId: uid(userId),
+    id: nextNumericId(),
+    title,
+    contactName: typeof body?.contactName === "string" ? body.contactName.trim() : "",
+    status: "recording",
+    startedAt: now,
+    endedAt: "",
+    segments: [],
+    summary: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  await getDb().collection("ghostIts").insertOne(ghostIt)
+  return { ghostIt: stripGhostIt(ghostIt) }
+}
+
+exports.patchGhostIt = async (userId, id, body) => {
+  const col = getDb().collection("ghostIts")
+  const prev = await col.findOne({ userId: uid(userId), id })
+  if (!prev) return null
+  const $set = { updatedAt: new Date().toISOString() }
+  if (typeof body?.title === "string" && body.title.trim()) $set.title = body.title.trim()
+  if (body?.contactName !== undefined) {
+    $set.contactName = typeof body.contactName === "string" ? body.contactName.trim() : ""
+  }
+  if (body?.status === "recording" || body?.status === "completed") $set.status = body.status
+  if (typeof body?.endedAt === "string") $set.endedAt = body.endedAt
+  if (Array.isArray(body?.segments)) {
+    $set.segments = body.segments
+      .filter((s) => s && typeof s === "object" && typeof s.text === "string" && s.text.trim())
+      .map((s) => ({
+        id: Number(s.id) || nextNumericId(),
+        speaker: typeof s.speaker === "string" && s.speaker.trim() ? s.speaker.trim() : "Speaker",
+        text: s.text.trim(),
+        at: typeof s.at === "string" ? s.at : new Date().toISOString(),
+      }))
+  }
+  if (body?.summary === null) {
+    $set.summary = null
+  } else if (body?.summary && typeof body.summary === "object") {
+    $set.summary = {
+      overview: typeof body.summary.overview === "string" ? body.summary.overview : "",
+      keyPoints: Array.isArray(body.summary.keyPoints)
+        ? body.summary.keyPoints.map((x) => String(x)).filter(Boolean)
+        : [],
+      actionItems: Array.isArray(body.summary.actionItems)
+        ? body.summary.actionItems.map((x) => String(x)).filter(Boolean)
+        : [],
+      followUps: Array.isArray(body.summary.followUps)
+        ? body.summary.followUps.map((x) => String(x)).filter(Boolean)
+        : [],
+    }
+  }
+  await col.updateOne({ _id: prev._id }, { $set })
+  const updated = await col.findOne({ _id: prev._id })
+  return { ghostIt: stripGhostIt(updated) }
+}
+
+exports.deleteGhostIt = async (userId, id) => {
+  const result = await getDb().collection("ghostIts").deleteOne({ userId: uid(userId), id })
+  return result.deletedCount > 0
+}
+
 exports.numId = (param) => {
   const id = Number(param)
   return Number.isFinite(id) ? id : null

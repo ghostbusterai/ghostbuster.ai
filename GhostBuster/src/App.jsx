@@ -10,6 +10,7 @@ import SettingsMenu from "./components/SettingsMenu"
 import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
 import About from "./components/About"
+import Ghostwriter from "./components/Ghostwriter"
 import Login from "./components/Login"
 import { font } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
@@ -23,6 +24,7 @@ const NAV = [
   { id: "updates", label: "Resume" },
   { id: "reminders", label: "Reminders" },
   { id: "compose", label: "Compose" },
+  { id: "ghostwriter", label: "Ghostwriter" },
   { id: "about", label: "About" },
 ]
 
@@ -303,6 +305,7 @@ export default function App() {
             }}
           />
         )}
+        {page === "ghostwriter" && <Ghostwriter />}
         {page === "about" && <About />}
       </main>
     </div>

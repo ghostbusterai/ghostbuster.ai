@@ -25,6 +25,7 @@ async function ensureIndexes(database) {
   await database.collection("resumeBuckets").createIndex({ userId: 1 })
   await database.collection("scheduledEmails").createIndex({ status: 1, sendAt: 1 })
   await database.collection("profiles").createIndex({ userId: 1 }, { unique: true })
+  await database.collection("ghostIts").createIndex({ userId: 1, updatedAt: -1 })
 }
 
 function getDb() {

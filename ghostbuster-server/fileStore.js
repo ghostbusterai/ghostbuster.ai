@@ -616,6 +616,148 @@ exports.deleteOutreachLog = async (_userId, id) => {
   return true
 }
 
+function normalizeGhostIt(raw) {
+  if (!raw || typeof raw !== "object") return null
+  const id = Number(raw.id)
+  if (!Number.isFinite(id)) return null
+  return {
+    id,
+    title: typeof raw.title === "string" ? raw.title : "",
+    contactName: typeof raw.contactName === "string" ? raw.contactName : "",
+    status: raw.status === "recording" ? "recording" : "completed",
+    startedAt: typeof raw.startedAt === "string" ? raw.startedAt : "",
+    endedAt: typeof raw.endedAt === "string" ? raw.endedAt : "",
+    segments: Array.isArray(raw.segments)
+      ? raw.segments
+          .filter((s) => s && typeof s === "object")
+          .map((s) => ({
+            id: Number(s.id) || Date.now(),
+            speaker: typeof s.speaker === "string" ? s.speaker : "Speaker",
+            text: typeof s.text === "string" ? s.text : "",
+            at: typeof s.at === "string" ? s.at : "",
+          }))
+          .filter((s) => s.text.trim())
+      : [],
+    summary:
+      raw.summary && typeof raw.summary === "object"
+        ? {
+            overview: typeof raw.summary.overview === "string" ? raw.summary.overview : "",
+            keyPoints: Array.isArray(raw.summary.keyPoints)
+              ? raw.summary.keyPoints.map((x) => String(x)).filter(Boolean)
+              : [],
+            actionItems: Array.isArray(raw.summary.actionItems)
+              ? raw.summary.actionItems.map((x) => String(x)).filter(Boolean)
+              : [],
+            followUps: Array.isArray(raw.summary.followUps)
+              ? raw.summary.followUps.map((x) => String(x)).filter(Boolean)
+              : [],
+          }
+        : null,
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : "",
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : "",
+  }
+}
+
+exports.getGhostIts = async (_userId) => {
+  const data = read()
+  const list = (data.ghostIts || []).map(normalizeGhostIt).filter(Boolean)
+  list.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+  return { ghostIts: list }
+}
+
+exports.getGhostIt = async (_userId, id) => {
+  const data = read()
+  const found = (data.ghostIts || []).find((g) => g.id === id)
+  const ghostIt = normalizeGhostIt(found)
+  return ghostIt ? { ghostIt } : null
+}
+
+exports.createGhostIt = async (_userId, body) => {
+  const data = read()
+  if (!Array.isArray(data.ghostIts)) data.ghostIts = []
+  const now = new Date().toISOString()
+  const title =
+    typeof body?.title === "string" && body.title.trim()
+      ? body.title.trim()
+      : `Meeting ${new Date().toLocaleString()}`
+  const ghostIt = {
+    id: Date.now(),
+    title,
+    contactName: typeof body?.contactName === "string" ? body.contactName.trim() : "",
+    status: "recording",
+    startedAt: now,
+    endedAt: "",
+    segments: [],
+    summary: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  data.ghostIts.unshift(ghostIt)
+  write(data)
+  return { ghostIt }
+}
+
+exports.patchGhostIt = async (_userId, id, body) => {
+  const data = read()
+  if (!Array.isArray(data.ghostIts)) data.ghostIts = []
+  const idx = data.ghostIts.findIndex((g) => g.id === id)
+  if (idx === -1) return null
+  const prev = normalizeGhostIt(data.ghostIts[idx])
+  const next = {
+    ...prev,
+    title: typeof body?.title === "string" && body.title.trim() ? body.title.trim() : prev.title,
+    contactName:
+      body?.contactName !== undefined
+        ? typeof body.contactName === "string"
+          ? body.contactName.trim()
+          : prev.contactName
+        : prev.contactName,
+    status: body?.status === "recording" || body?.status === "completed" ? body.status : prev.status,
+    endedAt: typeof body?.endedAt === "string" ? body.endedAt : prev.endedAt,
+    segments: Array.isArray(body?.segments)
+      ? body.segments
+          .filter((s) => s && typeof s === "object" && typeof s.text === "string" && s.text.trim())
+          .map((s) => ({
+            id: Number(s.id) || Date.now() + Math.floor(Math.random() * 1000),
+            speaker: typeof s.speaker === "string" && s.speaker.trim() ? s.speaker.trim() : "Speaker",
+            text: s.text.trim(),
+            at: typeof s.at === "string" ? s.at : new Date().toISOString(),
+          }))
+      : prev.segments,
+    summary:
+      body?.summary === null
+        ? null
+        : body?.summary && typeof body.summary === "object"
+          ? {
+              overview: typeof body.summary.overview === "string" ? body.summary.overview : "",
+              keyPoints: Array.isArray(body.summary.keyPoints)
+                ? body.summary.keyPoints.map((x) => String(x)).filter(Boolean)
+                : [],
+              actionItems: Array.isArray(body.summary.actionItems)
+                ? body.summary.actionItems.map((x) => String(x)).filter(Boolean)
+                : [],
+              followUps: Array.isArray(body.summary.followUps)
+                ? body.summary.followUps.map((x) => String(x)).filter(Boolean)
+                : [],
+            }
+          : prev.summary,
+    updatedAt: new Date().toISOString(),
+  }
+  data.ghostIts[idx] = next
+  write(data)
+  return { ghostIt: next }
+}
+
+exports.deleteGhostIt = async (_userId, id) => {
+  const data = read()
+  if (!Array.isArray(data.ghostIts)) data.ghostIts = []
+  const before = data.ghostIts.length
+  data.ghostIts = data.ghostIts.filter((g) => g.id !== id)
+  if (data.ghostIts.length === before) return false
+  write(data)
+  return true
+}
+
 exports.numId = (param) => {
   const id = Number(param)
   return Number.isFinite(id) ? id : null

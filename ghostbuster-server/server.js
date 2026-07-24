@@ -20,6 +20,7 @@ const { suggestContactsForUpdateSmart } = require("./contactRelevance")
 const googleCal = require("./googleCalendar")
 const gmail = require("./gmail")
 const { SUGGESTED_BUCKET_NAMES } = require("./resumeBucketMatch")
+const { buildGhostItSummaryPrompt, parseGhostItSummaryJson } = require("./ghostwriterSummary")
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -294,6 +295,7 @@ async function start() {
         "/api/outreach-logs",
         "/api/resume-updates",
         "/api/resume",
+        "/api/ghostwriter",
         "/compose",
       ],
     })
@@ -1004,6 +1006,128 @@ async function start() {
     } catch (e) {
       console.error(e)
       res.status(500).json({ error: "Failed to delete log" })
+    }
+  })
+
+  // —— Ghostwriter (live meeting notes) ——
+  function toGhostwriterPayload(out) {
+    if (!out) return null
+    if (out.ghostIts) return { ghostwriters: out.ghostIts }
+    if (out.ghostIt) return { ghostwriter: out.ghostIt }
+    return out
+  }
+
+  app.get("/api/ghostwriter", async (req, res) => {
+    try {
+      const out = await store.getGhostIts(userId(req))
+      res.json(toGhostwriterPayload(out))
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to load Ghostwriter notes" })
+    }
+  })
+
+  app.get("/api/ghostwriter/:id", async (req, res) => {
+    const id = parseId(req.params.id)
+    if (id == null) return res.status(400).json({ error: "Invalid id" })
+    try {
+      const out = await store.getGhostIt(userId(req), id)
+      if (!out) return res.status(404).json({ error: "Ghostwriter note not found" })
+      res.json(toGhostwriterPayload(out))
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to load Ghostwriter note" })
+    }
+  })
+
+  app.post("/api/ghostwriter", async (req, res) => {
+    try {
+      const out = await store.createGhostIt(userId(req), req.body || {})
+      res.status(201).json(toGhostwriterPayload(out))
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to create Ghostwriter note" })
+    }
+  })
+
+  app.patch("/api/ghostwriter/:id", async (req, res) => {
+    const id = parseId(req.params.id)
+    if (id == null) return res.status(400).json({ error: "Invalid id" })
+    try {
+      const out = await store.patchGhostIt(userId(req), id, req.body || {})
+      if (!out) return res.status(404).json({ error: "Ghostwriter note not found" })
+      res.json(toGhostwriterPayload(out))
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to update Ghostwriter note" })
+    }
+  })
+
+  app.delete("/api/ghostwriter/:id", async (req, res) => {
+    const id = parseId(req.params.id)
+    if (id == null) return res.status(400).json({ error: "Invalid id" })
+    try {
+      const ok = await store.deleteGhostIt(userId(req), id)
+      if (!ok) return res.status(404).json({ error: "Ghostwriter note not found" })
+      res.status(204).end()
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to delete Ghostwriter note" })
+    }
+  })
+
+  app.post("/api/ghostwriter/:id/summarize", async (req, res) => {
+    if (!anthropic) {
+      return res.status(503).json({ error: "AI summary requires ANTHROPIC_API_KEY on the server" })
+    }
+    const id = parseId(req.params.id)
+    if (id == null) return res.status(400).json({ error: "Invalid id" })
+    try {
+      const uid = userId(req)
+      const existing = await store.getGhostIt(uid, id)
+      if (!existing) return res.status(404).json({ error: "Ghostwriter note not found" })
+
+      let ghostIt = existing.ghostIt
+      if (Array.isArray(req.body?.segments)) {
+        const patched = await store.patchGhostIt(uid, id, {
+          segments: req.body.segments,
+          status: "completed",
+          endedAt: new Date().toISOString(),
+        })
+        ghostIt = patched?.ghostIt || ghostIt
+      } else if (ghostIt.status === "recording") {
+        const patched = await store.patchGhostIt(uid, id, {
+          status: "completed",
+          endedAt: new Date().toISOString(),
+        })
+        ghostIt = patched?.ghostIt || ghostIt
+      }
+
+      if (!ghostIt.segments?.length) {
+        return res.status(400).json({ error: "Add some live notes before generating a summary" })
+      }
+
+      const prompt = buildGhostItSummaryPrompt(ghostIt)
+      const message = await anthropic.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 1500,
+        messages: [{ role: "user", content: prompt }],
+      })
+      const text = extractAssistantText(message.content)
+      const summary = parseGhostItSummaryJson(text)
+      if (!summary || !summary.overview) {
+        return res.status(502).json({ error: "Could not parse AI summary. Try again." })
+      }
+
+      const out = await store.patchGhostIt(uid, id, { summary, status: "completed" })
+      res.json(toGhostwriterPayload(out))
+    } catch (err) {
+      console.error(err)
+      const msg = formatAnthropicError(err)
+      const lowCredits =
+        /credit balance|billing|Plans & Billing/i.test(msg) || /too low to access/i.test(msg)
+      const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
+      res.status(status).json({ error: msg || "Failed to summarize Ghostwriter note" })
     }
   })
 
