@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, getReminderUrgencyStyle, getReminderUrgency } from "../reminderUtils"
 import { font } from "../theme"
-import { CardTitle, ContentCard, PageShell, responsiveGrid, PAGE_SPLIT_GRID } from "../layout"
+import { CardTitle, ContentCard, PageShell, responsiveGrid, PAGE_SPLIT_GRID, type } from "../layout"
+import { useMotivationalGreeting } from "../greeting"
 
 import { readLocalProfile, saveLocalProfile, GETTING_STARTED_SESSION_KEY, GETTING_STARTED_RESTORED_EVENT } from "../profile"
 
@@ -171,6 +172,7 @@ const QUICK_ACTIONS = [
 const WEEKLY_OUTREACH_GOAL = 15
 
 export default function Dashboard({ setPage }) {
+  const greeting = useMotivationalGreeting()
   const [contacts, setContacts] = useState([])
   const [reminders, setReminders] = useState([])
   const [outreachLogs, setOutreachLogs] = useState([])
@@ -380,6 +382,23 @@ export default function Dashboard({ setPage }) {
 
   return (
     <PageShell>
+      <section
+        style={{
+          background: "var(--gb-bg-elevated)",
+          border: "1px solid var(--gb-border)",
+          borderRadius: 20,
+          padding: "24px 22px 22px",
+          marginBottom: 24,
+          boxShadow: "var(--gb-shadow-panel)",
+        }}
+      >
+        <div style={{ ...type.eyebrow, marginBottom: 10 }}>Home</div>
+        <h1 style={{ ...type.heroTitle, margin: "0 0 10px" }}>{greeting}</h1>
+        <p style={{ ...type.heroSubtitle, margin: 0 }}>
+          Stay in touch with people you&apos;ve already met — add contacts, send messages, and log follow-ups here.
+        </p>
+      </section>
+
       {showGettingStarted && (
         <section
           style={{

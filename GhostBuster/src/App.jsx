@@ -16,7 +16,6 @@ import GhostBusterLogo from "./components/GhostBusterLogo"
 import { PAGE_PADDING_X } from "./layout"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 import { api } from "./api"
-import { useMotivationalGreeting } from "./greeting"
 
 const NAV = [
   { id: "dashboard", label: "Home" },
@@ -44,7 +43,6 @@ export default function App() {
   const [authUser, setAuthUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
-  const greeting = useMotivationalGreeting(page === "dashboard")
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -264,21 +262,6 @@ export default function App() {
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            {page === "dashboard" && (
-              <span
-                style={{
-                  fontSize: 13,
-                  fontFamily: font.body,
-                  fontWeight: 500,
-                  color: "var(--gb-text-muted)",
-                  maxWidth: "min(240px, 32vw)",
-                  textAlign: "right",
-                  lineHeight: 1.35,
-                }}
-              >
-                {greeting}
-              </span>
-            )}
             <NotificationBell setPage={setPage} currentPage={page} />
             <ProfileMenu
               authUser={authUser}
