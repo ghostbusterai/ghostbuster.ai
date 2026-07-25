@@ -1,7 +1,7 @@
 import React from "react"
 
 /**
- * Circular mark: character emerging from an open envelope (original shape, filled colors).
+ * Circular mark: character emerging from an envelope (flap folded down on the body).
  */
 export default function GhostBusterLogo({ size = 22, className, ...rest }) {
   const sw = 3
@@ -25,7 +25,7 @@ export default function GhostBusterLogo({ size = 22, className, ...rest }) {
       <circle cx="50" cy="50" r="46" fill="var(--gb-logo-fill)" stroke={ink} strokeWidth={sw} />
 
       <path
-        d="M 26.5 63 L 47 51 L 67.5 63 V 80.5 H 26.5 V 63 Z"
+        d="M 26.5 52 L 47 63 L 67.5 52 L 67.5 80.5 L 26.5 80.5 Z"
         fill={envDeep}
       />
 
@@ -51,10 +51,16 @@ export default function GhostBusterLogo({ size = 22, className, ...rest }) {
         strokeLinejoin="round"
       />
       <path
-        d="M 26.5 63 L 47 51 L 67.5 63"
+        d="M 26.5 52 L 47 63 L 67.5 52"
         stroke={ink}
         strokeWidth={sw}
         strokeLinejoin="round"
+      />
+      <path
+        d="M 26.5 52 H 67.5"
+        stroke={ink}
+        strokeWidth={sw}
+        strokeLinecap="round"
       />
 
       <circle cx="45.5" cy="36" r="2.2" fill={feature} />

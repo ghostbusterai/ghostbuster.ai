@@ -1,6 +1,18 @@
 import React from "react"
 import { font } from "./theme"
 
+/** Shared page width — wider column to use horizontal space on desktop */
+export const PAGE_CONTENT_MAX_WIDTH = 1120
+export const PAGE_PADDING_X = "clamp(16px, 2.5vw, 28px)"
+
+/** Responsive grid: auto-fills columns at `minPx` minimum cell width */
+export function responsiveGrid(minPx = 240) {
+  return `repeat(auto-fit, minmax(min(100%, ${minPx}px), 1fr))`
+}
+
+/** Two-column page section that stacks on narrow viewports */
+export const PAGE_SPLIT_GRID = responsiveGrid(420)
+
 /** Typography aligned with the Home dashboard */
 export const type = {
   eyebrow: {
@@ -64,10 +76,10 @@ export const type = {
   meta: { fontFamily: font.mono },
 }
 
-/** Centered column matching Home dashboard width */
+/** Centered column — uses most of the viewport width on large screens */
 export function PageShell({ children }) {
   return (
-    <div style={{ width: "100%", maxWidth: 720, margin: "0 auto", minWidth: 0 }}>
+    <div style={{ width: "100%", maxWidth: PAGE_CONTENT_MAX_WIDTH, margin: "0 auto", minWidth: 0 }}>
       {children}
     </div>
   )
@@ -107,7 +119,7 @@ export function PageHero({ eyebrow, title, subtitle, action, children }) {
             </h1>
           )}
           {subtitle && (
-            <p style={{ ...type.heroSubtitle, margin: 0, maxWidth: 560 }}>
+            <p style={{ ...type.heroSubtitle, margin: 0, maxWidth: 720 }}>
               {subtitle}
             </p>
           )}

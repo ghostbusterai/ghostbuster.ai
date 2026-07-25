@@ -26,7 +26,21 @@ if (-not (Test-Path "$root\ghostbuster-server\node_modules")) {
 Write-Host "Starting API on http://127.0.0.1:3001 ..."
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\ghostbuster-server'; npm start"
 
-Start-Sleep -Seconds 2
+$healthUrl = "http://127.0.0.1:3001/api/health"
+$ready = $false
+for ($i = 0; $i -lt 30; $i++) {
+  Start-Sleep -Seconds 1
+  try {
+    $null = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 2
+    $ready = $true
+    break
+  } catch {
+    # API still starting
+  }
+}
+if (-not $ready) {
+  Write-Host "Warning: API did not respond at $healthUrl yet. UI may show connection errors until the API is up."
+}
 
 Write-Host "Starting UI on http://localhost:5173 ..."
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\GhostBuster'; npm run dev"

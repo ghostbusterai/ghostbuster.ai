@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
 import { useTheme } from "../ThemeContext"
-import { CardTitle } from "../layout"
+import { CardTitle, PageShell } from "../layout"
 import { inputStyle, sectionCard, secondaryBtn } from "../uiStyles"
 import {
   normalizeProfile,
@@ -26,6 +26,28 @@ const WARMTH_LEGEND = [
   { c: "var(--gb-warning)", label: "Check in soon", detail: "22–45 days since last touch" },
   { c: "var(--gb-danger)", label: "Overdue", detail: "More than 45 days since last touch" },
 ]
+
+function SettingsGroup({ title, children, embedded, first = false }) {
+  if (!embedded) return <>{children}</>
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontFamily: font.mono,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "var(--gb-text-faint)",
+          marginBottom: 8,
+          paddingTop: first ? 0 : 12,
+        }}
+      >
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+}
 
 export default function Settings({
   setPage,
@@ -143,7 +165,381 @@ export default function Settings({
 
   const tutorialHidden = isGettingStartedHidden(profile)
 
-  return (
+  const appearanceSection = (
+    <section style={sectionCard(undefined, embedded)}>
+      <CardTitle helper="Choose a dark or light background. Accent colors adjust automatically for readability.">
+        Appearance
+      </CardTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {[
+          { id: "dark", label: "Dark", preview: { bg: "#0a0a0f", text: "#f0f0f5", accent: "#b8ff57" } },
+          { id: "light", label: "Light", preview: { bg: "#ffffff", text: "#181b22", accent: "#4d8c18" } },
+        ].map(({ id, label, preview }) => {
+          const active = colorScheme === id
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setColorScheme(id)}
+              aria-pressed={active}
+              style={{
+                textAlign: "left",
+                padding: 12,
+                borderRadius: 10,
+                cursor: "pointer",
+                background: active ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
+                border: active ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border)",
+                boxShadow: "none",
+              }}
+            >
+              <div
+                style={{
+                  height: 52,
+                  borderRadius: 8,
+                  marginBottom: 10,
+                  background: preview.bg,
+                  border: "1px solid var(--gb-border-subtle)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "0 10px",
+                }}
+              >
+                <span
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    border: `2px solid ${preview.accent}`,
+                    background: id === "light" ? "#f4f9ef" : "rgba(184,255,87,0.12)",
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontSize: 11, color: preview.text, fontFamily: font.mono, opacity: 0.85 }}>
+                  GhostBuster
+                </span>
+              </div>
+              <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 14, color: "var(--gb-text)" }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 2, fontFamily: font.body }}>
+                {active ? "Active" : `Switch to ${label.toLowerCase()}`}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+
+  const tutorialSection = (
+    <section style={sectionCard(undefined, embedded)}>
+      <CardTitle
+        helper={
+          loading
+            ? "Loading…"
+            : tutorialHidden
+              ? "The Getting started panel is hidden on Home. You can bring it back anytime."
+              : "The Getting started panel is visible on Home."
+        }
+      >
+        Home tutorial
+      </CardTitle>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={showGettingStartedAgain}
+          disabled={loading || !tutorialHidden || restoringTutorial}
+          style={{
+            background: loading || !tutorialHidden || restoringTutorial ? "var(--gb-surface-hover)" : "var(--gb-surface-active)",
+            color: loading || !tutorialHidden || restoringTutorial ? "var(--gb-text-faint)" : "var(--gb-text-strong)",
+            border: "1px solid var(--gb-border)",
+            padding: "10px 16px",
+            borderRadius: 9,
+            fontFamily: font.body,
+            fontWeight: 600,
+            fontSize: 13,
+            cursor: loading || !tutorialHidden || restoringTutorial ? "not-allowed" : "pointer",
+            boxShadow: "none",
+          }}
+        >
+          {restoringTutorial ? "Opening…" : "Show getting started on Home"}
+        </button>
+        {!loading && !tutorialHidden && (
+          <button
+            type="button"
+            onClick={hideGettingStartedPermanently}
+            disabled={hidingTutorial}
+            style={{
+              background: "transparent",
+              color: "var(--gb-text-subtle)",
+              border: "1px solid var(--gb-border)",
+              padding: "10px 16px",
+              borderRadius: 9,
+              fontFamily: font.body,
+              fontSize: 13,
+              cursor: hidingTutorial ? "not-allowed" : "pointer",
+              boxShadow: "none",
+            }}
+          >
+            {hidingTutorial ? "Saving…" : "Don't show again"}
+          </button>
+        )}
+      </div>
+    </section>
+  )
+
+  const googleSection = (
+    <section style={sectionCard("rgba(91,228,216,0.18)", embedded)}>
+      <CardTitle>Google account</CardTitle>
+      {googleLoading ? (
+        <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>Loading…</div>
+      ) : !googleStatus.configured ? (
+        <p style={{ margin: 0, fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
+          Google sign-in is not configured on this server. Calendar sync and Gmail drafts in Compose require
+          server setup.
+        </p>
+      ) : (
+        <>
+          <p style={{ margin: "0 0 16px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
+            {googleStatus.connected
+              ? "Connected for Google Calendar reminder sync and Gmail drafts in Compose."
+              : "Connect once to sync reminders to Google Calendar and save or schedule emails from Compose."}
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontFamily: font.mono,
+                color: googleStatus.connected ? "rgba(184,255,87,0.8)" : "rgba(255,201,107,0.85)",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+              }}
+            >
+              {googleStatus.connected ? "Connected" : "Not connected"}
+            </span>
+            {googleStatus.connected ? (
+              <button
+                type="button"
+                onClick={disconnectGoogle}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--gb-border)",
+                  color: "var(--gb-text-subtle)",
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  boxShadow: "none",
+                }}
+              >
+                Disconnect
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={connectGoogle}
+                style={{
+                  background: "var(--gb-accent-soft)",
+                  border: "1px solid var(--gb-border-subtle)",
+                  color: "var(--gb-accent)",
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: "none",
+                }}
+              >
+                Connect Google
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  )
+
+  const remindersSection = (
+    <section style={sectionCard("rgba(255,201,107,0.18)", embedded)}>
+      <CardTitle helper="Default behavior when you add a new follow-up reminder on the Reminders page.">
+        Reminders & calendar
+      </CardTitle>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          fontSize: 14,
+          color: "var(--gb-text-secondary)",
+          lineHeight: 1.45,
+          cursor: "pointer",
+          marginBottom: 14,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={prefs.defaultSyncToCalendar}
+          onChange={(e) => updatePrefs({ defaultSyncToCalendar: e.target.checked })}
+          style={{ marginTop: 3, accentColor: "var(--gb-accent-bright)" }}
+        />
+        <span>
+          Add new reminders to Google Calendar by default
+          <span style={{ display: "block", fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4 }}>
+            You can still toggle this per reminder. Requires Google connected above.
+          </span>
+        </span>
+      </label>
+      <button type="button" onClick={() => setPage("reminders")} style={secondaryBtn()}>
+        Open reminders →
+      </button>
+    </section>
+  )
+
+  const composeSection = (
+    <section style={sectionCard(undefined, embedded)}>
+      <CardTitle helper="Pre-select your preferred tone when opening Compose. Career goals from your profile can pre-fill background.">
+        Compose defaults
+      </CardTitle>
+      <div style={{ marginBottom: 14 }}>
+        <label
+          htmlFor="settings-default-tone"
+          style={{
+            fontSize: 11,
+            fontFamily: font.mono,
+            color: "var(--gb-text-faint)",
+            display: "block",
+            marginBottom: 6,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+          }}
+        >
+          Default tone
+        </label>
+        <select
+          id="settings-default-tone"
+          value={prefs.defaultComposeTone}
+          onChange={(e) => updatePrefs({ defaultComposeTone: e.target.value })}
+          style={inputStyle()}
+        >
+          {COMPOSE_TONES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </div>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          fontSize: 14,
+          color: "var(--gb-text-secondary)",
+          lineHeight: 1.45,
+          cursor: "pointer",
+          marginBottom: 14,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={prefs.prefillBackgroundFromGoals}
+          onChange={(e) => updatePrefs({ prefillBackgroundFromGoals: e.target.checked })}
+          style={{ marginTop: 3, accentColor: "var(--gb-accent-bright)" }}
+        />
+        <span>
+          Pre-fill “Your background” from career goals
+          <span style={{ display: "block", fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4 }}>
+            Edit career goals under your profile (avatar menu → View profile).
+          </span>
+        </span>
+      </label>
+      <button type="button" onClick={() => setPage("compose")} style={secondaryBtn()}>
+        Open compose →
+      </button>
+    </section>
+  )
+
+  const warmthSection = (
+    <section style={sectionCard(undefined, embedded)}>
+      <CardTitle helper="Tracker and Home use these thresholds to flag contacts who need a check-in.">
+        Connection warmth
+      </CardTitle>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+        {WARMTH_LEGEND.map(({ c, label, detail }) => (
+          <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13 }}>
+            <span
+              aria-hidden
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: c,
+                marginTop: 4,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ color: "var(--gb-text-secondary)" }}>
+              <strong style={{ fontWeight: 600 }}>{label}</strong>
+              <span style={{ display: "block", color: "var(--gb-text-faint)", marginTop: 2, lineHeight: 1.35 }}>
+                {detail}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={() => setPage("tracker")} style={secondaryBtn()}>
+        Open tracker →
+      </button>
+    </section>
+  )
+
+  const notificationsSection = (
+    <section style={{ ...sectionCard(undefined, embedded), marginBottom: embedded ? 0 : 24 }}>
+      <CardTitle helper="The header bell counts pending reminders. Urgency colors match Reminders and the Notifications page.">
+        Notifications
+      </CardTitle>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+        {REMINDER_URGENCY.map((u) => {
+          const style = getReminderUrgencyStyle(u)
+          const detail =
+            u === "overdue"
+              ? "Past due date"
+              : u === "today"
+                ? "Due today"
+                : u === "soon"
+                  ? "Due within 3 days"
+                  : "Later follow-ups"
+          return (
+            <div key={u} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: font.mono,
+                  color: style.color,
+                  background: style.bg,
+                  border: `1px solid ${style.border}`,
+                  borderRadius: 6,
+                  padding: "3px 8px",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  flexShrink: 0,
+                }}
+              >
+                {style.label}
+              </span>
+              <span style={{ color: "var(--gb-text-muted)" }}>{detail}</span>
+            </div>
+          )
+        })}
+      </div>
+      <button type="button" onClick={() => setPage("notifications")} style={secondaryBtn()}>
+        Open notifications →
+      </button>
+    </section>
+  )
+
+  const inner = (
     <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
       {!embedded && (
         <div style={{ marginBottom: 32 }}>
@@ -191,365 +587,39 @@ export default function Settings({
         </p>
       )}
 
-      <section style={sectionCard(undefined, embedded)}>
-        <CardTitle helper="Choose a dark or light background. Accent colors adjust automatically for readability.">
-          Appearance
-        </CardTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[
-            { id: "dark", label: "Dark", preview: { bg: "#0a0a0f", text: "#f0f0f5", accent: "#b8ff57" } },
-            { id: "light", label: "Light", preview: { bg: "#ffffff", text: "#181b22", accent: "#4d8c18" } },
-          ].map(({ id, label, preview }) => {
-            const active = colorScheme === id
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setColorScheme(id)}
-                aria-pressed={active}
-                style={{
-                  textAlign: "left",
-                  padding: 12,
-                  borderRadius: 10,
-                  cursor: "pointer",
-                  background: active ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
-                  border: active ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border)",
-                  boxShadow: "none",
-                }}
-              >
-                <div
-                  style={{
-                    height: 52,
-                    borderRadius: 8,
-                    marginBottom: 10,
-                    background: preview.bg,
-                    border: "1px solid var(--gb-border-subtle)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "0 10px",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: "50%",
-                      border: `2px solid ${preview.accent}`,
-                      background: id === "light" ? "#f4f9ef" : "rgba(184,255,87,0.12)",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ fontSize: 11, color: preview.text, fontFamily: font.mono, opacity: 0.85 }}>
-                    GhostBuster
-                  </span>
-                </div>
-                <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 14, color: "var(--gb-text)" }}>
-                  {label}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 2, fontFamily: font.body }}>
-                  {active ? "Active" : `Switch to ${label.toLowerCase()}`}
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      <section style={sectionCard(undefined, embedded)}>
-        <CardTitle
-          helper={
-            loading
-              ? "Loading…"
-              : tutorialHidden
-                ? "The Getting started panel is hidden on Home. You can bring it back anytime."
-                : "The Getting started panel is visible on Home."
-          }
-        >
-          Home tutorial
-        </CardTitle>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={showGettingStartedAgain}
-            disabled={loading || !tutorialHidden || restoringTutorial}
-            style={{
-              background: loading || !tutorialHidden || restoringTutorial ? "var(--gb-surface-hover)" : "var(--gb-surface-active)",
-              color: loading || !tutorialHidden || restoringTutorial ? "var(--gb-text-faint)" : "var(--gb-text-strong)",
-              border: "1px solid var(--gb-border)",
-              padding: "10px 16px",
-              borderRadius: 9,
-              fontFamily: font.body,
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: loading || !tutorialHidden || restoringTutorial ? "not-allowed" : "pointer",
-              boxShadow: "none",
-            }}
-          >
-            {restoringTutorial ? "Opening…" : "Show getting started on Home"}
-          </button>
-          {!loading && !tutorialHidden && (
-            <button
-              type="button"
-              onClick={hideGettingStartedPermanently}
-              disabled={hidingTutorial}
-              style={{
-                background: "transparent",
-                color: "var(--gb-text-subtle)",
-                border: "1px solid var(--gb-border)",
-                padding: "10px 16px",
-                borderRadius: 9,
-                fontFamily: font.body,
-                fontSize: 13,
-                cursor: hidingTutorial ? "not-allowed" : "pointer",
-                boxShadow: "none",
-              }}
-            >
-              {hidingTutorial ? "Saving…" : "Don't show again"}
-            </button>
-          )}
-        </div>
-      </section>
-
-      <section style={sectionCard("rgba(255,201,107,0.18)", embedded)}>
-        <CardTitle helper="Default behavior when you add a new follow-up reminder on the Reminders page.">
-          Reminders & calendar
-        </CardTitle>
-        <label
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
-            fontSize: 14,
-            color: "var(--gb-text-secondary)",
-            lineHeight: 1.45,
-            cursor: "pointer",
-            marginBottom: 14,
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={prefs.defaultSyncToCalendar}
-            onChange={(e) => updatePrefs({ defaultSyncToCalendar: e.target.checked })}
-            style={{ marginTop: 3, accentColor: "var(--gb-accent-bright)" }}
-          />
-          <span>
-            Add new reminders to Google Calendar by default
-            <span style={{ display: "block", fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4 }}>
-              You can still toggle this per reminder. Requires Google connected below.
-            </span>
-          </span>
-        </label>
-        <button type="button" onClick={() => setPage("reminders")} style={secondaryBtn()}>
-          Open reminders →
-        </button>
-      </section>
-
-      <section style={sectionCard(undefined, embedded)}>
-        <CardTitle helper="Pre-select your preferred tone when opening Compose. Career goals from your profile can pre-fill background.">
-          Compose defaults
-        </CardTitle>
-        <div style={{ marginBottom: 14 }}>
-          <label
-            htmlFor="settings-default-tone"
-            style={{
-              fontSize: 11,
-              fontFamily: font.mono,
-              color: "var(--gb-text-faint)",
-              display: "block",
-              marginBottom: 6,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
-          >
-            Default tone
-          </label>
-          <select
-            id="settings-default-tone"
-            value={prefs.defaultComposeTone}
-            onChange={(e) => updatePrefs({ defaultComposeTone: e.target.value })}
-            style={inputStyle()}
-          >
-            {COMPOSE_TONES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </div>
-        <label
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
-            fontSize: 14,
-            color: "var(--gb-text-secondary)",
-            lineHeight: 1.45,
-            cursor: "pointer",
-            marginBottom: 14,
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={prefs.prefillBackgroundFromGoals}
-            onChange={(e) => updatePrefs({ prefillBackgroundFromGoals: e.target.checked })}
-            style={{ marginTop: 3, accentColor: "var(--gb-accent-bright)" }}
-          />
-          <span>
-            Pre-fill “Your background” from career goals
-            <span style={{ display: "block", fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4 }}>
-              Edit career goals in your profile menu (top-right avatar).
-            </span>
-          </span>
-        </label>
-        <button type="button" onClick={() => setPage("compose")} style={secondaryBtn()}>
-          Open compose →
-        </button>
-      </section>
-
-      <section style={sectionCard("rgba(91,228,216,0.18)", embedded)}>
-        <CardTitle>Google account</CardTitle>
-        {googleLoading ? (
-          <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>Loading…</div>
-        ) : !googleStatus.configured ? (
-          <p style={{ margin: 0, fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
-            Google sign-in is not configured on this server. Calendar sync and Gmail drafts in Compose require
-            server setup.
-          </p>
-        ) : (
-          <>
-            <p style={{ margin: "0 0 16px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
-              {googleStatus.connected
-                ? "Connected for Google Calendar reminder sync and Gmail drafts in Compose."
-                : "Connect once to sync reminders to Google Calendar and save or schedule emails from Compose."}
-            </p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontFamily: font.mono,
-                  color: googleStatus.connected ? "rgba(184,255,87,0.8)" : "rgba(255,201,107,0.85)",
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {googleStatus.connected ? "Connected" : "Not connected"}
-              </span>
-              {googleStatus.connected ? (
-                <button
-                  type="button"
-                  onClick={disconnectGoogle}
-                  style={{
-                    background: "transparent",
-                    border: "1px solid var(--gb-border)",
-                    color: "var(--gb-text-subtle)",
-                    padding: "8px 14px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    cursor: "pointer",
-                    boxShadow: "none",
-                  }}
-                >
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={connectGoogle}
-                  style={{
-                    background: "var(--gb-accent-soft)",
-                    border: "1px solid var(--gb-border-subtle)",
-                    color: "var(--gb-accent)",
-                    padding: "8px 14px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    boxShadow: "none",
-                  }}
-                >
-                  Connect Google
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </section>
-
-      <section style={sectionCard(undefined, embedded)}>
-        <CardTitle helper="Tracker and Home use these thresholds to flag contacts who need a check-in.">
-          Connection warmth
-        </CardTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
-          {WARMTH_LEGEND.map(({ c, label, detail }) => (
-            <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13 }}>
-              <span
-                aria-hidden
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: c,
-                  marginTop: 4,
-                  flexShrink: 0,
-                }}
-              />
-              <span style={{ color: "var(--gb-text-secondary)" }}>
-                <strong style={{ fontWeight: 600 }}>{label}</strong>
-                <span style={{ display: "block", color: "var(--gb-text-faint)", marginTop: 2, lineHeight: 1.35 }}>
-                  {detail}
-                </span>
-              </span>
-            </div>
-          ))}
-        </div>
-        <button type="button" onClick={() => setPage("tracker")} style={secondaryBtn()}>
-          Open tracker →
-        </button>
-      </section>
-
-      <section style={{ ...sectionCard(undefined, embedded), marginBottom: embedded ? 0 : 24 }}>
-        <CardTitle helper="The header bell counts pending reminders. Urgency colors match Reminders and the Notifications page.">
-          Notifications
-        </CardTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-          {REMINDER_URGENCY.map((u) => {
-            const style = getReminderUrgencyStyle(u)
-            const detail =
-              u === "overdue"
-                ? "Past due date"
-                : u === "today"
-                    ? "Due today"
-                    : u === "soon"
-                      ? "Due within 3 days"
-                      : "Later follow-ups"
-            return (
-              <div key={u} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontFamily: font.mono,
-                    color: style.color,
-                    background: style.bg,
-                    border: `1px solid ${style.border}`,
-                    borderRadius: 6,
-                    padding: "3px 8px",
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                    flexShrink: 0,
-                  }}
-                >
-                  {style.label}
-                </span>
-                <span style={{ color: "var(--gb-text-muted)" }}>{detail}</span>
-              </div>
-            )
-          })}
-        </div>
-        <button type="button" onClick={() => setPage("notifications")} style={secondaryBtn()}>
-          Open notifications →
-        </button>
-      </section>
+      {embedded ? (
+        <>
+          <SettingsGroup title="General" embedded first>
+            {appearanceSection}
+            {tutorialSection}
+          </SettingsGroup>
+          <SettingsGroup title="Integrations" embedded>
+            {googleSection}
+            {remindersSection}
+          </SettingsGroup>
+          <SettingsGroup title="Compose" embedded>
+            {composeSection}
+          </SettingsGroup>
+          <SettingsGroup title="How it works" embedded>
+            {warmthSection}
+            {notificationsSection}
+          </SettingsGroup>
+        </>
+      ) : (
+        <>
+          {appearanceSection}
+          {tutorialSection}
+          {remindersSection}
+          {composeSection}
+          {googleSection}
+          {warmthSection}
+          {notificationsSection}
+        </>
+      )}
     </div>
   )
+
+  if (embedded) return inner
+
+  return <PageShell>{inner}</PageShell>
 }

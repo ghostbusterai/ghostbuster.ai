@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, getReminderUrgencyStyle, getReminderUrgency } from "../reminderUtils"
 import { font } from "../theme"
-import { CardTitle, ContentCard } from "../layout"
+import { CardTitle, ContentCard, PageShell, responsiveGrid, PAGE_SPLIT_GRID } from "../layout"
 
-import { readLocalProfile, saveLocalProfile, GETTING_STARTED_SESSION_KEY, GETTING_STARTED_RESTORED_EVENT, PROFILE_UPDATED_EVENT } from "../profile"
+import { readLocalProfile, saveLocalProfile, GETTING_STARTED_SESSION_KEY, GETTING_STARTED_RESTORED_EVENT } from "../profile"
 
 const LS_LOGS = "gb_outreach_logs"
 const LS_UPDATES = "gb_resume_updates"
@@ -95,37 +95,6 @@ function formatActivityTime(ts) {
   return d.toLocaleDateString(undefined, { weekday: "short" })
 }
 
-function greetingForHour(h = new Date().getHours()) {
-  if (h >= 5 && h < 12) return "Good morning"
-  if (h >= 12 && h < 17) return "Good afternoon"
-  if (h >= 17 && h < 22) return "Good evening"
-  return "Good night"
-}
-
-function useTimeGreeting() {
-  const [greeting, setGreeting] = useState(() => greetingForHour())
-
-  useEffect(() => {
-    function syncGreeting() {
-      setGreeting((prev) => {
-        const next = greetingForHour()
-        return prev === next ? prev : next
-      })
-    }
-
-    syncGreeting()
-    const id = setInterval(syncGreeting, 60_000)
-    return () => clearInterval(id)
-  }, [])
-
-  return greeting
-}
-
-function firstName(name) {
-  const part = String(name || "").trim().split(/\s+/).filter(Boolean)[0]
-  return part || ""
-}
-
 function isWithinDays(ms, days) {
   if (!ms) return false
   return Date.now() - ms <= days * 24 * 60 * 60 * 1000
@@ -209,8 +178,6 @@ export default function Dashboard({ setPage }) {
   const [hideGettingStarted, setHideGettingStarted] = useState(
     () => readLocalProfile().hideGettingStarted === true
   )
-  const [profileName, setProfileName] = useState(() => readLocalProfile().name || "")
-  const greeting = useTimeGreeting()
   const [sessionDismissedTutorial, setSessionDismissedTutorial] = useState(
     () => sessionStorage.getItem(GETTING_STARTED_SESSION_KEY) === "1"
   )
@@ -223,10 +190,9 @@ export default function Dashboard({ setPage }) {
         if (!cancelled && profile) {
           saveLocalProfile(profile)
           if (profile.hideGettingStarted) setHideGettingStarted(true)
-          setProfileName(profile.name || "")
         }
       } catch {
-        setProfileName(readLocalProfile().name || "")
+        /* use local profile from initial state */
       }
     })()
     return () => {
@@ -239,14 +205,9 @@ export default function Dashboard({ setPage }) {
       setHideGettingStarted(false)
       setSessionDismissedTutorial(false)
     }
-    function onProfileUpdated(e) {
-      setProfileName(e.detail?.name ?? readLocalProfile().name ?? "")
-    }
     window.addEventListener(GETTING_STARTED_RESTORED_EVENT, onRestored)
-    window.addEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated)
     return () => {
       window.removeEventListener(GETTING_STARTED_RESTORED_EVENT, onRestored)
-      window.removeEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated)
     }
   }, [])
 
@@ -418,79 +379,7 @@ export default function Dashboard({ setPage }) {
   }, [contacts, outreachLogs, resumeUpdates, reminders])
 
   return (
-    <div style={{ width: "100%", maxWidth: 720, margin: "0 auto", minWidth: 0 }}>
-      {/* Hero greeting */}
-      <section
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border)",
-          borderRadius: 20,
-          padding: "24px 22px 22px",
-          marginBottom: 24,
-          boxShadow: "var(--gb-shadow-panel)",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 12,
-            fontFamily: font.body,
-            fontWeight: 600,
-            letterSpacing: "0.06em",
-            color: "var(--gb-accent-muted)",
-            textTransform: "uppercase",
-            marginBottom: 10,
-          }}
-        >
-          Your career network
-        </div>
-        <h1
-          style={{
-            fontFamily: font.h1,
-            fontWeight: 800,
-            fontSize: 28,
-            letterSpacing: "-0.5px",
-            margin: "0 0 8px",
-            lineHeight: 1.2,
-          }}
-        >
-          {firstName(profileName)
-            ? `${greeting}, ${firstName(profileName)}`
-            : greeting}
-        </h1>
-        {dueReminders.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setPage("notifications")}
-            style={{
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              margin: 0,
-              cursor: "pointer",
-              color: "var(--gb-text-muted)",
-              fontSize: 15,
-              fontFamily: font.body,
-              lineHeight: 1.5,
-              textAlign: "left",
-              boxShadow: "none",
-            }}
-          >
-            You have{" "}
-            <strong style={{ color: reminderSummary.attention > 0 ? "var(--gb-danger)" : "var(--gb-warning)" }}>
-              {reminderSummary.attention > 0 ? reminderSummary.attention : dueReminders.length} follow-up
-              {(reminderSummary.attention > 0 ? reminderSummary.attention : dueReminders.length) !== 1 ? "s" : ""}
-            </strong>{" "}
-            due {reminderSummary.today > 0 ? "today" : "soon"} →
-          </button>
-        ) : (
-          <p style={{ margin: 0, color: "var(--gb-text-muted)", fontSize: 15, lineHeight: 1.5, fontFamily: font.body }}>
-            {isNewUser
-              ? "Stay in touch with people you've already met — add them here, then reach out with a message."
-              : "Your networking activity at a glance."}
-          </p>
-        )}
-      </section>
-
+    <PageShell>
       {showGettingStarted && (
         <section
           style={{
@@ -538,7 +427,6 @@ export default function Dashboard({ setPage }) {
                 fontFamily: font.body,
                 color: "var(--gb-text-secondary)",
                 lineHeight: 1.65,
-                maxWidth: 680,
               }}
             >
               GhostBuster doesn&apos;t find strangers for you. It helps you nurture relationships with people
@@ -727,7 +615,7 @@ export default function Dashboard({ setPage }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gridTemplateColumns: responsiveGrid(220),
           gap: 12,
         }}
       >
@@ -812,12 +700,21 @@ export default function Dashboard({ setPage }) {
       </div>
       </ContentCard>
 
-      <ContentCard marginBottom={28}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: PAGE_SPLIT_GRID,
+          gap: 28,
+          alignItems: "start",
+          marginBottom: 28,
+        }}
+      >
+      <ContentCard marginBottom={0}>
         <CardTitle>Quick actions</CardTitle>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gridTemplateColumns: responsiveGrid(240),
           gap: 12,
         }}
       >
@@ -864,7 +761,7 @@ export default function Dashboard({ setPage }) {
       </ContentCard>
 
       {/* Weekly outreach goal */}
-      <ContentCard marginBottom={28}>
+      <ContentCard marginBottom={0}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
           <CardTitle style={{ marginBottom: 0, flex: "1 1 auto" }}>Weekly outreach goal</CardTitle>
           <div style={{ fontFamily: font.mono, fontSize: 12, color: "var(--gb-text-muted)" }}>
@@ -905,8 +802,18 @@ export default function Dashboard({ setPage }) {
           )
         })}
       </ContentCard>
+      </div>
 
-      <ContentCard padding="18px 18px 16px" marginBottom={28}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: PAGE_SPLIT_GRID,
+          gap: 28,
+          alignItems: "start",
+          marginBottom: 8,
+        }}
+      >
+      <ContentCard padding="18px 18px 16px" marginBottom={0}>
         <CardTitle>Recent activity</CardTitle>
       <div style={{ padding: "0 0 2px" }}>
         {activityFeed.length === 0 ? (
@@ -974,7 +881,7 @@ export default function Dashboard({ setPage }) {
       </div>
       </ContentCard>
 
-      <ContentCard padding="18px 18px 16px" marginBottom={8}>
+      <ContentCard padding="18px 18px 16px" marginBottom={0}>
         <div
           style={{
             display: "flex",
@@ -1183,6 +1090,7 @@ export default function Dashboard({ setPage }) {
             </div>
           )}
       </ContentCard>
-    </div>
+      </div>
+    </PageShell>
   )
 }

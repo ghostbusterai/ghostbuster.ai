@@ -22,7 +22,7 @@ export const FOUNDERS = [
     role: "Co-founder",
     tagline: "Business · Human-Computer Interaction · Carnegie Mellon University",
     bio:
-      "Surabhi is a junior at Carnegie Mellon studying Business and Human-Computer Interaction. In her free time she enjoys scrapbooking and is very excited for you all to benefit from our site!",
+      "At Carnegie Mellon, Surabhi is a Swartz Innovation Scholar and serves on the executive boards of the Undergraduate Entrepreneurship Association and Tartan Marketing Association. She is also a teaching assistant for a business leadership course and an orientation counselor for CMU's first-year orientation.",
     photo: "/founders/surabhi.png",
     links: {
       linkedin: "https://www.linkedin.com/in/surabhi-komanduri/",

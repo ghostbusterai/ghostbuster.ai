@@ -422,60 +422,6 @@ export default function Tracker() {
         {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
       </PageHero>
 
-      {/* Warmth legend */}
-      <ContentCard
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border)",
-        }}
-        padding="16px 18px"
-        marginBottom={20}
-      >
-        <CardTitle helper="Each contact gets a color based on how long it's been since you last logged outreach with them.">
-          How warmth works
-        </CardTitle>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {[
-            { c: "var(--gb-accent)", label: "Warm", detail: "Last touch within 21 days" },
-            { c: "#ffc96b", label: "Check in soon", detail: "22–45 days since last touch" },
-            { c: "var(--gb-danger)", label: "Overdue", detail: "More than 45 days since last touch" },
-            { c: "#6b7280", label: "No touch logged", detail: "No outreach recorded yet" },
-          ].map((x) => (
-            <span
-              key={x.label}
-              style={{
-                display: "inline-flex",
-                alignItems: "flex-start",
-                gap: 8,
-                fontSize: 12,
-                color: "var(--gb-text-secondary)",
-                padding: "8px 12px",
-                borderRadius: 8,
-                background: "var(--gb-surface-hover)",
-                maxWidth: 220,
-              }}
-            >
-              <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: x.c,
-                  marginTop: 3,
-                  flexShrink: 0,
-                }}
-              />
-              <span>
-                <strong style={{ color: "var(--gb-text)" }}>{x.label}</strong>
-                <span style={{ display: "block", color: "var(--gb-text-faint)", marginTop: 2, lineHeight: 1.35 }}>
-                  {x.detail}
-                </span>
-              </span>
-            </span>
-          ))}
-        </div>
-      </ContentCard>
-
       {/* Filter + sort */}
       <ContentCard padding="18px 18px 14px" marginBottom={20}>
         <CardTitle style={{ marginBottom: 14 }}>Filter & sort</CardTitle>
@@ -523,65 +469,59 @@ export default function Tracker() {
         </div>
       )}
 
-      {/* Log touchpoint */}
-      <ContentCard
-        style={{
-          border: "1px solid var(--gb-border-subtle)",
-        }}
-        padding="24px"
-        marginBottom={28}
-      >
-        <CardTitle>Log outreach</CardTitle>
-        <form onSubmit={saveLog} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <select value={logContactId} onChange={(e) => setLogContactId(e.target.value)} style={inputStyle()} required>
-            <option value="">Contact *</option>
-            {contacts.map((c) => (
-              <option key={c.id} value={String(c.id)}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} style={inputStyle()} required />
-          <select value={logChannel} onChange={(e) => setLogChannel(e.target.value)} style={inputStyle()}>
-            {CHANNELS.map((ch) => (
-              <option key={ch} value={ch}>
-                {ch}
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="Short note (optional)"
-            value={logNote}
-            onChange={(e) => setLogNote(e.target.value)}
-            style={inputStyle()}
-          />
-          <div style={{ gridColumn: "1 / -1" }}>
-            <button
-              type="submit"
-              disabled={!logContactId || savingLog}
-              style={{
-                background: logContactId && !savingLog ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
-                color: logContactId && !savingLog ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
-                border:
-                  logContactId && !savingLog ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-border-subtle)",
-                boxShadow: "none",
-                padding: "10px 22px",
-                borderRadius: 9,
-                fontFamily: font.h1,
-                fontWeight: 700,
-                cursor: logContactId && !savingLog ? "pointer" : "not-allowed",
-              }}
-            >
-              {savingLog ? "Saving…" : "Add touchpoint"}
-            </button>
-          </div>
-        </form>
-      </ContentCard>
-
       {/* Per-contact warmth */}
       <CardTitle helper="Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each week for the past 12 weeks.">
         Connection warmth
       </CardTitle>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+          marginTop: -6,
+          marginBottom: 16,
+        }}
+      >
+        {[
+          { c: "var(--gb-accent)", label: "Warm", detail: "Last touch within 21 days" },
+          { c: "#ffc96b", label: "Check in soon", detail: "22–45 days since last touch" },
+          { c: "var(--gb-danger)", label: "Overdue", detail: "More than 45 days since last touch" },
+          { c: "#6b7280", label: "No touch logged", detail: "No outreach recorded yet" },
+        ].map((x) => (
+          <span
+            key={x.label}
+            style={{
+              display: "inline-flex",
+              alignItems: "flex-start",
+              gap: 8,
+              fontSize: 12,
+              color: "var(--gb-text-secondary)",
+              padding: "8px 12px",
+              borderRadius: 8,
+              background: "var(--gb-surface-hover)",
+              border: "1px solid var(--gb-border-subtle)",
+              maxWidth: 220,
+            }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: x.c,
+                marginTop: 3,
+                flexShrink: 0,
+              }}
+            />
+            <span>
+              <strong style={{ color: "var(--gb-text)" }}>{x.label}</strong>
+              <span style={{ display: "block", color: "var(--gb-text-faint)", marginTop: 2, lineHeight: 1.35 }}>
+                {x.detail}
+              </span>
+            </span>
+          </span>
+        ))}
+      </div>
       {loading ? (
         <div style={{ color: "var(--gb-text-faint)" }}>Loading…</div>
       ) : sortedFilteredContacts.length === 0 ? (
@@ -595,7 +535,7 @@ export default function Tracker() {
             color: "var(--gb-text-faint)",
           }}
         >
-          {contacts.length === 0 ? "Add contacts first, then log outreach here." : "No contacts match this filter."}
+          {contacts.length === 0 ? "Add contacts first, then log outreach below." : "No contacts match this filter."}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -754,6 +694,62 @@ export default function Tracker() {
           })}
         </div>
       )}
+
+      {/* Log touchpoint — below warmth graphs so you review rhythm first */}
+      <ContentCard
+        style={{
+          border: "1px solid var(--gb-border-subtle)",
+          marginTop: 8,
+        }}
+        padding="24px"
+        marginBottom={28}
+      >
+        <CardTitle>Log outreach</CardTitle>
+        <form onSubmit={saveLog} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <select value={logContactId} onChange={(e) => setLogContactId(e.target.value)} style={inputStyle()} required>
+            <option value="">Contact *</option>
+            {contacts.map((c) => (
+              <option key={c.id} value={String(c.id)}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} style={inputStyle()} required />
+          <select value={logChannel} onChange={(e) => setLogChannel(e.target.value)} style={inputStyle()}>
+            {CHANNELS.map((ch) => (
+              <option key={ch} value={ch}>
+                {ch}
+              </option>
+            ))}
+          </select>
+          <input
+            placeholder="Short note (optional)"
+            value={logNote}
+            onChange={(e) => setLogNote(e.target.value)}
+            style={inputStyle()}
+          />
+          <div style={{ gridColumn: "1 / -1" }}>
+            <button
+              type="submit"
+              disabled={!logContactId || savingLog}
+              style={{
+                background: logContactId && !savingLog ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
+                color: logContactId && !savingLog ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
+                border:
+                  logContactId && !savingLog ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-border-subtle)",
+                boxShadow: "none",
+                padding: "10px 22px",
+                borderRadius: 9,
+                fontFamily: font.h1,
+                fontWeight: 700,
+                cursor: logContactId && !savingLog ? "pointer" : "not-allowed",
+              }}
+            >
+              {savingLog ? "Saving…" : "Add touchpoint"}
+            </button>
+          </div>
+        </form>
+      </ContentCard>
 
       {/* Recent logs table */}
       <CardTitle

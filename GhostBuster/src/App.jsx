@@ -6,7 +6,6 @@ import MessageComposer from "./components/MessageComposer"
 import Tracker from "./components/Tracker"
 import Updates from "./components/Updates"
 import ProfileMenu from "./components/ProfileMenu"
-import SettingsMenu from "./components/SettingsMenu"
 import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
 import About from "./components/About"
@@ -14,8 +13,10 @@ import Ghostwriter from "./components/Ghostwriter"
 import Login from "./components/Login"
 import { font } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
+import { PAGE_PADDING_X } from "./layout"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 import { api } from "./api"
+import { useMotivationalGreeting } from "./greeting"
 
 const NAV = [
   { id: "dashboard", label: "Home" },
@@ -28,15 +29,22 @@ const NAV = [
   { id: "about", label: "About" },
 ]
 
+/** Header brand + nav scale (tabs 11→13, brand + logo scaled ~18%) */
+const HEADER_TAB_FONT_SIZE = 13
+const HEADER_BRAND_FONT_SIZE = 19
+const HEADER_LOGO_SIZE = 35
+
 export default function App() {
   const [page, setPage] = useState("dashboard")
   const [composePrefill, setComposePrefill] = useState(null)
   const [googleNotice, setGoogleNotice] = useState(null)
   const [googleNoticeTarget, setGoogleNoticeTarget] = useState(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [accountMenuView, setAccountMenuView] = useState("menu")
   const [authUser, setAuthUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
+  const greeting = useMotivationalGreeting(page === "dashboard")
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -51,7 +59,8 @@ export default function App() {
 
     if (google === "connected") {
       if (returnTo === "settings") {
-        setSettingsOpen(true)
+        setAccountMenuView("settings")
+        setAccountMenuOpen(true)
         setGoogleNoticeTarget("settings")
       } else {
         setPage(returnPage)
@@ -68,7 +77,8 @@ export default function App() {
       })
     } else if (google === "error") {
       if (returnTo === "settings") {
-        setSettingsOpen(true)
+        setAccountMenuView("settings")
+        setAccountMenuOpen(true)
         setGoogleNoticeTarget("settings")
       } else {
         setPage(returnPage)
@@ -184,15 +194,15 @@ export default function App() {
               color: "var(--gb-text)",
               fontFamily: font.h1,
               fontWeight: 800,
-              fontSize: 16,
+              fontSize: HEADER_BRAND_FONT_SIZE,
               letterSpacing: "-0.3px",
               flexShrink: 0,
             }}
           >
             <span
               style={{
-                width: 30,
-                height: 30,
+                width: HEADER_LOGO_SIZE,
+                height: HEADER_LOGO_SIZE,
                 borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
@@ -201,7 +211,7 @@ export default function App() {
                 boxShadow: "0 0 0 1px var(--gb-border-subtle)",
               }}
             >
-              <GhostBusterLogo size={30} />
+              <GhostBusterLogo size={HEADER_LOGO_SIZE} />
             </span>
             GhostBuster
           </div>
@@ -230,12 +240,12 @@ export default function App() {
                   id={`tab-${n.id}`}
                   onClick={() => setPage(n.id)}
                   style={{
-                    padding: "12px 14px",
+                    padding: "13px 16px",
                     margin: 0,
                     border: "none",
                     background: "transparent",
                     color: active ? "var(--gb-text)" : "var(--gb-text-subtle)",
-                    fontSize: 11,
+                    fontSize: HEADER_TAB_FONT_SIZE,
                     fontFamily: font.mono,
                     fontWeight: active ? 600 : 500,
                     letterSpacing: "0.14em",
@@ -254,18 +264,38 @@ export default function App() {
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            {page === "dashboard" && (
+              <span
+                style={{
+                  fontSize: 13,
+                  fontFamily: font.body,
+                  fontWeight: 500,
+                  color: "var(--gb-text-muted)",
+                  maxWidth: "min(240px, 32vw)",
+                  textAlign: "right",
+                  lineHeight: 1.35,
+                }}
+              >
+                {greeting}
+              </span>
+            )}
             <NotificationBell setPage={setPage} currentPage={page} />
-            <SettingsMenu
+            <ProfileMenu
+              authUser={authUser}
+              onLogout={handleLogout}
               setPage={setPage}
-              open={settingsOpen}
-              onOpenChange={setSettingsOpen}
+              open={accountMenuOpen}
+              onOpenChange={(v) => {
+                setAccountMenuOpen(v)
+                if (!v) setAccountMenuView("menu")
+              }}
+              openView={accountMenuView}
               googleNotice={googleNoticeTarget === "settings" ? googleNotice : null}
               onConsumeGoogleNotice={() => {
                 setGoogleNotice(null)
                 setGoogleNoticeTarget(null)
               }}
             />
-            <ProfileMenu authUser={authUser} onLogout={handleLogout} />
           </div>
         </div>
       </header>
@@ -275,7 +305,7 @@ export default function App() {
           flex: 1,
           width: "100%",
           maxWidth: "100%",
-          padding: "24px clamp(16px, 3vw, 32px) 40px",
+          padding: `24px ${PAGE_PADDING_X} 40px`,
           overflowY: "auto",
           minWidth: 0,
         }}

@@ -560,12 +560,9 @@ export default function MessageComposer({
 
         {/* Right — Output */}
         <ContentCard style={{ marginBottom: 0 }} padding="18px 18px 16px">
-          <CardTitle>Generated message</CardTitle>
-          {result && !loading && (
-            <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.45, fontFamily: font.body }}>
-              Edit the draft below before copying or sending.
-            </p>
-          )}
+          <CardTitle helper="This message is AI-generated and may contain errors or outdated details. Proofread carefully and edit anything that does not sound like you before copying or sending.">
+            Generated message
+          </CardTitle>
           <div style={{
             background: "var(--gb-bg-elevated)", border: `1px solid ${result ? "var(--gb-border-subtle)" : "var(--gb-surface-active)"}`,
             borderRadius: 14, padding: result && !loading ? 16 : 24, minHeight: 320,
