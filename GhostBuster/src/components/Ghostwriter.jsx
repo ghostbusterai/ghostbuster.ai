@@ -3,6 +3,7 @@ import { api } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
+import AiDisclaimer from "./AiDisclaimer"
 
 function speechSupported() {
   return Boolean(typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition))
@@ -480,6 +481,8 @@ export default function Ghostwriter() {
         title="Ghostwriter"
         subtitle="Take live notes on Zoom or Google Meet. Ghostwriter auto-detects whether you or the other person is talking, then writes an AI summary when you end the call."
       />
+
+      <AiDisclaimer style={{ marginBottom: 20 }} />
 
       {!speechSupported() && (
         <ContentCard style={{ borderColor: "rgba(255,201,107,0.35)", marginBottom: 24 }}>

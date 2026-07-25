@@ -455,7 +455,7 @@ export default function Settings({
         </span>
       </label>
       <button type="button" onClick={() => setPage("compose")} style={secondaryBtn()}>
-        Open compose →
+        Open compose on Contacts →
       </button>
     </section>
   )

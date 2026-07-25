@@ -11,7 +11,7 @@ export const FOUNDERS = [
     role: "Co-founder",
     tagline: "Mechanical Engineering · Computer Science minor · Carnegie Mellon University",
     bio:
-      "Ananya is a junior at Carnegie Mellon majoring in Mechanical Engineering and minoring in Computer Science. She enjoys interior design and is excited for GhostBuster to transform your networking process!",
+      "At Carnegie Mellon, Ananya is involved as student researcher with the RocketSmith lab and teaching assistant for an engineering course. In her free time she enjoys dancing and working on the production for her school's fusion dance team!",
     photo: "/founders/ananya.png",
     links: {
       linkedin: "https://www.linkedin.com/in/ananya-pamal",
@@ -39,7 +39,7 @@ export const PRODUCT_FEATURES = [
   {
     icon: "✨",
     title: "AI Compose",
-    description: "Draft warm outreach for any situation, tuned to your tone and prior conversations.",
+    description: "Draft warm outreach for any contact from the compose button on Contacts.",
   },
   {
     icon: "📄",
@@ -59,7 +59,7 @@ export const PRODUCT_FEATURES = [
   {
     icon: "✉",
     title: "Gmail",
-    description: "Save drafts or schedule sends straight from Compose when Google is connected.",
+    description: "Save drafts or schedule sends from compose when Google is connected.",
   },
   {
     icon: "🎙",

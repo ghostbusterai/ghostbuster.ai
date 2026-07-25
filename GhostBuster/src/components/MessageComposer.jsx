@@ -30,8 +30,11 @@ export default function MessageComposer({
   onConsumePrefill = () => {},
   googleNotice = null,
   onConsumeGoogleNotice = () => {},
+  embedded = false,
+  onClose = null,
+  contacts: contactsProp = null,
 }) {
-  const [contacts, setContacts] = useState([])
+  const [contacts, setContacts] = useState(() => contactsProp || [])
   const [selectedContact, setSelectedContact] = useState("")
   const [situation, setSituation] = useState("")
   const [tone, setTone] = useState(() => readPreferences().defaultComposeTone)
@@ -62,6 +65,10 @@ export default function MessageComposer({
   }, [])
 
   useEffect(() => {
+    if (contactsProp) {
+      setContacts(contactsProp)
+      return
+    }
     let cancelled = false
     ;(async () => {
       try {
@@ -72,7 +79,7 @@ export default function MessageComposer({
       }
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [contactsProp])
 
   const contact = contacts.find(c => c.id === Number(selectedContact))
 
@@ -307,15 +314,17 @@ export default function MessageComposer({
     }
   }
 
-  return (
-    <PageShell>
-      <PageHero
-        eyebrow="AI Powered"
-        title="Message Composer"
-        subtitle="Pick a scenario to auto-generate a starter message, then edit it before you copy or send."
-      />
+  const form = (
+    <>
+      {!embedded && (
+        <PageHero
+          eyebrow="AI Powered"
+          title="Message Composer"
+          subtitle="Pick a scenario to auto-generate a starter message, then edit it before you copy or send."
+        />
+      )}
 
-      <ContentCard padding="16px 16px 14px" marginBottom={28}>
+      <ContentCard padding={embedded ? "12px 12px 10px" : "16px 16px 14px"} marginBottom={embedded ? 16 : 28}>
         <CardTitle helper="Click a scenario to generate a starter message.">Quick scenarios</CardTitle>
       <div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -351,10 +360,10 @@ export default function MessageComposer({
       </div>
       </ContentCard>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: 32, width: "100%" }}>
+      <div style={{ display: "grid", gridTemplateColumns: embedded ? "1fr" : "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: embedded ? 16 : 32, width: "100%" }}>
 
         {/* Left — Inputs */}
-        <ContentCard style={{ marginBottom: 0 }} padding="18px 18px 16px">
+        <ContentCard style={{ marginBottom: 0 }} padding={embedded ? "14px" : "18px 18px 16px"}>
         <CardTitle>Message details</CardTitle>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
@@ -559,13 +568,13 @@ export default function MessageComposer({
         </ContentCard>
 
         {/* Right — Output */}
-        <ContentCard style={{ marginBottom: 0 }} padding="18px 18px 16px">
+        <ContentCard style={{ marginBottom: 0 }} padding={embedded ? "14px" : "18px 18px 16px"}>
           <CardTitle helper="This message is AI-generated and may contain errors or outdated details. Proofread carefully and edit anything that does not sound like you before copying or sending.">
             Generated message
           </CardTitle>
           <div style={{
             background: "var(--gb-bg-elevated)", border: `1px solid ${result ? "var(--gb-border-subtle)" : "var(--gb-surface-active)"}`,
-            borderRadius: 14, padding: result && !loading ? 16 : 24, minHeight: 320,
+            borderRadius: 14, padding: result && !loading ? 16 : 24, minHeight: embedded ? 200 : 320,
             display: "flex", flexDirection: "column", justifyContent: result && !loading ? "flex-start" : "center",
             alignItems: result && !loading ? "stretch" : "center",
           }}>
@@ -596,7 +605,7 @@ export default function MessageComposer({
                   style={{
                     ...inputStyle(),
                     flex: 1,
-                    minHeight: 260,
+                    minHeight: embedded ? 160 : 260,
                     fontFamily: font.mono,
                     fontSize: 13,
                     lineHeight: 1.8,
@@ -771,6 +780,77 @@ export default function MessageComposer({
       </div>
 
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
-    </PageShell>
+    </>
   )
+
+  if (embedded) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "14px 16px",
+            borderBottom: "1px solid var(--gb-border-subtle)",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontFamily: font.mono,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--gb-accent-muted)",
+                marginBottom: 4,
+              }}
+            >
+              Compose
+            </div>
+            <div
+              style={{
+                fontFamily: font.h1,
+                fontWeight: 700,
+                fontSize: 16,
+                color: "var(--gb-text)",
+                lineHeight: 1.3,
+              }}
+            >
+              Draft a message
+            </div>
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close compose"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                border: "1px solid var(--gb-border)",
+                background: "var(--gb-surface-muted)",
+                color: "var(--gb-text-muted)",
+                cursor: "pointer",
+                fontSize: 18,
+                lineHeight: 1,
+                flexShrink: 0,
+                boxShadow: "none",
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 14 }}>
+          {form}
+        </div>
+      </div>
+    )
+  }
+
+  return <PageShell>{form}</PageShell>
 }

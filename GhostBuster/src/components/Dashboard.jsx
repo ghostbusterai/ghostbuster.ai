@@ -21,7 +21,7 @@ const GETTING_STARTED_STEPS = [
   {
     step: 2,
     title: "Send them a message",
-    detail: "Use Compose to draft a warm follow-up or introduction email.",
+    detail: "On Contacts, tap the compose button to draft a warm follow-up or introduction.",
     page: "compose",
     cta: "Open Compose",
   },
@@ -165,7 +165,7 @@ function SnapshotIcon({ name, color, size = 20 }) {
 const QUICK_ACTIONS = [
   { page: "contacts", title: "Add contact", sub: "Save someone new", mark: "+", markColor: "var(--gb-accent)" },
   { page: "reminders", title: "Set reminder", sub: "Schedule follow-up", mark: "⏰", markColor: "var(--gb-danger)" },
-  { page: "compose", title: "Compose message", sub: "Draft outreach", mark: "✉", markColor: "#5be4d8" },
+  { page: "compose", title: "Compose message", sub: "From Contacts", mark: "✉", markColor: "#5be4d8" },
   { page: "updates", title: "Update resume", sub: "Refresh your docs", mark: "📄", markColor: "#b482ff" },
 ]
 
@@ -392,7 +392,7 @@ export default function Dashboard({ setPage }) {
           boxShadow: "var(--gb-shadow-panel)",
         }}
       >
-        <div style={{ ...type.eyebrow, marginBottom: 10 }}>Home</div>
+        <div style={{ ...type.eyebrow, marginBottom: 10 }}>Bridging ambition with experience</div>
         <h1 style={{ ...type.heroTitle, margin: "0 0 10px" }}>{greeting}</h1>
         <p style={{ ...type.heroSubtitle, margin: 0 }}>
           Stay in touch with people you&apos;ve already met — add contacts, send messages, and log follow-ups here.

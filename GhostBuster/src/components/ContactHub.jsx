@@ -4,6 +4,7 @@ import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
+import MessageComposer from "./MessageComposer"
 
 const EMPTY = {
   name: "", email: "", phone: "", company: "", role: "", notes: "", lastContacted: "",
@@ -17,7 +18,14 @@ function hrefFromUrl(raw) {
   return `https://${t}`
 }
 
-export default function ContactHub() {
+export default function ContactHub({
+  composeOpen = false,
+  onComposeOpenChange = () => {},
+  composePrefill = null,
+  onConsumePrefill = () => {},
+  googleNotice = null,
+  onConsumeGoogleNotice = () => {},
+}) {
   const [contacts, setContacts] = useState([])
   const [resumeBuckets, setResumeBuckets] = useState([])
   const [loadError, setLoadError] = useState(null)
@@ -28,6 +36,31 @@ export default function ContactHub() {
   const [filterCompany, setFilterCompany] = useState("All")
   const [editId, setEditId] = useState(null)
   const [actionError, setActionError] = useState(null)
+  const [localComposePrefill, setLocalComposePrefill] = useState(null)
+
+  useEffect(() => {
+    if (composePrefill) onComposeOpenChange(true)
+  }, [composePrefill, onComposeOpenChange])
+
+  useEffect(() => {
+    if (composePrefill) setLocalComposePrefill(null)
+  }, [composePrefill])
+
+  function openCompose(contact = null) {
+    if (contact?.id != null) {
+      setLocalComposePrefill({ contactId: contact.id })
+    } else {
+      setLocalComposePrefill(null)
+    }
+    onComposeOpenChange(true)
+  }
+
+  function closeCompose() {
+    onComposeOpenChange(false)
+    setLocalComposePrefill(null)
+  }
+
+  const activePrefill = composePrefill || localComposePrefill
 
   useEffect(() => {
     let cancelled = false
@@ -351,6 +384,23 @@ export default function ContactHub() {
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 type="button"
+                onClick={() => openCompose(c)}
+                style={{
+                  background: "var(--gb-accent-soft)",
+                  border: "1px solid var(--gb-accent-border)",
+                  boxShadow: "none",
+                  color: "var(--gb-accent)",
+                  padding: "6px 14px",
+                  borderRadius: 7,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontFamily: font.mono,
+                }}
+              >
+                Message
+              </button>
+              <button
+                type="button"
                 onClick={() => togglePin(c)}
                 aria-label={c.pinned ? `Unpin ${c.name}` : `Pin ${c.name} to top`}
                 title={c.pinned ? "Unpin" : "Pin to top"}
@@ -408,10 +458,11 @@ export default function ContactHub() {
 
   return (
     <PageShell>
+      <div style={{ paddingBottom: 88 }}>
       <PageHero
         eyebrow="Network"
         title="Contact Hub"
-        subtitle="Save people you've already met — career fairs, coffee chats, referrals. Add them here first, then reach out from Compose and track touchpoints on Tracker."
+        subtitle="Save people you've already met — career fairs, coffee chats, referrals. Draft outreach from the compose button, then track touchpoints on Tracker."
       >
         <p style={{ color: "var(--gb-text-muted)", fontSize: 15, fontFamily: font.body, marginTop: 10, marginBottom: 0 }}>
           {listLoading ? (
@@ -857,6 +908,89 @@ export default function ContactHub() {
           })}
         </div>
       )}
+      </div>
+
+      {/* Compose FAB / expandable panel */}
+      <div
+        style={{
+          position: "fixed",
+          right: 20,
+          bottom: 20,
+          zIndex: 50,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 12,
+        }}
+      >
+        {composeOpen ? (
+          <div
+            style={{
+              width: "min(440px, calc(100vw - 32px))",
+              height: "min(780px, calc(100vh - 96px))",
+              background: "var(--gb-bg-elevated)",
+              border: "1px solid var(--gb-border)",
+              borderRadius: 20,
+              boxShadow: "var(--gb-shadow-panel)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <MessageComposer
+              embedded
+              contacts={contacts}
+              composePrefill={activePrefill}
+              onConsumePrefill={() => {
+                setLocalComposePrefill(null)
+                onConsumePrefill()
+              }}
+              googleNotice={googleNotice}
+              onConsumeGoogleNotice={onConsumeGoogleNotice}
+              onClose={closeCompose}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => openCompose()}
+            aria-label="Compose a message"
+            title="Compose a message"
+            style={{
+              height: 56,
+              padding: "0 18px 0 14px",
+              borderRadius: 999,
+              border: "1px solid rgba(10,15,9,0.22)",
+              background: "var(--gb-accent-bright)",
+              color: "var(--gb-accent-text-on)",
+              cursor: "pointer",
+              boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              fontFamily: font.h1,
+              fontWeight: 700,
+              fontSize: 15,
+              letterSpacing: "-0.02em",
+              transition: "transform 0.15s ease, box-shadow 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)"
+              e.currentTarget.style.boxShadow = "0 14px 32px rgba(0,0,0,0.34)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)"
+              e.currentTarget.style.boxShadow = "0 10px 28px rgba(0,0,0,0.28)"
+            }}
+          >
+            <span style={{ fontSize: 28, lineHeight: 1, display: "flex" }} aria-hidden>
+              ✉
+            </span>
+            Compose
+          </button>
+        )}
+      </div>
     </PageShell>
   )
 }

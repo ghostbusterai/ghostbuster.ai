@@ -21,8 +21,9 @@ Return ONLY valid JSON (no markdown fences) in this exact shape:
 
 Rules:
 - Be concrete and faithful to the transcript. Do not invent employers, offers, or commitments that were not said.
+- Only summarize what was actually discussed. Do not mention topics that were absent (e.g. do not say "no career discussion" or "networking was not mentioned").
 - Prefer short bullets (under 20 words each).
-- If the transcript is thin, say what little is known and keep lists short.
+- If the transcript is thin, summarize only what was said and keep lists short. Omit empty categories rather than noting gaps.
 - Do not use em dashes.`
 }
 

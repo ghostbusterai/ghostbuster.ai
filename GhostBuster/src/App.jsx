@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react"
 import Dashboard from "./components/Dashboard"
 import ContactHub from "./components/ContactHub"
 import Reminders from "./components/Reminders"
-import MessageComposer from "./components/MessageComposer"
 import Tracker from "./components/Tracker"
 import Updates from "./components/Updates"
 import ProfileMenu from "./components/ProfileMenu"
@@ -23,7 +22,6 @@ const NAV = [
   { id: "tracker", label: "Tracker" },
   { id: "updates", label: "Resume" },
   { id: "reminders", label: "Reminders" },
-  { id: "compose", label: "Compose" },
   { id: "ghostwriter", label: "Ghostwriter" },
   { id: "about", label: "About" },
 ]
@@ -34,7 +32,8 @@ const HEADER_BRAND_FONT_SIZE = 19
 const HEADER_LOGO_SIZE = 35
 
 export default function App() {
-  const [page, setPage] = useState("dashboard")
+  const [page, setPageState] = useState("dashboard")
+  const [composeOpen, setComposeOpen] = useState(false)
   const [composePrefill, setComposePrefill] = useState(null)
   const [googleNotice, setGoogleNotice] = useState(null)
   const [googleNoticeTarget, setGoogleNoticeTarget] = useState(null)
@@ -44,12 +43,20 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
 
+  function setPage(next) {
+    if (next === "compose") {
+      setComposeOpen(true)
+      setPageState("contacts")
+      return
+    }
+    setPageState(next)
+  }
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const auth = params.get("auth")
     const google = params.get("google")
     const returnTo = params.get("page")
-    const returnPage = returnTo === "compose" ? "compose" : "reminders"
 
     if (auth === "error") {
       setAuthError(params.get("message") || "Could not sign in with Google.")
@@ -60,14 +67,18 @@ export default function App() {
         setAccountMenuView("settings")
         setAccountMenuOpen(true)
         setGoogleNoticeTarget("settings")
+      } else if (returnTo === "compose" || returnTo === "contacts") {
+        setComposeOpen(true)
+        setPageState("contacts")
+        setGoogleNoticeTarget("compose")
       } else {
-        setPage(returnPage)
-        setGoogleNoticeTarget(returnPage)
+        setPageState("reminders")
+        setGoogleNoticeTarget("reminders")
       }
       setGoogleNotice({
         type: "success",
         text:
-          returnTo === "compose"
+          returnTo === "compose" || returnTo === "contacts"
             ? "Google connected. You can save drafts and schedule emails."
             : returnTo === "settings"
               ? "Google account connected."
@@ -78,9 +89,13 @@ export default function App() {
         setAccountMenuView("settings")
         setAccountMenuOpen(true)
         setGoogleNoticeTarget("settings")
+      } else if (returnTo === "compose" || returnTo === "contacts") {
+        setComposeOpen(true)
+        setPageState("contacts")
+        setGoogleNoticeTarget("compose")
       } else {
-        setPage(returnPage)
-        setGoogleNoticeTarget(returnPage)
+        setPageState("reminders")
+        setGoogleNoticeTarget("reminders")
       }
       setGoogleNotice({
         type: "error",
@@ -295,7 +310,19 @@ export default function App() {
       >
         {page === "dashboard" && <Dashboard setPage={setPage} />}
         {page === "notifications" && <Notifications setPage={setPage} />}
-        {page === "contacts" && <ContactHub />}
+        {page === "contacts" && (
+          <ContactHub
+            composeOpen={composeOpen}
+            onComposeOpenChange={setComposeOpen}
+            composePrefill={composePrefill}
+            onConsumePrefill={() => setComposePrefill(null)}
+            googleNotice={googleNoticeTarget === "compose" ? googleNotice : null}
+            onConsumeGoogleNotice={() => {
+              setGoogleNotice(null)
+              setGoogleNoticeTarget(null)
+            }}
+          />
+        )}
         {page === "reminders" && (
           <Reminders
             googleNotice={googleNoticeTarget === "reminders" ? googleNotice : null}
@@ -307,17 +334,6 @@ export default function App() {
         )}
         {page === "tracker" && <Tracker />}
         {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
-        {page === "compose" && (
-          <MessageComposer
-            composePrefill={composePrefill}
-            onConsumePrefill={() => setComposePrefill(null)}
-            googleNotice={googleNoticeTarget === "compose" ? googleNotice : null}
-            onConsumeGoogleNotice={() => {
-              setGoogleNotice(null)
-              setGoogleNoticeTarget(null)
-            }}
-          />
-        )}
         {page === "ghostwriter" && <Ghostwriter />}
         {page === "about" && <About />}
       </main>
