@@ -1,21 +1,36 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { api } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import MessageComposer from "./MessageComposer"
+import FirstContactCelebration from "./FirstContactCelebration"
 
 const EMPTY = {
   name: "", email: "", phone: "", company: "", role: "", notes: "", lastContacted: "",
   linkedin: "", website: "", bucketAssignment: "auto",
 }
 
+const COMPOSE_DEFAULT_W = 440
+const COMPOSE_DEFAULT_H = 780
+const COMPOSE_MIN_W = 360
+const COMPOSE_MIN_H = 420
+
 function hrefFromUrl(raw) {
   const t = (raw || "").trim()
   if (!t) return ""
   if (/^https?:\/\//i.test(t)) return t
   return `https://${t}`
+}
+
+function clampComposeSize(width, height) {
+  const maxW = typeof window !== "undefined" ? Math.max(COMPOSE_MIN_W, window.innerWidth - 32) : COMPOSE_DEFAULT_W
+  const maxH = typeof window !== "undefined" ? Math.max(COMPOSE_MIN_H, window.innerHeight - 40) : COMPOSE_DEFAULT_H
+  return {
+    width: Math.min(Math.max(COMPOSE_MIN_W, width), maxW),
+    height: Math.min(Math.max(COMPOSE_MIN_H, height), maxH),
+  }
 }
 
 export default function ContactHub({
@@ -37,6 +52,15 @@ export default function ContactHub({
   const [editId, setEditId] = useState(null)
   const [actionError, setActionError] = useState(null)
   const [localComposePrefill, setLocalComposePrefill] = useState(null)
+  const [composeSize, setComposeSize] = useState(() =>
+    clampComposeSize(COMPOSE_DEFAULT_W, COMPOSE_DEFAULT_H)
+  )
+  const [showFirstContactCelebration, setShowFirstContactCelebration] = useState(false)
+  const composeResizeRef = useRef(null)
+
+  useEffect(() => {
+    composeResizeRef.current = composeSize
+  }, [composeSize])
 
   useEffect(() => {
     if (composePrefill) onComposeOpenChange(true)
@@ -45,6 +69,44 @@ export default function ContactHub({
   useEffect(() => {
     if (composePrefill) setLocalComposePrefill(null)
   }, [composePrefill])
+
+  useEffect(() => {
+    function onWindowResize() {
+      setComposeSize((prev) => clampComposeSize(prev.width, prev.height))
+    }
+    window.addEventListener("resize", onWindowResize)
+    return () => window.removeEventListener("resize", onWindowResize)
+  }, [])
+
+  const onComposeResizePointerDown = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const pointerId = e.pointerId
+    const startX = e.clientX
+    const startY = e.clientY
+    const startW = composeResizeRef.current?.width ?? COMPOSE_DEFAULT_W
+    const startH = composeResizeRef.current?.height ?? COMPOSE_DEFAULT_H
+    composeResizeRef.current = { width: startW, height: startH }
+
+    function onMove(ev) {
+      if (ev.pointerId !== pointerId) return
+      // Panel is anchored bottom-right: drag left/up to grow.
+      const next = clampComposeSize(startW + (startX - ev.clientX), startH + (startY - ev.clientY))
+      composeResizeRef.current = next
+      setComposeSize(next)
+    }
+
+    function onUp(ev) {
+      if (ev.pointerId !== pointerId) return
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      window.removeEventListener("pointercancel", onUp)
+    }
+
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+    window.addEventListener("pointercancel", onUp)
+  }, [])
 
   function openCompose(contact = null) {
     if (contact?.id != null) {
@@ -154,6 +216,7 @@ export default function ContactHub({
   async function save() {
     if (!form.name.trim()) return
     setActionError(null)
+    const wasFirstContact = !editId && contacts.length === 0
     const payload = {
       name: form.name,
       email: form.email,
@@ -179,6 +242,7 @@ export default function ContactHub({
       setEditId(null)
       setForm(EMPTY)
       setShowForm(false)
+      if (wasFirstContact) setShowFirstContactCelebration(true)
     } catch (e) {
       if (loadError) {
         let next
@@ -192,6 +256,7 @@ export default function ContactHub({
         setEditId(null)
         setForm(EMPTY)
         setShowForm(false)
+        if (wasFirstContact) setShowFirstContactCelebration(true)
       } else {
         setActionError(e.message)
       }
@@ -910,6 +975,10 @@ export default function ContactHub({
       )}
       </div>
 
+      {showFirstContactCelebration && (
+        <FirstContactCelebration onDone={() => setShowFirstContactCelebration(false)} />
+      )}
+
       {/* Compose FAB / expandable panel */}
       <div
         style={{
@@ -926,8 +995,11 @@ export default function ContactHub({
         {composeOpen ? (
           <div
             style={{
-              width: "min(440px, calc(100vw - 32px))",
-              height: "min(780px, calc(100vh - 96px))",
+              position: "relative",
+              width: composeSize.width,
+              height: composeSize.height,
+              maxWidth: "calc(100vw - 32px)",
+              maxHeight: "calc(100vh - 40px)",
               background: "var(--gb-bg-elevated)",
               border: "1px solid var(--gb-border)",
               borderRadius: 20,
@@ -937,6 +1009,36 @@ export default function ContactHub({
               flexDirection: "column",
             }}
           >
+            <div
+              role="separator"
+              aria-label="Drag to resize compose panel"
+              title="Drag to resize"
+              onPointerDown={onComposeResizePointerDown}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: 22,
+                height: 22,
+                zIndex: 2,
+                cursor: "nwse-resize",
+                touchAction: "none",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "flex-start",
+                padding: 5,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+                <path
+                  d="M1 11h2M1 11V9M1 7h4M1 7V3M5 11h6M5 11V5"
+                  stroke="var(--gb-text-faint)"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+            </div>
             <MessageComposer
               embedded
               contacts={contacts}

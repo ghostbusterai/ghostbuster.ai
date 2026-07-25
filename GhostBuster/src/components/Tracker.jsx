@@ -207,6 +207,7 @@ export default function Tracker() {
   const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [logChannel, setLogChannel] = useState(CHANNELS[0])
   const [logNote, setLogNote] = useState("")
+  const [logPanelOpen, setLogPanelOpen] = useState(false)
   const [savingLog, setSavingLog] = useState(false)
 
   /** When set, show full-screen timeline for this contact's logged touchpoints */
@@ -360,6 +361,7 @@ export default function Tracker() {
       localStorage.setItem("gb_contacts", JSON.stringify(c))
       localStorage.setItem(LS_LOGS, JSON.stringify(lg))
       setLogNote("")
+      setLogPanelOpen(false)
     } catch (err) {
       if (loadError) {
         const entry = {
@@ -382,6 +384,7 @@ export default function Tracker() {
           })
         )
         setLogNote("")
+        setLogPanelOpen(false)
       } else {
         setActionError(err.message)
       }
@@ -409,10 +412,11 @@ export default function Tracker() {
 
   return (
     <PageShell>
+      <div style={{ paddingBottom: 88 }}>
       <PageHero
         eyebrow="Relationship health"
         title="Tracker"
-        subtitle="Who's warm, who needs a nudge. Filter and sort below."
+        subtitle="Who's warm, who needs a nudge. Filter and sort below — log outreach from the button in the corner."
       >
         {loadError && (
           <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
@@ -535,7 +539,7 @@ export default function Tracker() {
             color: "var(--gb-text-faint)",
           }}
         >
-          {contacts.length === 0 ? "Add contacts first, then log outreach below." : "No contacts match this filter."}
+          {contacts.length === 0 ? "Add contacts first, then log outreach from the corner button." : "No contacts match this filter."}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -695,65 +699,9 @@ export default function Tracker() {
         </div>
       )}
 
-      {/* Log touchpoint — below warmth graphs so you review rhythm first */}
-      <ContentCard
-        style={{
-          border: "1px solid var(--gb-border-subtle)",
-          marginTop: 8,
-        }}
-        padding="24px"
-        marginBottom={28}
-      >
-        <CardTitle>Log outreach</CardTitle>
-        <form onSubmit={saveLog} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <select value={logContactId} onChange={(e) => setLogContactId(e.target.value)} style={inputStyle()} required>
-            <option value="">Contact *</option>
-            {contacts.map((c) => (
-              <option key={c.id} value={String(c.id)}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} style={inputStyle()} required />
-          <select value={logChannel} onChange={(e) => setLogChannel(e.target.value)} style={inputStyle()}>
-            {CHANNELS.map((ch) => (
-              <option key={ch} value={ch}>
-                {ch}
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="Short note (optional)"
-            value={logNote}
-            onChange={(e) => setLogNote(e.target.value)}
-            style={inputStyle()}
-          />
-          <div style={{ gridColumn: "1 / -1" }}>
-            <button
-              type="submit"
-              disabled={!logContactId || savingLog}
-              style={{
-                background: logContactId && !savingLog ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
-                color: logContactId && !savingLog ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
-                border:
-                  logContactId && !savingLog ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-border-subtle)",
-                boxShadow: "none",
-                padding: "10px 22px",
-                borderRadius: 9,
-                fontFamily: font.h1,
-                fontWeight: 700,
-                cursor: logContactId && !savingLog ? "pointer" : "not-allowed",
-              }}
-            >
-              {savingLog ? "Saving…" : "Add touchpoint"}
-            </button>
-          </div>
-        </form>
-      </ContentCard>
-
       {/* Recent logs table */}
       <CardTitle
-        helper="A log of every outreach you record above. Newest first — click a row to open that contact's timeline."
+        helper="A log of every outreach you record. Newest first — click a row to open that contact's timeline."
         style={{ marginTop: 26 }}
       >
         Touchpoint history
@@ -801,7 +749,7 @@ export default function Tracker() {
         )}
       </div>
       {filteredLogs.length === 0 ? (
-        <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>No logs yet — add one above.</div>
+        <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>No logs yet — use the Log touchpoint button.</div>
       ) : (
         <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--gb-surface-active)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -898,6 +846,262 @@ export default function Tracker() {
           )}
         </div>
       )}
+
+      </div>
+
+      {/* Log touchpoint FAB / expandable panel */}
+      <div
+        style={{
+          position: "fixed",
+          right: 20,
+          bottom: 20,
+          zIndex: 50,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 12,
+        }}
+      >
+        {logPanelOpen ? (
+          <div
+            style={{
+              width: "min(400px, calc(100vw - 32px))",
+              background: "var(--gb-bg-elevated)",
+              border: "1px solid var(--gb-border)",
+              borderRadius: 20,
+              boxShadow: "var(--gb-shadow-panel)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                padding: "14px 16px",
+                borderBottom: "1px solid var(--gb-border-subtle)",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontFamily: font.mono,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "var(--gb-accent-muted)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Tracker
+                </div>
+                <div
+                  style={{
+                    fontFamily: font.h1,
+                    fontWeight: 700,
+                    fontSize: 16,
+                    color: "var(--gb-text)",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  Log a touchpoint
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLogPanelOpen(false)}
+                aria-label="Close log touchpoint"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  border: "1px solid var(--gb-border)",
+                  background: "var(--gb-surface-muted)",
+                  color: "var(--gb-text-muted)",
+                  cursor: "pointer",
+                  fontSize: 18,
+                  lineHeight: 1,
+                  flexShrink: 0,
+                  boxShadow: "none",
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <form
+              onSubmit={saveLog}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                padding: 16,
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontFamily: font.mono,
+                    color: "var(--gb-text-faint)",
+                    display: "block",
+                    marginBottom: 6,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  CONTACT *
+                </label>
+                <select
+                  value={logContactId}
+                  onChange={(e) => setLogContactId(e.target.value)}
+                  style={inputStyle()}
+                  required
+                >
+                  <option value="">Select a contact</option>
+                  {contacts.map((c) => (
+                    <option key={c.id} value={String(c.id)}>
+                      {c.name}
+                      {c.company ? ` — ${c.company}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontFamily: font.mono,
+                    color: "var(--gb-text-faint)",
+                    display: "block",
+                    marginBottom: 6,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  DATE *
+                </label>
+                <input
+                  type="date"
+                  value={logDate}
+                  onChange={(e) => setLogDate(e.target.value)}
+                  style={inputStyle()}
+                  required
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontFamily: font.mono,
+                    color: "var(--gb-text-faint)",
+                    display: "block",
+                    marginBottom: 6,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  CHANNEL
+                </label>
+                <select
+                  value={logChannel}
+                  onChange={(e) => setLogChannel(e.target.value)}
+                  style={inputStyle()}
+                >
+                  {CHANNELS.map((ch) => (
+                    <option key={ch} value={ch}>
+                      {ch}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontFamily: font.mono,
+                    color: "var(--gb-text-faint)",
+                    display: "block",
+                    marginBottom: 6,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  NOTE
+                </label>
+                <input
+                  placeholder="Short note (optional)"
+                  value={logNote}
+                  onChange={(e) => setLogNote(e.target.value)}
+                  style={inputStyle()}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!logContactId || savingLog}
+                style={{
+                  background: logContactId && !savingLog ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
+                  color: logContactId && !savingLog ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
+                  border:
+                    logContactId && !savingLog
+                      ? "1px solid rgba(10,15,9,0.22)"
+                      : "1px solid var(--gb-border-subtle)",
+                  boxShadow: "none",
+                  padding: "12px 18px",
+                  borderRadius: 10,
+                  fontFamily: font.h1,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: logContactId && !savingLog ? "pointer" : "not-allowed",
+                  marginTop: 4,
+                }}
+              >
+                {savingLog ? "Saving…" : "Add touchpoint"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (filterContactId) setLogContactId(filterContactId)
+              setLogPanelOpen(true)
+            }}
+            aria-label="Log a touchpoint"
+            title="Log a touchpoint"
+            style={{
+              height: 56,
+              padding: "0 18px 0 14px",
+              borderRadius: 999,
+              border: "1px solid rgba(10,15,9,0.22)",
+              background: "var(--gb-accent-bright)",
+              color: "var(--gb-accent-text-on)",
+              cursor: "pointer",
+              boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              fontFamily: font.h1,
+              fontWeight: 700,
+              fontSize: 15,
+              letterSpacing: "-0.02em",
+              transition: "transform 0.15s ease, box-shadow 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)"
+              e.currentTarget.style.boxShadow = "0 14px 32px rgba(0,0,0,0.34)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)"
+              e.currentTarget.style.boxShadow = "0 10px 28px rgba(0,0,0,0.28)"
+            }}
+          >
+            <span style={{ fontSize: 26, lineHeight: 1, display: "flex", fontWeight: 700 }} aria-hidden>
+              +
+            </span>
+            Log touchpoint
+          </button>
+        )}
+      </div>
 
       {timelineContact && (
         <div
@@ -1025,8 +1229,9 @@ export default function Tracker() {
             <div style={{ padding: "16px 24px 24px", overflowY: "auto", flex: 1 }}>
               {timelineEntries.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--gb-text-muted)", fontSize: 14, fontFamily: font.h1, lineHeight: 1.6 }}>
-                  No outreach logged yet. Use <strong style={{ color: "var(--gb-text)" }}>Log outreach</strong> on the Tracker page
-                  to record when you reach out — it will show up here.
+                  No outreach logged yet. Use the{" "}
+                  <strong style={{ color: "var(--gb-text)" }}>Log touchpoint</strong> button to record when you reach out —
+                  it will show up here.
                 </div>
               ) : (
                 <>
