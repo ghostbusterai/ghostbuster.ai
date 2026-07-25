@@ -64,7 +64,7 @@ export const PRODUCT_FEATURES = [
   {
     icon: "🎙",
     title: "Ghostwriter",
-    description: "Take live notes on Zoom or Google Meet with speaker labels, then get an AI summary.",
+    description: "Take live notes during online meetings with speaker labels, then get an AI summary.",
   },
 ]
 

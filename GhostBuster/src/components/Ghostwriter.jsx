@@ -237,7 +237,7 @@ export default function Ghostwriter() {
         setNotice({
           type: "error",
           text:
-            'No meeting audio was shared. In the share dialog, choose your Zoom/Meet tab and turn on "Share tab audio". Speaker auto-detect will be limited.',
+            'No meeting audio was shared. In the share dialog, choose your online meeting tab and turn on "Share tab audio". Speaker auto-detect will be limited.',
         })
       } else {
         meetingStreamRef.current = meetingStream
@@ -261,7 +261,7 @@ export default function Ghostwriter() {
       setNotice({
         type: "error",
         text:
-          "Meeting tab not shared. Auto speaker detection works best if you share your Zoom/Meet tab with audio. You can still take notes from your mic.",
+          "Meeting tab not shared. Auto speaker detection works best if you share your online meeting tab with audio. You can still take notes from your mic.",
       })
     }
 
@@ -479,7 +479,7 @@ export default function Ghostwriter() {
       <PageHero
         eyebrow="Live meeting notes"
         title="Ghostwriter"
-        subtitle="Take live notes on Zoom or Google Meet. Ghostwriter auto-detects whether you or the other person is talking, then writes an AI summary when you end the call."
+        subtitle="Take live notes during online meetings. Ghostwriter auto-detects whether you or the other person is talking, then writes an AI summary when you end the call."
       />
 
       <AiDisclaimer style={{ marginBottom: 20 }} />
@@ -512,7 +512,7 @@ export default function Ghostwriter() {
 
       <SectionLabel>Start a Ghostwriter note</SectionLabel>
       <ContentCard marginBottom={24}>
-        <CardTitle helper='When you start, allow the mic, then share your Zoom/Meet browser tab and enable "Share tab audio" so Ghostwriter can tell speakers apart.'>
+        <CardTitle helper='When you start, allow the mic, then share your online meeting browser tab and enable "Share tab audio" so Ghostwriter can tell speakers apart.'>
           New meeting
         </CardTitle>
         <div style={{ display: "grid", gap: 12 }}>
@@ -649,7 +649,7 @@ export default function Ghostwriter() {
               {listening ? " · Mic listening" : " · Mic paused"}
             </p>
             <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--gb-text-faint)", lineHeight: 1.5 }}>
-              Browsers cannot read Zoom/Meet account names. Auto-detect compares your microphone with shared meeting-tab
+              Browsers cannot read participant names from online meetings. Auto-detect compares your microphone with shared meeting-tab
               audio to decide You vs {themLabel}.
             </p>
           </ContentCard>
@@ -820,7 +820,7 @@ export default function Ghostwriter() {
       ) : list.length === 0 ? (
         <ContentCard>
           <p style={{ margin: 0, color: "var(--gb-text-dim)", fontSize: 14 }}>
-            No Ghostwriter notes yet. Start one above during your next Zoom or Meet call.
+            No Ghostwriter notes yet. Start one above during your next online meeting.
           </p>
         </ContentCard>
       ) : (
