@@ -18,6 +18,7 @@ import {
   savePreferences,
 } from "../preferences"
 import { getReminderUrgencyStyle } from "../reminderUtils"
+import BrandName from "./BrandName"
 
 const REMINDER_URGENCY = ["overdue", "today", "soon", "upcoming"]
 
@@ -215,9 +216,7 @@ export default function Settings({
                     flexShrink: 0,
                   }}
                 />
-                <span style={{ fontSize: 11, color: preview.text, fontFamily: font.mono, opacity: 0.85 }}>
-                  GhostBuster
-                </span>
+                <BrandName variant="sm" />
               </div>
               <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 14, color: "var(--gb-text)" }}>
                 {label}

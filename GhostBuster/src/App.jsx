@@ -12,6 +12,7 @@ import Ghostwriter from "./components/Ghostwriter"
 import Login from "./components/Login"
 import { font } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
+import BrandName from "./components/BrandName"
 import { PAGE_PADDING_X } from "./layout"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 import { api } from "./api"
@@ -226,7 +227,7 @@ export default function App() {
             >
               <GhostBusterLogo size={HEADER_LOGO_SIZE} />
             </span>
-            GhostBuster
+            <BrandName variant="header" />
           </div>
 
           <nav

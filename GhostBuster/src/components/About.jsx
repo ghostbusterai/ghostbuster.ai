@@ -1,6 +1,7 @@
 import React from "react"
 import { font } from "../theme"
 import GhostBusterLogo from "./GhostBusterLogo"
+import BrandName from "./BrandName"
 import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
 import { FOUNDERS, PRODUCT_FEATURES, PRODUCT_MISSION, PRODUCT_TAGLINE, SITE_URL } from "../aboutContent"
 
@@ -121,7 +122,7 @@ function FounderCard({ founder }) {
 export default function About() {
   return (
     <PageShell>
-      <PageHero eyebrow="About us" title="GhostBuster" subtitle={PRODUCT_TAGLINE} />
+      <PageHero eyebrow="About us" title={<BrandName variant="hero" />} subtitle={PRODUCT_TAGLINE} />
 
       <SectionLabel>Our mission</SectionLabel>
       <ContentCard

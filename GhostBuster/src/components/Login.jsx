@@ -1,6 +1,7 @@
 import React from "react"
 import { font, accentNeon } from "../theme"
 import GhostBusterLogo from "./GhostBusterLogo"
+import BrandName from "./BrandName"
 import { BASE } from "../api"
 
 export default function Login({ error }) {
@@ -53,16 +54,7 @@ export default function Login({ error }) {
           >
             <GhostBusterLogo size={28} />
           </span>
-          <span
-            style={{
-              fontFamily: font.display,
-              fontWeight: 800,
-              fontSize: 28,
-              letterSpacing: "-0.4px",
-            }}
-          >
-            GhostBuster
-          </span>
+          <BrandName variant="login" />
         </div>
 
         <h1
