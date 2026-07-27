@@ -4,6 +4,8 @@ import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, get
 import { font } from "../theme"
 import { CardTitle, ContentCard, PageShell, responsiveGrid, PAGE_SPLIT_GRID, type } from "../layout"
 import { useMotivationalGreeting } from "../greeting"
+import ViewMoreButton from "./ViewMoreButton"
+import { previewHiddenCount, previewSlice } from "../listPreview"
 
 import { readLocalProfile, saveLocalProfile, GETTING_STARTED_SESSION_KEY, GETTING_STARTED_RESTORED_EVENT } from "../profile"
 
@@ -183,6 +185,7 @@ export default function Dashboard({ setPage }) {
   const [sessionDismissedTutorial, setSessionDismissedTutorial] = useState(
     () => sessionStorage.getItem(GETTING_STARTED_SESSION_KEY) === "1"
   )
+  const [showAllRecentContacts, setShowAllRecentContacts] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -320,9 +323,15 @@ export default function Dashboard({ setPage }) {
     },
   ]
 
-  const recentContacts = useMemo(() => {
-    return [...contacts].sort((a, b) => contactRecencyMs(b) - contactRecencyMs(a)).slice(0, 6)
+  const sortedRecentContacts = useMemo(() => {
+    return [...contacts].sort((a, b) => contactRecencyMs(b) - contactRecencyMs(a))
   }, [contacts])
+
+  const visibleRecentContacts = useMemo(
+    () => previewSlice(sortedRecentContacts, showAllRecentContacts),
+    [sortedRecentContacts, showAllRecentContacts]
+  )
+  const hiddenRecentContactCount = previewHiddenCount(sortedRecentContacts, showAllRecentContacts)
 
   const activityFeed = useMemo(() => {
     const items = []
@@ -935,7 +944,7 @@ export default function Dashboard({ setPage }) {
           </button>
         </div>
 
-          {recentContacts.length === 0 ? (
+          {sortedRecentContacts.length === 0 ? (
             <div
               style={{
                 flex: 1,
@@ -995,7 +1004,7 @@ export default function Dashboard({ setPage }) {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {recentContacts.map((c) => {
+              {visibleRecentContacts.map((c) => {
                 const d = daysSinceLastTouch(c)
                 const warm = warmthPill(d)
                 const reminderBadge = contactReminderBadge(c, reminders)
@@ -1106,6 +1115,12 @@ export default function Dashboard({ setPage }) {
                   </div>
                 )
               })}
+              <ViewMoreButton
+                hiddenCount={hiddenRecentContactCount}
+                showAll={showAllRecentContacts}
+                onToggle={() => setShowAllRecentContacts((v) => !v)}
+                singular="contact"
+              />
             </div>
           )}
       </ContentCard>
