@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
+import ViewMoreButton from "./ViewMoreButton"
+import { previewHiddenCount, previewSlice } from "../listPreview"
 import {
   getReminderUrgency,
   getReminderUrgencyStyle,
@@ -35,6 +37,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
   const [notice, setNotice] = useState(null)
   const [googleStatus, setGoogleStatus] = useState({ connected: false, configured: false })
   const [googleLoading, setGoogleLoading] = useState(true)
+  const [showAllReminders, setShowAllReminders] = useState(false)
 
   useEffect(() => {
     if (!googleNotice) return
@@ -179,6 +182,16 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       return true
     })
   )
+
+  const visibleReminders = useMemo(
+    () => previewSlice(filtered, showAllReminders),
+    [filtered, showAllReminders]
+  )
+  const hiddenReminderCount = previewHiddenCount(filtered, showAllReminders)
+
+  useEffect(() => {
+    setShowAllReminders(false)
+  }, [filter])
 
   const pendingCount = reminders.filter((r) => !r.done).length
   const summary = summarizePendingReminders(reminders)
@@ -412,7 +425,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map((r) => {
+          {visibleReminders.map((r) => {
             const urgency = getReminderUrgency(r)
             const style = getReminderUrgencyStyle(urgency)
             const cardBorder = r.done
@@ -529,6 +542,12 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
               </div>
             </div>
           )})}
+          <ViewMoreButton
+            hiddenCount={hiddenReminderCount}
+            showAll={showAllReminders}
+            onToggle={() => setShowAllReminders((v) => !v)}
+            singular="reminder"
+          />
         </div>
       )}
     </PageShell>

@@ -11,6 +11,8 @@ import { readLocalProfile, saveLocalProfile } from "../profile"
 import { contactsNeedingResumeNudge, buildResumeShareComposePrefill } from "../resumeNudge"
 import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
+import ViewMoreButton from "./ViewMoreButton"
+import { previewHiddenCount, previewSlice } from "../listPreview"
 
 const LS_LOGS = "gb_outreach_logs"
 
@@ -134,6 +136,7 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [expandedArchiveIds, setExpandedArchiveIds] = useState({})
   const [archiveActionKey, setArchiveActionKey] = useState(null)
   const [showAllArchiveItems, setShowAllArchiveItems] = useState(false)
+  const [showAllUpdatesHistory, setShowAllUpdatesHistory] = useState(false)
 
   const resumeArchiveItems = useMemo(() => {
     const items = []
@@ -158,6 +161,20 @@ export default function Updates({ setPage, setComposePrefill }) {
   const visibleArchiveItems = showAllArchiveItems
     ? resumeArchiveItems
     : resumeArchiveItems.slice(0, ARCHIVE_PREVIEW_LIMIT)
+
+  const sortedUpdatesHistory = useMemo(() => {
+    return [...updates].sort((a, b) => {
+      const da = a.createdAt || a.effectiveDate || ""
+      const db = b.createdAt || b.effectiveDate || ""
+      return db.localeCompare(da)
+    })
+  }, [updates])
+
+  const visibleUpdatesHistory = useMemo(
+    () => previewSlice(sortedUpdatesHistory, showAllUpdatesHistory),
+    [sortedUpdatesHistory, showAllUpdatesHistory]
+  )
+  const hiddenUpdatesHistoryCount = previewHiddenCount(sortedUpdatesHistory, showAllUpdatesHistory)
 
   const resumeNudgeContacts = useMemo(
     () => contactsNeedingResumeNudge(contacts, outreachLogs, resumeDate),
@@ -1561,7 +1578,7 @@ export default function Updates({ setPage, setComposePrefill }) {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {updates.map((u) => (
+          {visibleUpdatesHistory.map((u) => (
             <div
               key={u.id}
               style={{
@@ -1632,6 +1649,12 @@ export default function Updates({ setPage, setComposePrefill }) {
               </div>
             </div>
           ))}
+          <ViewMoreButton
+            hiddenCount={hiddenUpdatesHistoryCount}
+            showAll={showAllUpdatesHistory}
+            onToggle={() => setShowAllUpdatesHistory((v) => !v)}
+            singular="update"
+          />
         </div>
       )}
 

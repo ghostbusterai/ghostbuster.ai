@@ -6,6 +6,8 @@ import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import MessageComposer from "./MessageComposer"
 import FirstContactCelebration from "./FirstContactCelebration"
+import ViewMoreButton from "./ViewMoreButton"
+import { previewHiddenCount, previewSlice } from "../listPreview"
 
 const EMPTY = {
   name: "", email: "", phone: "", company: "", role: "", notes: "", lastContacted: "",
@@ -33,6 +35,12 @@ function clampComposeSize(width, height) {
   }
 }
 
+function contactRecencyMs(c) {
+  const idT = Number(c.id) || 0
+  const lc = c.lastContacted ? new Date(c.lastContacted).getTime() : 0
+  return Math.max(idT, lc)
+}
+
 export default function ContactHub({
   composeOpen = false,
   onComposeOpenChange = () => {},
@@ -56,6 +64,7 @@ export default function ContactHub({
     clampComposeSize(COMPOSE_DEFAULT_W, COMPOSE_DEFAULT_H)
   )
   const [showFirstContactCelebration, setShowFirstContactCelebration] = useState(false)
+  const [showAllContacts, setShowAllContacts] = useState(false)
   const composeResizeRef = useRef(null)
 
   useEffect(() => {
@@ -188,6 +197,24 @@ export default function ContactHub({
       return a.name.localeCompare(b.name)
     })
   }, [contacts, search, filterCompany])
+
+  const displayContacts = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const pinDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
+      if (pinDiff !== 0) return pinDiff
+      return contactRecencyMs(b) - contactRecencyMs(a)
+    })
+  }, [filtered])
+
+  const visibleContacts = useMemo(
+    () => previewSlice(displayContacts, showAllContacts),
+    [displayContacts, showAllContacts]
+  )
+  const hiddenContactCount = previewHiddenCount(displayContacts, showAllContacts)
+
+  useEffect(() => {
+    setShowAllContacts(false)
+  }, [search, filterCompany])
 
   const pinnedCount = contacts.filter((c) => c.pinned).length
   const hasActiveSearch = search.trim() !== ""
@@ -931,11 +958,11 @@ export default function ContactHub({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map((c, index) => {
-            const hasPinned = filtered.some((x) => x.pinned)
-            const hasUnpinned = filtered.some((x) => !x.pinned)
+          {visibleContacts.map((c, index) => {
+            const hasPinned = visibleContacts.some((x) => x.pinned)
+            const hasUnpinned = visibleContacts.some((x) => !x.pinned)
             const showPinnedHeader = hasPinned && hasUnpinned && index === 0 && c.pinned
-            const showAllHeader = hasPinned && hasUnpinned && index > 0 && c.pinned === false && filtered[index - 1]?.pinned
+            const showAllHeader = hasPinned && hasUnpinned && index > 0 && c.pinned === false && visibleContacts[index - 1]?.pinned
             return (
               <React.Fragment key={c.id}>
                 {showPinnedHeader && (
@@ -971,6 +998,12 @@ export default function ContactHub({
               </React.Fragment>
             )
           })}
+          <ViewMoreButton
+            hiddenCount={hiddenContactCount}
+            showAll={showAllContacts}
+            onToggle={() => setShowAllContacts((v) => !v)}
+            singular="contact"
+          />
         </div>
       )}
       </div>

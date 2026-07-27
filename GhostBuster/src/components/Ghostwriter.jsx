@@ -4,6 +4,8 @@ import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
 import AiDisclaimer from "./AiDisclaimer"
+import ViewMoreButton from "./ViewMoreButton"
+import { previewHiddenCount, previewSlice } from "../listPreview"
 
 function speechSupported() {
   return Boolean(typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition))
@@ -33,6 +35,7 @@ function rmsFromAnalyser(analyser, buffer) {
 
 export default function Ghostwriter() {
   const [list, setList] = useState([])
+  const [showAllNotes, setShowAllNotes] = useState(false)
   const [contacts, setContacts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -125,6 +128,18 @@ export default function Ghostwriter() {
   }, [segments, interim])
 
   const selected = useMemo(() => list.find((g) => g.id === selectedId) || null, [list, selectedId])
+  const sortedNotes = useMemo(() => {
+    return [...list].sort((a, b) => {
+      const da = a.updatedAt || a.createdAt || ""
+      const db = b.updatedAt || b.createdAt || ""
+      return db.localeCompare(da)
+    })
+  }, [list])
+  const visibleNotes = useMemo(
+    () => previewSlice(sortedNotes, showAllNotes),
+    [sortedNotes, showAllNotes]
+  )
+  const hiddenNotesCount = previewHiddenCount(sortedNotes, showAllNotes)
   const canSummarize = segments.length > 0 || Boolean(interim.trim()) || Boolean(manualNote.trim())
   const viewing = active || selected
 
@@ -825,7 +840,7 @@ export default function Ghostwriter() {
         </ContentCard>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {list.map((g) => {
+          {visibleNotes.map((g) => {
             const on = selectedId === g.id
             return (
               <ContentCard
@@ -881,6 +896,12 @@ export default function Ghostwriter() {
               </ContentCard>
             )
           })}
+          <ViewMoreButton
+            hiddenCount={hiddenNotesCount}
+            showAll={showAllNotes}
+            onToggle={() => setShowAllNotes((v) => !v)}
+            singular="note"
+          />
         </div>
       )}
     </PageShell>

@@ -3,9 +3,10 @@ import { api } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
+import ViewMoreButton from "./ViewMoreButton"
+import { LIST_PREVIEW_LIMIT, previewHiddenCount, previewSlice } from "../listPreview"
 
 const CHANNELS = ["Email", "LinkedIn", "In-person", "Call", "Other"]
-const TOUCHPOINT_HISTORY_PREVIEW = 5
 
 /** Visual encoding for the graphical timeline */
 const CHANNEL_TIMELINE = {
@@ -212,8 +213,8 @@ export default function Tracker() {
 
   /** When set, show full-screen timeline for this contact's logged touchpoints */
   const [timelineContactId, setTimelineContactId] = useState(null)
-  const [historyView, setHistoryView] = useState("recent")
-  const [modalTouchpointView, setModalTouchpointView] = useState("recent")
+  const [showAllHistory, setShowAllHistory] = useState(false)
+  const [showAllModalTouchpoints, setShowAllModalTouchpoints] = useState(false)
 
   async function loadAll() {
     setLoadError(null)
@@ -251,12 +252,12 @@ export default function Tracker() {
     return [...base].sort((a, b) => parseDay(b.contactedAt) - parseDay(a.contactedAt))
   }, [logs, filterContactId])
 
-  const visibleHistoryLogs = useMemo(() => {
-    if (historyView === "all") return filteredLogs
-    return filteredLogs.slice(0, TOUCHPOINT_HISTORY_PREVIEW)
-  }, [filteredLogs, historyView])
+  const visibleHistoryLogs = useMemo(
+    () => previewSlice(filteredLogs, showAllHistory, LIST_PREVIEW_LIMIT),
+    [filteredLogs, showAllHistory]
+  )
 
-  const hiddenHistoryCount = Math.max(0, filteredLogs.length - TOUCHPOINT_HISTORY_PREVIEW)
+  const hiddenHistoryCount = previewHiddenCount(filteredLogs, showAllHistory, LIST_PREVIEW_LIMIT)
 
   const sortedFilteredContacts = useMemo(
     () => sortContactsForTracker(filteredContacts, logs, sortBy),
@@ -281,12 +282,16 @@ export default function Tracker() {
   /** Newest first for the readable history list */
   const timelineEntriesNewest = useMemo(() => [...timelineEntries].reverse(), [timelineEntries])
 
-  const visibleModalTouchpoints = useMemo(() => {
-    if (modalTouchpointView === "all") return timelineEntriesNewest
-    return timelineEntriesNewest.slice(0, TOUCHPOINT_HISTORY_PREVIEW)
-  }, [timelineEntriesNewest, modalTouchpointView])
+  const visibleModalTouchpoints = useMemo(
+    () => previewSlice(timelineEntriesNewest, showAllModalTouchpoints, LIST_PREVIEW_LIMIT),
+    [timelineEntriesNewest, showAllModalTouchpoints]
+  )
 
-  const hiddenModalTouchpointCount = Math.max(0, timelineEntriesNewest.length - TOUCHPOINT_HISTORY_PREVIEW)
+  const hiddenModalTouchpointCount = previewHiddenCount(
+    timelineEntriesNewest,
+    showAllModalTouchpoints,
+    LIST_PREVIEW_LIMIT
+  )
 
   const timelineSummary = useMemo(() => {
     if (!timelineEntries.length) return null
@@ -318,11 +323,11 @@ export default function Tracker() {
   )
 
   useEffect(() => {
-    setHistoryView("recent")
+    setShowAllHistory(false)
   }, [filterContactId])
 
   useEffect(() => {
-    setModalTouchpointView("recent")
+    setShowAllModalTouchpoints(false)
   }, [timelineContactId])
 
   useEffect(() => {
@@ -706,48 +711,6 @@ export default function Tracker() {
       >
         Touchpoint history
       </CardTitle>
-      <div
-        style={{
-          margin: "0 0 14px",
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "flex-end",
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
-        {filteredLogs.length > TOUCHPOINT_HISTORY_PREVIEW && (
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontFamily: font.h1,
-              fontSize: 12,
-              color: "var(--gb-text-muted)",
-              flexShrink: 0,
-            }}
-          >
-            Show
-            <select
-              value={historyView}
-              onChange={(e) => setHistoryView(e.target.value)}
-              style={{
-                ...inputStyle,
-                width: "auto",
-                minWidth: 132,
-                padding: "8px 10px",
-                fontSize: 12,
-                fontFamily: font.h1,
-                cursor: "pointer",
-              }}
-            >
-              <option value="recent">Recent {TOUCHPOINT_HISTORY_PREVIEW}</option>
-              <option value="all">All ({filteredLogs.length})</option>
-            </select>
-          </label>
-        )}
-      </div>
       {filteredLogs.length === 0 ? (
         <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>No logs yet — use the Log touchpoint button.</div>
       ) : (
@@ -809,41 +772,13 @@ export default function Tracker() {
               })}
             </tbody>
           </table>
-          {historyView === "recent" && hiddenHistoryCount > 0 && (
-            <div
-              style={{
-                padding: "12px 14px",
-                borderTop: "1px solid var(--gb-border-subtle)",
-                background: "var(--gb-surface-hover)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <span style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)" }}>
-                Showing the {TOUCHPOINT_HISTORY_PREVIEW} most recent touchpoints
-              </span>
-              <button
-                type="button"
-                onClick={() => setHistoryView("all")}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 8,
-                  border: "1px solid var(--gb-border)",
-                  background: "var(--gb-bg-elevated)",
-                  color: "var(--gb-text)",
-                  fontFamily: font.h1,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Show {hiddenHistoryCount} more
-              </button>
-            </div>
-          )}
+          <ViewMoreButton
+            hiddenCount={hiddenHistoryCount}
+            showAll={showAllHistory}
+            onToggle={() => setShowAllHistory((v) => !v)}
+            singular="touchpoint"
+            style={{ margin: "12px 14px 14px" }}
+          />
         </div>
       )}
 
@@ -1426,36 +1361,6 @@ export default function Tracker() {
                       <div style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)" }}>
                         Newest first
                       </div>
-                    {timelineEntriesNewest.length > TOUCHPOINT_HISTORY_PREVIEW && (
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          fontFamily: font.h1,
-                          fontSize: 12,
-                          color: "var(--gb-text-muted)",
-                        }}
-                      >
-                        Show
-                        <select
-                          value={modalTouchpointView}
-                          onChange={(e) => setModalTouchpointView(e.target.value)}
-                          style={{
-                            ...inputStyle,
-                            width: "auto",
-                            minWidth: 132,
-                            padding: "8px 10px",
-                            fontSize: 12,
-                            fontFamily: font.h1,
-                            cursor: "pointer",
-                          }}
-                        >
-                          <option value="recent">Recent {TOUCHPOINT_HISTORY_PREVIEW}</option>
-                          <option value="all">All ({timelineEntriesNewest.length})</option>
-                        </select>
-                      </label>
-                    )}
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1539,27 +1444,13 @@ export default function Tracker() {
                       )
                     })}
                   </div>
-                  {modalTouchpointView === "recent" && hiddenModalTouchpointCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setModalTouchpointView("all")}
-                      style={{
-                        width: "100%",
-                        marginTop: 12,
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        border: "1px solid var(--gb-border)",
-                        background: "var(--gb-surface-muted)",
-                        color: "var(--gb-text)",
-                        fontFamily: font.h1,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Show {hiddenModalTouchpointCount} more touchpoint{hiddenModalTouchpointCount === 1 ? "" : "s"}
-                    </button>
-                  )}
+                  <ViewMoreButton
+                    hiddenCount={hiddenModalTouchpointCount}
+                    showAll={showAllModalTouchpoints}
+                    onToggle={() => setShowAllModalTouchpoints((v) => !v)}
+                    singular="touchpoint"
+                    style={{ width: "100%", marginTop: 12, alignSelf: "stretch" }}
+                  />
                 </>
               )}
             </div>
