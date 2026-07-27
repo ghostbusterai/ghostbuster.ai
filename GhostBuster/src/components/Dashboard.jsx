@@ -186,6 +186,7 @@ export default function Dashboard({ setPage }) {
     () => sessionStorage.getItem(GETTING_STARTED_SESSION_KEY) === "1"
   )
   const [showAllRecentContacts, setShowAllRecentContacts] = useState(false)
+  const [showAllRecentActivity, setShowAllRecentActivity] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -386,8 +387,14 @@ export default function Dashboard({ setPage }) {
     }
 
     items.sort((a, b) => b.ts - a.ts)
-    return items.slice(0, 14)
+    return items
   }, [contacts, outreachLogs, resumeUpdates, reminders])
+
+  const visibleActivityFeed = useMemo(
+    () => previewSlice(activityFeed, showAllRecentActivity),
+    [activityFeed, showAllRecentActivity]
+  )
+  const hiddenRecentActivityCount = previewHiddenCount(activityFeed, showAllRecentActivity)
 
   return (
     <PageShell>
@@ -856,7 +863,8 @@ export default function Dashboard({ setPage }) {
             No activity yet. Log outreach in Tracker or add a résumé update.
           </div>
         ) : (
-          activityFeed.slice(0, 8).map((item, idx) => (
+          <>
+          {visibleActivityFeed.map((item, idx) => (
             <button
               key={item.id}
               type="button"
@@ -904,7 +912,16 @@ export default function Dashboard({ setPage }) {
                 {formatActivityTime(item.ts)}
               </span>
             </button>
-          ))
+          ))}
+          <ViewMoreButton
+            hiddenCount={hiddenRecentActivityCount}
+            showAll={showAllRecentActivity}
+            onToggle={() => setShowAllRecentActivity((v) => !v)}
+            singular="activity item"
+            plural="activity items"
+            style={{ margin: "8px 10px 0" }}
+          />
+          </>
         )}
       </div>
       </ContentCard>
