@@ -122,9 +122,48 @@ export default function Login({ error }) {
           Continue with Google
         </a>
 
+        <div
+          role="note"
+          style={{
+            marginTop: 20,
+            padding: "14px 16px",
+            borderRadius: 12,
+            textAlign: "left",
+            background: "rgba(255,201,107,0.08)",
+            border: "1px solid rgba(255,201,107,0.28)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontFamily: font.mono,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "rgba(255,201,107,0.9)",
+              marginBottom: 8,
+            }}
+          >
+            Beta privacy notice
+          </div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 12,
+              lineHeight: 1.55,
+              color: "rgba(240,240,245,0.65)",
+            }}
+          >
+            GhostBuster stores account info from Google sign-in (name, email, profile photo) plus the data you add:
+            contacts, notes, reminders, outreach logs, résumés, and Ghostwriter transcripts/summaries. If you connect
+            Gmail or Calendar, we store tokens so we can save drafts, schedule sends, and sync reminders. AI features
+            may send relevant text you provide to our AI provider to generate drafts and summaries. Your data stays in
+            your account and is intended only for beta testing.
+          </p>
+        </div>
+
         <p
           style={{
-            margin: "20px 0 0",
+            margin: "16px 0 0",
             fontSize: 12,
             color: "rgba(240,240,245,0.35)",
             lineHeight: 1.45,
