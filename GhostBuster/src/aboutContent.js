@@ -47,6 +47,11 @@ export const PRODUCT_FEATURES = [
     description: "Upload résumés, track updates, and get AI suggestions tied to your career goals.",
   },
   {
+    icon: "📋",
+    title: "Applications",
+    description: "Save application links to complete or already submitted, and get AI search suggestions from your résumé and goals.",
+  },
+  {
     icon: "🔔",
     title: "Reminders",
     description: "Never let a connection go cold. Sync follow-ups to Google Calendar.",

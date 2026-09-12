@@ -9,14 +9,19 @@ require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
 
 const { connectDb } = require("./db")
-const USE_MONGO = Boolean(String(process.env.MONGODB_URI || "").trim())
-const store = USE_MONGO ? require("./mongoStore") : require("./fileStore")
+let USE_MONGO = Boolean(String(process.env.MONGODB_URI || "").trim())
+let store = USE_MONGO ? require("./mongoStore") : require("./fileStore")
 const LEGACY_USER_ID = "legacy"
 const authGoogle = require("./authGoogle")
 const { maybeMigrateLegacyJson } = require("./migrateLegacy")
 const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
 const { buildPrompt, parseSuggestionsJson } = require("./resumeSuggestions")
 const { suggestContactsForUpdateSmart } = require("./contactRelevance")
+const {
+  buildPrompt: buildApplicationSuggestPrompt,
+  parseSuggestionsJson: parseApplicationSuggestionsJson,
+  fallbackSuggestions: fallbackApplicationSuggestions,
+} = require("./applicationSuggestions")
 const googleCal = require("./googleCalendar")
 const gmail = require("./gmail")
 const { SUGGESTED_BUCKET_NAMES } = require("./resumeBucketMatch")
@@ -61,6 +66,13 @@ function formatAnthropicError(err) {
 function parseId(param) {
   const id = Number(param)
   return Number.isFinite(id) ? id : null
+}
+
+function normalizeHttpUrl(raw) {
+  const s = String(raw || "").trim()
+  if (!s) return ""
+  if (/^https?:\/\//i.test(s)) return s
+  return `https://${s}`
 }
 
 function appOrigin(req) {
@@ -139,7 +151,17 @@ async function start() {
   }
 
   if (USE_MONGO) {
-    await connectDb()
+    try {
+      await connectDb()
+    } catch (err) {
+      if (process.env.NODE_ENV === "production") throw err
+      console.error("MongoDB connection failed:", err.message)
+      console.warn(
+        "Falling back to JSON file storage so you can still run locally. Start MongoDB, or use your Atlas URI in .env, for Google sign-in."
+      )
+      USE_MONGO = false
+      store = require("./fileStore")
+    }
   }
 
   const corsOrigin = process.env.APP_URL
@@ -276,6 +298,35 @@ async function start() {
     })
   })
 
+  app.delete("/api/auth/account", requireAuth, async (req, res) => {
+    if (!USE_MONGO) {
+      return res.status(400).json({
+        error: "Account deletion is only available when you are signed in with Google.",
+      })
+    }
+    try {
+      const { refreshToken } = await store.deleteAccount(userId(req))
+      if (refreshToken) {
+        await googleCal.revokeToken(refreshToken)
+      }
+      req.session.destroy((err) => {
+        if (err) {
+          console.error(err)
+          res.clearCookie("connect.sid")
+          return res.status(200).json({ ok: true, warning: "Account deleted; sign-out cookie may linger." })
+        }
+        res.clearCookie("connect.sid")
+        res.status(204).end()
+      })
+    } catch (e) {
+      console.error(e)
+      if (e.code === "legacy") {
+        return res.status(400).json({ error: e.message })
+      }
+      res.status(500).json({ error: "Failed to delete account" })
+    }
+  })
+
   app.get("/api/health", (req, res) => {
     res.json({
       status: "GhostBuster server running",
@@ -296,6 +347,7 @@ async function start() {
         "/api/resume-updates",
         "/api/resume",
         "/api/ghostwriter",
+        "/api/applications",
         "/compose",
       ],
     })
@@ -494,6 +546,125 @@ async function start() {
     } catch (e) {
       console.error(e)
       res.status(500).json({ error: e.message || "Failed to sync reminder to Google Calendar" })
+    }
+  })
+
+  // —— Applications ——
+  app.get("/api/applications", async (req, res) => {
+    try {
+      const { applications } = await store.getApplications(userId(req))
+      res.json({ applications })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to load applications" })
+    }
+  })
+
+  app.post("/api/applications", async (req, res) => {
+    const body = req.body || {}
+    try {
+      const out = await store.createApplication(userId(req), {
+        company: body.company,
+        role: body.role,
+        url: normalizeHttpUrl(body.url),
+        notes: body.notes,
+        status: body.status,
+        source: body.source,
+      })
+      res.status(201).json(out)
+    } catch (e) {
+      if (e.message === "empty") {
+        return res.status(400).json({ error: "Add a company, role, or application link." })
+      }
+      console.error(e)
+      res.status(500).json({ error: "Failed to save application" })
+    }
+  })
+
+  app.post("/api/applications/suggest", async (req, res) => {
+    try {
+      const uid = userId(req)
+      const [{ applications }, { contacts }, { profile }, resumeOut] = await Promise.all([
+        store.getApplications(uid),
+        store.getContacts(uid),
+        store.getProfile(uid),
+        store.getFullResume(uid),
+      ])
+      const resumeText = resumeOut?.resume?.text || ""
+      const ctx = {
+        careerGoals: profile?.careerGoals || "",
+        resumeText,
+        contacts: contacts || [],
+        existing: applications || [],
+        userName: profile?.name || "",
+      }
+
+      if (!anthropic) {
+        return res.json({
+          suggestions: fallbackApplicationSuggestions(ctx),
+          source: "fallback",
+        })
+      }
+
+      const message = await anthropic.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 1600,
+        messages: [{ role: "user", content: buildApplicationSuggestPrompt(ctx) }],
+      })
+      const text = extractAssistantText(message.content)
+      const suggestions = parseApplicationSuggestionsJson(text)
+      res.json({ suggestions, source: "ai" })
+    } catch (err) {
+      console.error(err)
+      try {
+        const uid = userId(req)
+        const [{ applications }, { contacts }, { profile }] = await Promise.all([
+          store.getApplications(uid),
+          store.getContacts(uid),
+          store.getProfile(uid),
+        ])
+        res.json({
+          suggestions: fallbackApplicationSuggestions({
+            careerGoals: profile?.careerGoals || "",
+            contacts: contacts || [],
+            existing: applications || [],
+          }),
+          source: "fallback",
+          warning: "AI suggestions were unavailable, so these are based on your contacts and goals.",
+        })
+      } catch (e) {
+        const msg = formatAnthropicError(err)
+        res.status(500).json({ error: msg || "Failed to suggest applications" })
+      }
+    }
+  })
+
+  app.patch("/api/applications/:id", async (req, res) => {
+    const id = parseId(req.params.id)
+    if (id == null) return res.status(400).json({ error: "Invalid id" })
+    const body = req.body || {}
+    const patch = { ...body }
+    if (body.url !== undefined) patch.url = normalizeHttpUrl(body.url)
+    try {
+      const out = await store.patchApplication(userId(req), id, patch)
+      if (!out) return res.status(404).json({ error: "Application not found" })
+      res.json(out)
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to update application" })
+    }
+  })
+
+  app.delete("/api/applications/:id", async (req, res) => {
+    const id = parseId(req.params.id)
+    if (id == null) return res.status(400).json({ error: "Invalid id" })
+    try {
+      const ok = await store.deleteApplication(userId(req), id)
+      if (!ok) return res.status(404).json({ error: "Application not found" })
+      res.status(204).end()
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to delete application" })
     }
   })
 

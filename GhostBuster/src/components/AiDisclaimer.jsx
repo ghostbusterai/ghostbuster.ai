@@ -6,7 +6,7 @@ export const AI_DISCLAIMER_TEXT =
   "This message is AI-generated and may contain errors or outdated details. Proofread carefully and edit anything that does not sound like you before copying or sending."
 
 /** Shared AI disclaimer used on Compose and Ghostwriter. */
-export default function AiDisclaimer({ style } = {}) {
+export default function AiDisclaimer({ style, text = AI_DISCLAIMER_TEXT } = {}) {
   return (
     <p
       style={{
@@ -18,7 +18,7 @@ export default function AiDisclaimer({ style } = {}) {
         ...style,
       }}
     >
-      {AI_DISCLAIMER_TEXT}
+      {text}
     </p>
   )
 }

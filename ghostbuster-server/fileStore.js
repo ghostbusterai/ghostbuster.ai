@@ -162,6 +162,72 @@ exports.deleteReminder = async (_userId, id) => {
   return true
 }
 
+function applicationStatus(value, fallback = "todo") {
+  const s = String(value || fallback).toLowerCase()
+  return s === "completed" ? "completed" : "todo"
+}
+
+exports.getApplications = async () => {
+  const data = read()
+  return { applications: data.applications || [] }
+}
+
+exports.createApplication = async (_userId, body) => {
+  const now = new Date().toISOString()
+  const status = applicationStatus(body?.status)
+  const application = {
+    id: Date.now(),
+    company: typeof body?.company === "string" ? body.company.trim() : "",
+    role: typeof body?.role === "string" ? body.role.trim() : "",
+    url: typeof body?.url === "string" ? body.url.trim() : "",
+    notes: typeof body?.notes === "string" ? body.notes.trim() : "",
+    status,
+    source: body?.source === "ai" ? "ai" : "manual",
+    createdAt: now,
+    completedAt: status === "completed" ? now : "",
+  }
+  if (!application.company && !application.role && !application.url) {
+    throw new Error("empty")
+  }
+  const data = read()
+  if (!Array.isArray(data.applications)) data.applications = []
+  data.applications.unshift(application)
+  write(data)
+  return { application }
+}
+
+exports.patchApplication = async (_userId, id, body) => {
+  const data = read()
+  if (!Array.isArray(data.applications)) data.applications = []
+  const idx = data.applications.findIndex((a) => a.id === id)
+  if (idx === -1) return null
+  const prev = data.applications[idx]
+  const status =
+    body?.status !== undefined ? applicationStatus(body.status, prev.status) : applicationStatus(prev.status)
+  data.applications[idx] = {
+    ...prev,
+    company: body.company !== undefined ? String(body.company).trim() : prev.company,
+    role: body.role !== undefined ? String(body.role).trim() : prev.role,
+    url: body.url !== undefined ? String(body.url).trim() : prev.url,
+    notes: body.notes !== undefined ? String(body.notes).trim() : prev.notes,
+    status,
+    completedAt:
+      status === "completed" ? prev.completedAt || new Date().toISOString() : "",
+  }
+  write(data)
+  return { application: data.applications[idx] }
+}
+
+exports.deleteApplication = async (_userId, id) => {
+  const data = read()
+  if (!Array.isArray(data.applications)) data.applications = []
+  const before = data.applications.length
+  data.applications = data.applications.filter((a) => a.id !== id)
+  if (data.applications.length === before) return false
+  write(data)
+  return true
+}
+
 exports.getGoogleCalendarStatus = async () => {
   const data = read()
   const g = data.googleCalendar
@@ -756,6 +822,12 @@ exports.deleteGhostIt = async (_userId, id) => {
   if (data.ghostIts.length === before) return false
   write(data)
   return true
+}
+
+exports.deleteAccount = async () => {
+  const err = new Error("Account deletion requires Google sign-in (MongoDB mode).")
+  err.code = "legacy"
+  throw err
 }
 
 exports.numId = (param) => {

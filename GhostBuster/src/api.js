@@ -82,6 +82,7 @@ async function uploadRequest(path, formData) {
 export const api = {
   getMe: () => request("/api/auth/me"),
   logout: () => request("/api/auth/logout", { method: "POST" }),
+  deleteAccount: () => request("/api/auth/account", { method: "DELETE" }),
   getContacts: () => request("/api/contacts"),
   createContact: (body) => request("/api/contacts", { method: "POST", body: JSON.stringify(body) }),
   updateContact: (id, body) => request(`/api/contacts/${id}`, { method: "PUT", body: JSON.stringify(body) }),
@@ -90,6 +91,13 @@ export const api = {
   createReminder: (body) => request("/api/reminders", { method: "POST", body: JSON.stringify(body) }),
   patchReminder: (id, body) => request(`/api/reminders/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteReminder: (id) => request(`/api/reminders/${id}`, { method: "DELETE" }),
+  getApplications: () => request("/api/applications"),
+  createApplication: (body) =>
+    request("/api/applications", { method: "POST", body: JSON.stringify(body) }),
+  patchApplication: (id, body) =>
+    request(`/api/applications/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteApplication: (id) => request(`/api/applications/${id}`, { method: "DELETE" }),
+  suggestApplications: () => request("/api/applications/suggest", { method: "POST", body: JSON.stringify({}) }),
   getProfile: () => request("/api/profile"),
   patchProfile: (body) => request("/api/profile", { method: "PATCH", body: JSON.stringify(body) }),
   getOutreachLogs: (contactId) => {

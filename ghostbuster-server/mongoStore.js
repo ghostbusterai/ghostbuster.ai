@@ -218,6 +218,70 @@ exports.deleteReminder = async (userId, id) => {
   return result.deletedCount > 0
 }
 
+// —— Applications ——
+
+function applicationStatus(value, fallback = "todo") {
+  const s = String(value || fallback).toLowerCase()
+  return s === "completed" ? "completed" : "todo"
+}
+
+exports.getApplications = async (userId) => {
+  const applications = await getDb()
+    .collection("applications")
+    .find({ userId: uid(userId) })
+    .sort({ id: -1 })
+    .toArray()
+  return { applications: applications.map(stripMongo) }
+}
+
+exports.createApplication = async (userId, body) => {
+  const now = new Date().toISOString()
+  const status = applicationStatus(body?.status)
+  const application = {
+    userId: uid(userId),
+    id: nextNumericId(),
+    company: typeof body?.company === "string" ? body.company.trim() : "",
+    role: typeof body?.role === "string" ? body.role.trim() : "",
+    url: typeof body?.url === "string" ? body.url.trim() : "",
+    notes: typeof body?.notes === "string" ? body.notes.trim() : "",
+    status,
+    source: body?.source === "ai" ? "ai" : "manual",
+    createdAt: now,
+    completedAt: status === "completed" ? now : "",
+  }
+  if (!application.company && !application.role && !application.url) {
+    throw new Error("empty")
+  }
+  await getDb().collection("applications").insertOne(application)
+  return { application: stripMongo(application) }
+}
+
+exports.patchApplication = async (userId, id, body) => {
+  const col = getDb().collection("applications")
+  const prev = await col.findOne({ userId: uid(userId), id })
+  if (!prev) return null
+  const status =
+    body?.status !== undefined ? applicationStatus(body.status, prev.status) : applicationStatus(prev.status)
+  const next = {
+    company: body.company !== undefined ? String(body.company).trim() : prev.company,
+    role: body.role !== undefined ? String(body.role).trim() : prev.role,
+    url: body.url !== undefined ? String(body.url).trim() : prev.url,
+    notes: body.notes !== undefined ? String(body.notes).trim() : prev.notes,
+    status,
+    completedAt:
+      status === "completed"
+        ? prev.completedAt || new Date().toISOString()
+        : "",
+  }
+  await col.updateOne({ _id: prev._id }, { $set: next })
+  return { application: stripMongo({ ...prev, ...next }) }
+}
+
+exports.deleteApplication = async (userId, id) => {
+  const result = await getDb().collection("applications").deleteOne({ userId: uid(userId), id })
+  return result.deletedCount > 0
+}
+
 exports.setReminderGoogleEventId = async (userId, id, googleEventId) => {
   const col = getDb().collection("reminders")
   const prev = await col.findOne({ userId: uid(userId), id })
@@ -763,6 +827,41 @@ exports.deleteGhostIt = async (userId, id) => {
   return result.deletedCount > 0
 }
 
+/** Wipe this user's documents, account row, and stored sessions. Returns Google refresh token if one existed. */
+exports.deleteAccount = async (userId) => {
+  const id = uid(userId)
+  const db = getDb()
+  const user = ObjectId.isValid(id) ? await db.collection("users").findOne({ _id: new ObjectId(id) }) : null
+  const refreshToken = user?.googleRefreshToken || null
+
+  const collections = [
+    "contacts",
+    "reminders",
+    "outreachLogs",
+    "resumeUpdates",
+    "resumeBuckets",
+    "scheduledEmails",
+    "profiles",
+    "ghostIts",
+    "applications",
+  ]
+  for (const name of collections) {
+    await db.collection(name).deleteMany({ userId: id })
+  }
+
+  if (user) {
+    await db.collection("users").deleteOne({ _id: user._id })
+  }
+
+  try {
+    await db.collection("sessions").deleteMany({ "session.userId": id })
+  } catch {
+    /* session collection shape can vary */
+  }
+
+  return { refreshToken }
+}
+
 exports.numId = (param) => {
   const id = Number(param)
   return Number.isFinite(id) ? id : null
@@ -888,6 +987,22 @@ exports.importLegacyData = async (userId, data) => {
       createdAt: e.createdAt || new Date().toISOString(),
       sentAt: e.sentAt || "",
       error: e.error || "",
+    })
+  }
+
+  for (const a of data.applications || []) {
+    const status = a.status === "completed" ? "completed" : "todo"
+    await db.collection("applications").insertOne({
+      userId: user,
+      id: typeof a.id === "number" ? a.id : nextNumericId(),
+      company: a.company || "",
+      role: a.role || "",
+      url: a.url || "",
+      notes: a.notes || "",
+      status,
+      source: a.source === "ai" ? "ai" : "manual",
+      createdAt: a.createdAt || new Date().toISOString(),
+      completedAt: status === "completed" ? a.completedAt || new Date().toISOString() : "",
     })
   }
 

@@ -9,6 +9,7 @@ import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
 import About from "./components/About"
 import Ghostwriter from "./components/Ghostwriter"
+import Applications from "./components/Applications"
 import Login from "./components/Login"
 import { font } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
@@ -22,6 +23,7 @@ const NAV = [
   { id: "contacts", label: "Contacts" },
   { id: "tracker", label: "Tracker" },
   { id: "updates", label: "Resume" },
+  { id: "applications", label: "Applications" },
   { id: "reminders", label: "Reminders" },
   { id: "ghostwriter", label: "Ghostwriter" },
   { id: "about", label: "About" },
@@ -117,8 +119,16 @@ export default function App() {
           setAuthUser(user)
           setAuthError(null)
         }
-      } catch {
-        if (!cancelled) setAuthUser(null)
+      } catch (e) {
+        if (!cancelled) {
+          setAuthUser(null)
+          const msg = e?.message || ""
+          if (/Can't reach API|returned HTML/i.test(msg)) {
+            setAuthError(
+              "The API isn't running, so the app can't load. In a second terminal: cd ghostbuster-server && npm start. Then refresh this page."
+            )
+          }
+        }
       } finally {
         if (!cancelled) setAuthLoading(false)
       }
@@ -143,6 +153,13 @@ export default function App() {
       /* still clear local session */
     }
     setAuthUser(null)
+    setPage("dashboard")
+  }
+
+  function handleAccountDeleted() {
+    setAuthUser(null)
+    setAccountMenuOpen(false)
+    setAccountMenuView("menu")
     setPage("dashboard")
   }
 
@@ -282,6 +299,7 @@ export default function App() {
             <ProfileMenu
               authUser={authUser}
               onLogout={handleLogout}
+              onAccountDeleted={handleAccountDeleted}
               setPage={setPage}
               open={accountMenuOpen}
               onOpenChange={(v) => {
@@ -335,6 +353,7 @@ export default function App() {
         )}
         {page === "tracker" && <Tracker />}
         {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
+        {page === "applications" && <Applications />}
         {page === "ghostwriter" && <Ghostwriter />}
         {page === "about" && <About />}
       </main>

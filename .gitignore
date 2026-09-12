@@ -12,3 +12,6 @@ dist/
 # Local / runtime data
 ghostbuster-server/data/
 .DS_Store
+
+# Local pitch tooling
+pitch/.venv/

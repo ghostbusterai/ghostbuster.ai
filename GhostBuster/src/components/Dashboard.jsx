@@ -169,6 +169,7 @@ const QUICK_ACTIONS = [
   { page: "reminders", title: "Set reminder", sub: "Schedule follow-up", mark: "⏰", markColor: "var(--gb-danger)" },
   { page: "compose", title: "Compose message", sub: "From Contacts", mark: "✉", markColor: "#5be4d8" },
   { page: "updates", title: "Update resume", sub: "Refresh your docs", mark: "📄", markColor: "#b482ff" },
+  { page: "applications", title: "Track applications", sub: "Links to apply", mark: "📋", markColor: "#6eb5ff" },
 ]
 
 const WEEKLY_OUTREACH_GOAL = 15

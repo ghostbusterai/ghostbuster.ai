@@ -6,6 +6,7 @@ import { BASE } from "../api"
 
 export default function Login({ error }) {
   const loginHref = `${BASE}/api/auth/google`
+  const apiDown = typeof error === "string" && /API isn't running/i.test(error)
 
   return (
     <div
@@ -98,29 +99,52 @@ export default function Login({ error }) {
           </p>
         )}
 
-        <a
-          href={loginHref}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            width: "100%",
-            boxSizing: "border-box",
-            padding: "14px 20px",
-            borderRadius: 10,
-            background: "#fff",
-            color: "#1f1f1f",
-            textDecoration: "none",
-            fontWeight: 600,
-            fontSize: 15,
-            border: "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
-          }}
-        >
-          <GoogleMark />
-          Continue with Google
-        </a>
+        {apiDown ? (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "14px 20px",
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.08)",
+              color: "rgba(240,240,245,0.4)",
+              fontWeight: 600,
+              fontSize: 15,
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <GoogleMark />
+            Continue with Google
+          </div>
+        ) : (
+          <a
+            href={loginHref}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "14px 20px",
+              borderRadius: 10,
+              background: "#fff",
+              color: "#1f1f1f",
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: 15,
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
+            }}
+          >
+            <GoogleMark />
+            Continue with Google
+          </a>
+        )}
 
         <div
           role="note"
@@ -154,7 +178,7 @@ export default function Login({ error }) {
             }}
           >
             GhostBuster stores account info from Google sign-in (name, email, profile photo) plus the data you add:
-            contacts, notes, reminders, outreach logs, résumés, and Ghostwriter transcripts/summaries. If you connect
+            contacts, notes, reminders, outreach logs, résumés, applications, and Ghostwriter transcripts/summaries. If you connect
             Gmail or Calendar, we store tokens so we can save drafts, schedule sends, and sync reminders. AI features
             may send relevant text you provide to our AI provider to generate drafts and summaries. Your data stays in
             your account and is intended only for beta testing.

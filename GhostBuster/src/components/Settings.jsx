@@ -5,6 +5,7 @@ import { useTheme } from "../ThemeContext"
 import { CardTitle, PageShell } from "../layout"
 import { inputStyle, sectionCard, secondaryBtn } from "../uiStyles"
 import {
+  LS_PROFILE,
   normalizeProfile,
   readLocalProfile,
   saveLocalProfile,
@@ -54,6 +55,7 @@ export default function Settings({
   setPage,
   googleNotice = null,
   onConsumeGoogleNotice = () => {},
+  onAccountDeleted = null,
   embedded = false,
 }) {
   const [profile, setProfile] = useState(() => readLocalProfile())
@@ -65,6 +67,8 @@ export default function Settings({
   const [googleLoading, setGoogleLoading] = useState(true)
   const [googleNoticeLocal, setGoogleNoticeLocal] = useState(null)
   const [prefs, setPrefs] = useState(() => readPreferences())
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
   const { colorScheme, setColorScheme } = useTheme()
 
   const loadProfile = useCallback(async () => {
@@ -161,6 +165,25 @@ export default function Settings({
       setGoogleStatus({ connected: false, configured: googleStatus.configured })
     } catch (err) {
       setError(err.message)
+    }
+  }
+
+  async function deleteAccountAndData() {
+    if (deletingAccount) return
+    setDeletingAccount(true)
+    setError(null)
+    try {
+      await api.deleteAccount()
+      try {
+        localStorage.removeItem(LS_PROFILE)
+        sessionStorage.removeItem(GETTING_STARTED_SESSION_KEY)
+      } catch {
+        /* ignore */
+      }
+      if (typeof onAccountDeleted === "function") onAccountDeleted()
+    } catch (err) {
+      setError(err.message || "Could not delete account.")
+      setDeletingAccount(false)
     }
   }
 
@@ -494,7 +517,7 @@ export default function Settings({
   )
 
   const notificationsSection = (
-    <section style={{ ...sectionCard(undefined, embedded), marginBottom: embedded ? 0 : 24 }}>
+    <section style={sectionCard(undefined, embedded)}>
       <CardTitle helper="The header bell counts pending reminders. Urgency colors match Reminders and the Notifications page.">
         Notifications
       </CardTitle>
@@ -535,6 +558,98 @@ export default function Settings({
       <button type="button" onClick={() => setPage("notifications")} style={secondaryBtn()}>
         Open notifications →
       </button>
+    </section>
+  )
+
+  const privacySection = (
+    <section
+      style={{
+        ...sectionCard("rgba(255,107,107,0.28)", embedded),
+        marginBottom: embedded ? 0 : 24,
+      }}
+    >
+      <CardTitle helper="Permanently remove your GhostBuster account and everything stored for it. This cannot be undone.">
+        Privacy
+      </CardTitle>
+      <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
+        This deletes your Google login, contacts, notes, reminders, outreach logs, résumés, applications, Ghostwriter
+        transcripts and summaries, and any stored Gmail or Calendar tokens. Copies already sent to email,
+        Calendar, or our AI provider are outside this app.
+      </p>
+      {!confirmDelete ? (
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(true)}
+          style={{
+            background: "transparent",
+            border: "1px solid var(--gb-danger)",
+            color: "var(--gb-danger)",
+            padding: "10px 16px",
+            borderRadius: 9,
+            fontFamily: font.body,
+            fontWeight: 600,
+            fontSize: 13,
+            cursor: "pointer",
+            boxShadow: "none",
+          }}
+        >
+          Delete my account and all my data
+        </button>
+      ) : (
+        <div>
+          <p
+            style={{
+              margin: "0 0 12px",
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: "var(--gb-danger)",
+              fontFamily: font.body,
+            }}
+          >
+            This signs you out and permanently deletes your account. Other people’s accounts are not affected.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={deleteAccountAndData}
+              disabled={deletingAccount}
+              style={{
+                background: "var(--gb-danger)",
+                border: "1px solid var(--gb-danger)",
+                color: "#fff",
+                padding: "10px 16px",
+                borderRadius: 9,
+                fontFamily: font.body,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: deletingAccount ? "not-allowed" : "pointer",
+                boxShadow: "none",
+                opacity: deletingAccount ? 0.7 : 1,
+              }}
+            >
+              {deletingAccount ? "Deleting…" : "Permanently delete everything"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deletingAccount}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--gb-border)",
+                color: "var(--gb-text-subtle)",
+                padding: "10px 16px",
+                borderRadius: 9,
+                fontFamily: font.body,
+                fontSize: 13,
+                cursor: deletingAccount ? "not-allowed" : "pointer",
+                boxShadow: "none",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   )
 
@@ -603,6 +718,9 @@ export default function Settings({
             {warmthSection}
             {notificationsSection}
           </SettingsGroup>
+          <SettingsGroup title="Privacy" embedded>
+            {privacySection}
+          </SettingsGroup>
         </>
       ) : (
         <>
@@ -613,6 +731,7 @@ export default function Settings({
           {googleSection}
           {warmthSection}
           {notificationsSection}
+          {privacySection}
         </>
       )}
     </div>

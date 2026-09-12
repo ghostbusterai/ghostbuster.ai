@@ -104,6 +104,19 @@ async function deleteReminderEvent(refreshToken, eventId) {
   }
 }
 
+async function revokeToken(token) {
+  if (!token) return
+  try {
+    await fetch("https://oauth2.googleapis.com/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `token=${encodeURIComponent(token)}`,
+    })
+  } catch {
+    /* best-effort; account wipe should continue */
+  }
+}
+
 module.exports = {
   SCOPES,
   isConfigured,
@@ -113,4 +126,5 @@ module.exports = {
   createReminderEvent,
   updateReminderEvent,
   deleteReminderEvent,
+  revokeToken,
 }

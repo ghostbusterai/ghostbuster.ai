@@ -220,6 +220,7 @@ export default function ProfileMenu({
   setPage,
   googleNotice = null,
   onConsumeGoogleNotice = () => {},
+  onAccountDeleted = null,
   open: controlledOpen,
   onOpenChange,
   openView = "menu",
@@ -624,6 +625,10 @@ export default function ProfileMenu({
                   }}
                   googleNotice={googleNotice}
                   onConsumeGoogleNotice={onConsumeGoogleNotice}
+                  onAccountDeleted={() => {
+                    setOpen(false)
+                    if (typeof onAccountDeleted === "function") onAccountDeleted()
+                  }}
                 />
               </div>
             </>
