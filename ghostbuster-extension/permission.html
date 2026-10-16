@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Allow GhostBuster Autofill</title>
+    <style>
+      body { margin: 0; padding: 20px; font: 14px/1.5 system-ui, sans-serif; background: #10140f; color: #e9f0e4; }
+      h1 { font-size: 16px; margin: 0 0 8px; }
+      p { margin: 6px 0 14px; color: #b9c4b1; }
+      code { color: #b8ff57; word-break: break-all; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; }
+      button { cursor: pointer; padding: 8px 12px; border-radius: 8px; border: 1px solid #3c4a33; background: transparent; color: inherit; font: inherit; }
+      .primary { background: #b8ff57; color: #0a0f09; border-color: #b8ff57; font-weight: 700; }
+      #status { margin-top: 12px; color: #ffcf5c; min-height: 20px; }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Let GhostBuster fill this application?</h1>
+    <p id="body"></p>
+    <div class="row">
+      <button id="site" class="primary" type="button">Allow on this site</button>
+      <button id="all" type="button">Allow on all sites</button>
+      <button id="no" type="button">Not now</button>
+    </div>
+    <div id="status"></div>
+    <script src="permission.js"></script>
+  </body>
+</html>

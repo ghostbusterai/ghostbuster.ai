@@ -127,6 +127,7 @@ function read() {
             careerGoals: typeof raw.profile.careerGoals === "string" ? raw.profile.careerGoals : "",
             lastResumeUpdate: raw.profile.lastResumeUpdate || "",
             hideGettingStarted: Boolean(raw.profile.hideGettingStarted),
+            autofill: raw.profile.autofill && typeof raw.profile.autofill === "object" ? raw.profile.autofill : {},
           }
         : { name: "", careerGoals: "", lastResumeUpdate: "", hideGettingStarted: false },
   }

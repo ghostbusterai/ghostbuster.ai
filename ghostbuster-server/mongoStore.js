@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb")
 const { getDb } = require("./db")
 const { suggestResumeBucket } = require("./resumeBucketMatch")
+const { sanitizeAutofill, fillStatus, fillQuestions } = require("./autofill")
 
 function uid(userId) {
   if (!userId) throw new Error("userId required")
@@ -245,9 +246,12 @@ exports.createApplication = async (userId, body) => {
     url: typeof body?.url === "string" ? body.url.trim() : "",
     notes: typeof body?.notes === "string" ? body.notes.trim() : "",
     status,
-    source: body?.source === "ai" ? "ai" : "manual",
+    source: ["ai", "search"].includes(body?.source) ? body.source : "manual",
     createdAt: now,
     completedAt: status === "completed" ? now : "",
+    fillStatus: "",
+    fillQuestions: [],
+    fillUpdatedAt: "",
   }
   if (!application.company && !application.role && !application.url) {
     throw new Error("empty")
@@ -273,6 +277,11 @@ exports.patchApplication = async (userId, id, body) => {
         ? prev.completedAt || new Date().toISOString()
         : "",
   }
+  if (body.fillStatus !== undefined) {
+    next.fillStatus = fillStatus(body.fillStatus, prev.fillStatus || "")
+    next.fillUpdatedAt = new Date().toISOString()
+  }
+  if (body.fillQuestions !== undefined) next.fillQuestions = fillQuestions(body.fillQuestions)
   await col.updateOne({ _id: prev._id }, { $set: next })
   return { application: stripMongo({ ...prev, ...next }) }
 }
@@ -407,6 +416,7 @@ exports.getProfile = async (userId) => {
       careerGoals: typeof p.careerGoals === "string" ? p.careerGoals : "",
       lastResumeUpdate: typeof p.lastResumeUpdate === "string" ? p.lastResumeUpdate : "",
       hideGettingStarted: Boolean(p.hideGettingStarted),
+      autofill: sanitizeAutofill(p.autofill),
     },
   }
 }
@@ -425,6 +435,9 @@ exports.patchProfile = async (userId, body) => {
   }
   if (body.hideGettingStarted !== undefined) {
     $set.hideGettingStarted = Boolean(body.hideGettingStarted)
+  }
+  if (body.autofill !== undefined) {
+    $set.autofill = sanitizeAutofill(body.autofill)
   }
   if (Object.keys($set).length) {
     await getDb().collection("profiles").updateOne({ userId: uid(userId) }, { $set })

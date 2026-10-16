@@ -26,6 +26,8 @@ const googleCal = require("./googleCalendar")
 const gmail = require("./gmail")
 const { SUGGESTED_BUCKET_NAMES } = require("./resumeBucketMatch")
 const { buildGhostItSummaryPrompt, parseGhostItSummaryJson } = require("./ghostwriterSummary")
+const { searchJobs } = require("./jobSearch")
+const { withAutofillDefaults, fillQuestions } = require("./autofill")
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -348,6 +350,8 @@ async function start() {
         "/api/resume",
         "/api/ghostwriter",
         "/api/applications",
+        "/api/jobs/search",
+        "/api/autofill/profile",
         "/compose",
       ],
     })
@@ -578,6 +582,87 @@ async function start() {
       }
       console.error(e)
       res.status(500).json({ error: "Failed to save application" })
+    }
+  })
+
+  // Live postings from public Greenhouse / Lever / Ashby boards, or a Workday careers URL.
+  app.get("/api/jobs/search", async (req, res) => {
+    const company = typeof req.query.company === "string" ? req.query.company.trim() : ""
+    const query = typeof req.query.q === "string" ? req.query.q.trim() : ""
+    const workdayUrl = typeof req.query.workdayUrl === "string" ? req.query.workdayUrl.trim() : ""
+    if (!company && !workdayUrl) {
+      return res.status(400).json({ error: "Enter a company name or a Workday careers URL." })
+    }
+    try {
+      res.json(await searchJobs({ company, query, workdayUrl }))
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Job search failed" })
+    }
+  })
+
+  // Answers the browser extension types into application forms.
+  app.get("/api/autofill/profile", async (req, res) => {
+    try {
+      const uid = userId(req)
+      const { profile } = await store.getProfile(uid)
+      let email = ""
+      if (USE_MONGO) {
+        const user = await store.findUserById(uid)
+        email = user?.email || ""
+      }
+      res.json({ autofill: withAutofillDefaults(profile?.autofill, { name: profile?.name, email }) })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to load autofill profile" })
+    }
+  })
+
+  /**
+   * The extension reports what it filled. Nothing is ever submitted automatically:
+   * a filled application waits for the user's review, and written questions create a reminder.
+   */
+  app.post("/api/applications/:id/fill-report", async (req, res) => {
+    const id = parseId(req.params.id)
+    if (id == null) return res.status(400).json({ error: "Invalid id" })
+    const body = req.body || {}
+    const questions = fillQuestions(body.questions)
+    try {
+      const uid = userId(req)
+      const { applications } = await store.getApplications(uid)
+      const prev = applications.find((a) => a.id === id)
+      if (!prev) return res.status(404).json({ error: "Application not found" })
+
+      let patch
+      if (body.submitted) {
+        patch = { status: "completed", fillStatus: "reviewed", fillQuestions: [] }
+      } else if (body.reviewed) {
+        patch = { fillStatus: "reviewed", fillQuestions: [] }
+      } else if (questions.length) {
+        patch = { fillStatus: "needs_input", fillQuestions: questions }
+      } else {
+        patch = { fillStatus: "needs_review", fillQuestions: [] }
+      }
+      const out = await store.patchApplication(uid, id, patch)
+
+      // Ping once per application when it first needs written answers.
+      let reminder = null
+      if (patch.fillStatus === "needs_input" && prev.fillStatus !== "needs_input") {
+        const what = [prev.role, prev.company].filter(Boolean).join(" at ") || "an application"
+        const text = `Answer ${questions.length} written question${questions.length === 1 ? "" : "s"} for ${what}`
+        ;({ reminder } = await store.createReminder(uid, {
+          contactName: prev.company || prev.role || "Application",
+          reason: text,
+          customReason: text,
+          dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(body.localDate || ""))
+            ? body.localDate
+            : new Date().toISOString().slice(0, 10),
+        }))
+      }
+      res.json({ ...out, reminder })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to save autofill result" })
     }
   })
 

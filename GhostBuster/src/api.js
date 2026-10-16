@@ -98,6 +98,16 @@ export const api = {
     request(`/api/applications/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteApplication: (id) => request(`/api/applications/${id}`, { method: "DELETE" }),
   suggestApplications: () => request("/api/applications/suggest", { method: "POST", body: JSON.stringify({}) }),
+  reportApplicationFill: (id, body) =>
+    request(`/api/applications/${id}/fill-report`, { method: "POST", body: JSON.stringify(body || {}) }),
+  searchJobs: ({ company, q, workdayUrl }) => {
+    const params = new URLSearchParams()
+    if (company) params.set("company", company)
+    if (q) params.set("q", q)
+    if (workdayUrl) params.set("workdayUrl", workdayUrl)
+    return request(`/api/jobs/search?${params}`)
+  },
+  getAutofillProfile: () => request("/api/autofill/profile"),
   getProfile: () => request("/api/profile"),
   patchProfile: (body) => request("/api/profile", { method: "PATCH", body: JSON.stringify(body) }),
   getOutreachLogs: (contactId) => {

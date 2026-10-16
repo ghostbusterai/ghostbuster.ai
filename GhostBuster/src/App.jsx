@@ -17,6 +17,7 @@ import BrandName from "./components/BrandName"
 import { PAGE_PADDING_X } from "./layout"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 import { api } from "./api"
+import { requestPendingFillReports } from "./autofillBridge"
 
 const NAV = [
   { id: "dashboard", label: "Home" },
@@ -118,6 +119,7 @@ export default function App() {
         if (!cancelled) {
           setAuthUser(user)
           setAuthError(null)
+          requestPendingFillReports()
         }
       } catch (e) {
         if (!cancelled) {

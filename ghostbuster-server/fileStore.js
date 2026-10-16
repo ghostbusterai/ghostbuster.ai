@@ -1,5 +1,6 @@
 const { read, write } = require("./store")
 const { suggestResumeBucket } = require("./resumeBucketMatch")
+const { sanitizeAutofill, fillStatus, fillQuestions } = require("./autofill")
 
 /** Single-tenant JSON file store (no user id). */
 
@@ -182,9 +183,12 @@ exports.createApplication = async (_userId, body) => {
     url: typeof body?.url === "string" ? body.url.trim() : "",
     notes: typeof body?.notes === "string" ? body.notes.trim() : "",
     status,
-    source: body?.source === "ai" ? "ai" : "manual",
+    source: ["ai", "search"].includes(body?.source) ? body.source : "manual",
     createdAt: now,
     completedAt: status === "completed" ? now : "",
+    fillStatus: "",
+    fillQuestions: [],
+    fillUpdatedAt: "",
   }
   if (!application.company && !application.role && !application.url) {
     throw new Error("empty")
@@ -213,6 +217,13 @@ exports.patchApplication = async (_userId, id, body) => {
     status,
     completedAt:
       status === "completed" ? prev.completedAt || new Date().toISOString() : "",
+  }
+  if (body.fillStatus !== undefined) {
+    data.applications[idx].fillStatus = fillStatus(body.fillStatus, prev.fillStatus || "")
+    data.applications[idx].fillUpdatedAt = new Date().toISOString()
+  }
+  if (body.fillQuestions !== undefined) {
+    data.applications[idx].fillQuestions = fillQuestions(body.fillQuestions)
   }
   write(data)
   return { application: data.applications[idx] }
@@ -353,6 +364,7 @@ exports.getProfile = async () => {
       careerGoals: typeof p.careerGoals === "string" ? p.careerGoals : "",
       lastResumeUpdate: typeof p.lastResumeUpdate === "string" ? p.lastResumeUpdate : "",
       hideGettingStarted: Boolean(p.hideGettingStarted),
+      autofill: sanitizeAutofill(p.autofill),
     },
   }
 }
@@ -373,8 +385,11 @@ exports.patchProfile = async (_userId, body) => {
   if (body.hideGettingStarted !== undefined) {
     data.profile.hideGettingStarted = Boolean(body.hideGettingStarted)
   }
+  if (body.autofill !== undefined) {
+    data.profile.autofill = sanitizeAutofill(body.autofill)
+  }
   write(data)
-  return { profile: data.profile }
+  return exports.getProfile()
 }
 
 exports.getResumeUpdates = async () => {

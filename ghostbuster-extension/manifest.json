@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "GhostBuster Autofill",
+  "version": "0.2.0",
+  "description": "Fills job applications from your GhostBuster profile on any site you allow. You always review and submit.",
+  "permissions": ["storage", "scripting", "webNavigation", "activeTab"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "background": { "service_worker": "background.js" },
+  "options_page": "options.html",
+  "action": { "default_title": "GhostBuster Autofill", "default_popup": "options.html" },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "https://*.onrender.com/*"],
+      "js": ["app-bridge.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.myworkdayjobs.com/*",
+        "https://*.myworkdaysite.com/*",
+        "https://boards.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.ashbyhq.com/*"
+      ],
+      "js": ["filler.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

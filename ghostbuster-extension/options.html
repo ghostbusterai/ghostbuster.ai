@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>GhostBuster Autofill</title>
+    <style>
+      body { margin: 0; padding: 16px; width: 340px; font: 13px/1.5 system-ui, sans-serif; background: #10140f; color: #e9f0e4; }
+      h1 { font-size: 15px; margin: 0 0 8px; }
+      p { margin: 6px 0; color: #b9c4b1; }
+      .file { margin: 12px 0; padding: 10px; border: 1px solid #3c4a33; border-radius: 10px; }
+      button.primary { background: #b8ff57; color: #0a0f09; border-color: #b8ff57; font-weight: 700; }
+      button { cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid #3c4a33; background: transparent; color: inherit; }
+      label.pick { display: inline-block; cursor: pointer; padding: 7px 12px; border-radius: 8px; background: #b8ff57; color: #0a0f09; font-weight: 700; }
+      input[type="file"] { display: none; }
+      #status { min-height: 18px; color: #b8ff57; }
+    </style>
+  </head>
+  <body>
+    <h1>GhostBuster Autofill</h1>
+    <p>Click <strong>Fill</strong> on an application in GhostBuster, or fill the page you're on. Answers come from the Autofill profile on GhostBuster's Applications page.</p>
+    <p>GhostBuster never submits for you. Review every page, and you'll get a reminder when a question needs a written answer.</p>
+    <div class="file">
+      <button id="fillTab" type="button" class="primary">Fill this page</button>
+      <p id="fillStatus"></p>
+    </div>
+    <div class="file">
+      <div><strong>Site access</strong></div>
+      <p id="access">Checking…</p>
+      <button id="allSites" type="button">Allow on all sites</button>
+      <button id="revoke" type="button" hidden>Remove access</button>
+    </div>
+    <div class="file">
+      <div><strong>Résumé to attach</strong></div>
+      <p id="current">None saved.</p>
+      <label class="pick">Choose PDF or DOCX<input id="resume" type="file" accept=".pdf,.doc,.docx" /></label>
+      <button id="clear" type="button">Remove</button>
+    </div>
+    <p>Stored only in this browser. It isn't uploaded to GhostBuster.</p>
+    <div id="status"></div>
+    <script src="options.js"></script>
+  </body>
+</html>

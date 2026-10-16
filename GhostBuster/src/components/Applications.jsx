@@ -6,6 +6,9 @@ import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import ViewMoreButton from "./ViewMoreButton"
 import { previewHiddenCount, previewSlice } from "../listPreview"
 import AiDisclaimer from "./AiDisclaimer"
+import AutofillProfile from "./AutofillProfile"
+import JobSearch, { ATS_LABELS } from "./JobSearch"
+import { AUTOFILL_EVENT, extensionInstalled, requestAllSitesAccess, startFill } from "../autofillBridge"
 
 const LS_APPLICATIONS = "gb_applications"
 
@@ -36,6 +39,27 @@ export default function Applications() {
   const [suggestWarning, setSuggestWarning] = useState(null)
   const [suggesting, setSuggesting] = useState(false)
   const [addingKey, setAddingKey] = useState(null)
+  const [extReady, setExtReady] = useState(extensionInstalled)
+  const [extAllSites, setExtAllSites] = useState(true)
+  const [fillingId, setFillingId] = useState(null)
+
+  useEffect(() => {
+    function onAutofill(e) {
+      const d = e.detail || {}
+      if (d.type === "ready") {
+        setExtReady(true)
+        setExtAllSites(Boolean(d.allSites))
+      }
+      else if (d.type === "started") {
+        setFillingId(null)
+        if (!d.ok) setActionError(d.error || "Couldn't open the application.")
+      } else if (d.type === "report") {
+        refresh().catch(() => {})
+      }
+    }
+    window.addEventListener(AUTOFILL_EVENT, onAutofill)
+    return () => window.removeEventListener(AUTOFILL_EVENT, onAutofill)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -194,6 +218,37 @@ export default function Applications() {
     }
   }
 
+  async function fill(application) {
+    setActionError(null)
+    setNotice(null)
+    setFillingId(application.id)
+    try {
+      await startFill(application)
+      setTimeout(() => setFillingId((id) => (id === application.id ? null : id)), 8000)
+      setNotice({
+        type: "success",
+        text: "Opened in a new tab and filling. Review every answer there. GhostBuster never submits for you.",
+      })
+    } catch (e) {
+      setFillingId(null)
+      setActionError(e.message)
+    }
+  }
+
+  async function saveJob(job, { fill: fillNow }) {
+    const { application } = await api.createApplication({
+      company: job.company,
+      role: job.title,
+      url: job.url,
+      notes: [job.location, ATS_LABELS[job.ats] ? `via ${ATS_LABELS[job.ats]}` : ""].filter(Boolean).join(" · "),
+      status: "todo",
+      source: "search",
+    })
+    await refresh()
+    if (fillNow) await fill(application)
+    else setNotice({ type: "success", text: "Saved to complete." })
+  }
+
   async function saveUrl(id, url) {
     setActionError(null)
     try {
@@ -218,6 +273,8 @@ export default function Applications() {
 
   const visible = previewSlice(filtered, showAll)
   const hiddenCount = previewHiddenCount(filtered, showAll)
+  const savedUrls = useMemo(() => new Set(applications.map((a) => a.url).filter(Boolean)), [applications])
+  const needsInputCount = applications.filter((a) => a.status !== "completed" && a.fillStatus === "needs_input").length
   const todoCount = applications.filter((a) => a.status !== "completed").length
   const doneCount = applications.filter((a) => a.status === "completed").length
 
@@ -229,7 +286,7 @@ export default function Applications() {
         subtitle={
           listLoading
             ? "Loading…"
-            : `${todoCount} to complete · ${doneCount} completed`
+            : `${todoCount} to complete · ${doneCount} completed${needsInputCount ? ` · ${needsInputCount} need your answers` : ""}`
         }
         action={
           <button
@@ -279,7 +336,27 @@ export default function Applications() {
             {notice.text}
           </p>
         )}
+        {!extReady && (
+          <p style={{ margin: "8px 0 0", color: "var(--gb-text-faint)", fontSize: 13, fontFamily: font.body }}>
+            To fill applications automatically, install the GhostBuster Autofill extension (ghostbuster-extension/ in this
+            project) and refresh.
+          </p>
+        )}
+        {extReady && !extAllSites && (
+          <p style={{ margin: "8px 0 0", color: "var(--gb-text-faint)", fontSize: 13, fontFamily: font.body }}>
+            Autofill works on Workday, Greenhouse, Lever, and Ashby. To follow jobs from company careers pages and
+            other sites,{" "}
+            <button type="button" onClick={requestAllSitesAccess} style={{ ...rowBtn(true), padding: "3px 8px" }}>
+              allow it on all sites
+            </button>{" "}
+            or approve each site when it asks.
+          </p>
+        )}
       </PageHero>
+
+      <JobSearch onSave={saveJob} savedUrls={savedUrls} />
+
+      <AutofillProfile />
 
       <ContentCard padding="18px 18px 16px" marginBottom={24}>
         <CardTitle helper="Uses your career goals, résumé, and contact companies. Results are search links, not live postings — listings change fast.">
@@ -524,6 +601,8 @@ export default function Applications() {
               onReopen={() => setStatus(a.id, "todo")}
               onDelete={() => remove(a.id)}
               onSaveUrl={(url) => saveUrl(a.id, url)}
+              onFill={extReady ? () => fill(a) : null}
+              filling={fillingId === a.id}
             />
           ))
         )}
@@ -552,7 +631,13 @@ function linkBtn() {
   }
 }
 
-function ApplicationRow({ application: a, onComplete, onReopen, onDelete, onSaveUrl }) {
+const FILL_BADGES = {
+  needs_input: { text: "Needs your answers", color: "var(--gb-warning)" },
+  needs_review: { text: "Filled · review before submitting", color: "var(--gb-accent)" },
+  reviewed: { text: "Reviewed", color: "var(--gb-text-subtle)" },
+}
+
+function ApplicationRow({ application: a, onComplete, onReopen, onDelete, onSaveUrl, onFill, filling }) {
   const host = a.url ? hostname(a.url) : ""
   const done = a.status === "completed"
   const title = [a.role, a.company].filter(Boolean).join(" · ") || host || "Application"
@@ -622,8 +707,25 @@ function ApplicationRow({ application: a, onComplete, onReopen, onDelete, onSave
             {a.notes}
           </p>
         ) : null}
+        {!done && FILL_BADGES[a.fillStatus] ? (
+          <div style={{ marginTop: 8, fontSize: 12, fontFamily: font.mono, color: FILL_BADGES[a.fillStatus].color }}>
+            {FILL_BADGES[a.fillStatus].text}
+          </div>
+        ) : null}
+        {!done && a.fillStatus === "needs_input" && a.fillQuestions?.length ? (
+          <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, color: "var(--gb-text-muted)", fontFamily: font.body }}>
+            {a.fillQuestions.map((q) => (
+              <li key={q}>{q}</li>
+            ))}
+          </ul>
+        ) : null}
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
+        {!done && a.url && onFill && !editingUrl && (
+          <button type="button" onClick={onFill} disabled={filling} style={rowBtn(true)}>
+            {filling ? "Opening…" : a.fillStatus ? "Fill again" : "Fill"}
+          </button>
+        )}
         {!editingUrl && (
           <button type="button" onClick={() => setEditingUrl(true)} style={rowBtn()}>
             {a.url ? "Edit link" : "Add link"}
