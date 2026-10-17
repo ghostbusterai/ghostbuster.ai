@@ -1,3 +1,4 @@
+const crypto = require("crypto")
 const { ObjectId } = require("mongodb")
 const { getDb } = require("./db")
 const { suggestResumeBucket } = require("./resumeBucketMatch")
@@ -48,6 +49,7 @@ function publicUser(doc) {
     email: doc.email || "",
     name: doc.name || "",
     picture: doc.picture || "",
+    demo: Boolean(doc.demo),
   }
 }
 
@@ -56,6 +58,43 @@ function publicUser(doc) {
 exports.findUserById = async (userId) => {
   if (!userId || !ObjectId.isValid(userId)) return null
   return getDb().collection("users").findOne({ _id: new ObjectId(userId) })
+}
+
+// —— Demo accounts (reviewers without Google sign-in; see demo.js) ——
+
+exports.createDemoUser = async ({ ttlDays }) => {
+  const now = new Date()
+  const doc = {
+    demo: true,
+    // users.googleId has a unique index, so each demo account needs its own placeholder value.
+    googleId: `demo:${crypto.randomUUID()}`,
+    email: "",
+    name: "Demo User",
+    picture: "",
+    aiCalls: 0,
+    createdAt: now.toISOString(),
+    demoExpiresAt: new Date(now.getTime() + ttlDays * 24 * 60 * 60 * 1000).toISOString(),
+  }
+  const { insertedId } = await getDb().collection("users").insertOne(doc)
+  return { ...doc, _id: insertedId }
+}
+
+/** Counts one AI request against a demo account's cap. Always true for regular accounts. */
+exports.useDemoAiCall = async (userId, limit) => {
+  if (!userId || !ObjectId.isValid(userId)) return true
+  const users = getDb().collection("users")
+  const _id = new ObjectId(userId)
+  const out = await users.updateOne({ _id, demo: true, aiCalls: { $lt: limit } }, { $inc: { aiCalls: 1 } })
+  if (out.modifiedCount) return true
+  return !(await users.findOne({ _id, demo: true }))
+}
+
+exports.expiredDemoUserIds = async () => {
+  const users = await getDb()
+    .collection("users")
+    .find({ demo: true, demoExpiresAt: { $lt: new Date().toISOString() } }, { projection: { _id: 1 } })
+    .toArray()
+  return users.map((u) => String(u._id))
 }
 
 exports.findUserByGoogleId = async (googleId) => {

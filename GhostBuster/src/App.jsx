@@ -114,6 +114,16 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      // Demo links (?demo=CODE) sign reviewers into their own sandbox account without Google.
+      const demoCode = new URLSearchParams(window.location.search).get("demo")
+      if (demoCode) {
+        window.history.replaceState({}, "", window.location.pathname || "/")
+        try {
+          await api.demoLogin(demoCode)
+        } catch (e) {
+          if (!cancelled) setAuthError(e.message)
+        }
+      }
       try {
         const { user } = await api.getMe()
         if (!cancelled) {
@@ -185,7 +195,7 @@ export default function App() {
   }
 
   if (!authUser) {
-    return <Login error={authError} />
+    return <Login error={authError} onDemoLogin={setAuthUser} />
   }
 
   return (
@@ -201,6 +211,22 @@ export default function App() {
         fontFamily: font.body,
       }}
     >
+      {authUser.demo && (
+        <div
+          role="note"
+          style={{
+            padding: "8px clamp(16px, 3vw, 40px)",
+            background: "rgba(255,201,107,0.12)",
+            borderBottom: "1px solid rgba(255,201,107,0.28)",
+            color: "var(--gb-text-muted)",
+            fontSize: 13,
+            fontFamily: font.body,
+          }}
+        >
+          You're in a demo account with sample data. It's deleted after a week, AI requests are limited, and Gmail
+          and Calendar aren't available.
+        </div>
+      )}
       <header
         style={{
           flexShrink: 0,

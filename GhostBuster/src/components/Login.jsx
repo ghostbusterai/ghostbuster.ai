@@ -1,12 +1,39 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { font, accentNeon } from "../theme"
 import GhostBusterLogo from "./GhostBusterLogo"
 import BrandName from "./BrandName"
-import { BASE } from "../api"
+import { BASE, api } from "../api"
 
-export default function Login({ error }) {
+export default function Login({ error, onDemoLogin }) {
   const loginHref = `${BASE}/api/auth/google`
   const apiDown = typeof error === "string" && /API isn't running/i.test(error)
+  const [demoEnabled, setDemoEnabled] = useState(false)
+  const [demoOpen, setDemoOpen] = useState(false)
+  const [demoCode, setDemoCode] = useState("")
+  const [demoBusy, setDemoBusy] = useState(false)
+  const [demoError, setDemoError] = useState(null)
+
+  useEffect(() => {
+    api
+      .getDemoStatus()
+      .then((d) => setDemoEnabled(Boolean(d.enabled)))
+      .catch(() => {})
+  }, [])
+
+  async function startDemo(e) {
+    e.preventDefault()
+    if (!demoCode.trim()) return
+    setDemoBusy(true)
+    setDemoError(null)
+    try {
+      const { user } = await api.demoLogin(demoCode.trim())
+      onDemoLogin?.(user)
+    } catch (err) {
+      setDemoError(err.message)
+    } finally {
+      setDemoBusy(false)
+    }
+  }
 
   return (
     <div
@@ -144,6 +171,70 @@ export default function Login({ error }) {
             <GoogleMark />
             Continue with Google
           </a>
+        )}
+
+        {demoEnabled && !apiDown && (
+          <div style={{ marginTop: 14, textAlign: "left" }}>
+            {demoOpen ? (
+              <form onSubmit={startDemo} style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={demoCode}
+                  onChange={(e) => setDemoCode(e.target.value)}
+                  placeholder="Demo access code"
+                  aria-label="Demo access code"
+                  autoFocus
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: "11px 12px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "#f0f0f5",
+                    fontSize: 14,
+                    fontFamily: font.body,
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={demoBusy}
+                  style={{
+                    padding: "11px 16px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: accentNeon,
+                    color: "#0a0a0f",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: demoBusy ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {demoBusy ? "Starting…" : "Try demo"}
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDemoOpen(true)}
+                style={{
+                  width: "100%",
+                  padding: "12px 20px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "transparent",
+                  color: "#f0f0f5",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Have a demo code? Try GhostBuster without Google
+              </button>
+            )}
+            {demoError && (
+              <p style={{ margin: "8px 0 0", fontSize: 13, color: "#ff8a8a" }}>{demoError}</p>
+            )}
+          </div>
         )}
 
         <div

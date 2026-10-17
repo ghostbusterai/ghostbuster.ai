@@ -16,18 +16,15 @@ const authGoogle = require("./authGoogle")
 const { maybeMigrateLegacyJson } = require("./migrateLegacy")
 const { extractResumeText, MAX_BYTES } = require("./resumeExtract")
 const { buildPrompt, parseSuggestionsJson } = require("./resumeSuggestions")
+const { buildAtsPrompt, parseAtsResponse } = require("./atsResumeText")
 const { suggestContactsForUpdateSmart } = require("./contactRelevance")
-const {
-  buildPrompt: buildApplicationSuggestPrompt,
-  parseSuggestionsJson: parseApplicationSuggestionsJson,
-  fallbackSuggestions: fallbackApplicationSuggestions,
-} = require("./applicationSuggestions")
 const googleCal = require("./googleCalendar")
 const gmail = require("./gmail")
 const { SUGGESTED_BUCKET_NAMES } = require("./resumeBucketMatch")
 const { buildGhostItSummaryPrompt, parseGhostItSummaryJson } = require("./ghostwriterSummary")
 const { searchJobs } = require("./jobSearch")
 const { withAutofillDefaults, fillQuestions } = require("./autofill")
+const demo = require("./demo")
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -253,6 +250,38 @@ async function start() {
     }
   })
 
+  // —— Demo access (reviewers who aren't on the Google beta-tester list) ——
+  app.get("/api/auth/demo", (req, res) => {
+    res.json({ enabled: USE_MONGO && demo.demoEnabled() })
+  })
+
+  app.post("/api/auth/demo", async (req, res) => {
+    if (!USE_MONGO || !demo.demoEnabled()) {
+      return res.status(404).json({ error: "Demo access isn't enabled." })
+    }
+    if (!demo.checkDemoCode(req.body?.code)) {
+      return res.status(401).json({ error: "That demo code isn't valid." })
+    }
+    try {
+      const user = await store.createDemoUser({ ttlDays: demo.DEMO_TTL_DAYS })
+      const uid = String(user._id)
+      await store.ensureProfile(uid, { name: user.name })
+      await demo.seedDemoAccount(store, uid)
+      req.session.regenerate((err) => {
+        if (err) {
+          console.error(err)
+          return res.status(500).json({ error: "Could not start the demo" })
+        }
+        req.session.userId = uid
+        req.session.demo = true
+        req.session.save(() => res.status(201).json({ user: store.toPublicUser(user) }))
+      })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Could not start the demo" })
+    }
+  })
+
   app.get("/api/auth/me", async (req, res) => {
     try {
       if (!USE_MONGO) {
@@ -371,6 +400,40 @@ async function start() {
       return requireAuth(req, res, next)
     }
     next()
+  })
+
+  // Demo accounts can't connect Google (the OAuth app only allows listed beta testers).
+  app.use((req, res, next) => {
+    if (!req.session?.demo) return next()
+    const pathOnly = req.path
+    if (
+      pathOnly.startsWith("/api/google/auth") ||
+      pathOnly.startsWith("/api/gmail/") ||
+      /^\/api\/reminders\/[^/]+\/sync-calendar$/.test(pathOnly)
+    ) {
+      return res.status(403).json({ error: "Gmail and Google Calendar aren't available in the demo." })
+    }
+    next()
+  })
+
+  // Cap AI requests per demo account so a shared demo link can't run up the API bill.
+  const AI_ROUTES = [
+    /^\/compose$/,
+    /^\/api\/resume\/suggestions$/,
+    /^\/api\/resume\/ats-text$/,
+    /^\/api\/ghostwriter\/[^/]+\/summarize$/,
+  ]
+  app.use(async (req, res, next) => {
+    if (!req.session?.demo || req.method !== "POST" || !AI_ROUTES.some((r) => r.test(req.path))) return next()
+    try {
+      if (await store.useDemoAiCall(userId(req), demo.DEMO_AI_LIMIT)) return next()
+      res.status(429).json({
+        error: `This demo account has used its ${demo.DEMO_AI_LIMIT} AI requests. Ask the GhostBuster team for beta access to keep going.`,
+      })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Request failed" })
+    }
   })
 
   // —— Contacts ——
@@ -663,64 +726,6 @@ async function start() {
     } catch (e) {
       console.error(e)
       res.status(500).json({ error: "Failed to save autofill result" })
-    }
-  })
-
-  app.post("/api/applications/suggest", async (req, res) => {
-    try {
-      const uid = userId(req)
-      const [{ applications }, { contacts }, { profile }, resumeOut] = await Promise.all([
-        store.getApplications(uid),
-        store.getContacts(uid),
-        store.getProfile(uid),
-        store.getFullResume(uid),
-      ])
-      const resumeText = resumeOut?.resume?.text || ""
-      const ctx = {
-        careerGoals: profile?.careerGoals || "",
-        resumeText,
-        contacts: contacts || [],
-        existing: applications || [],
-        userName: profile?.name || "",
-      }
-
-      if (!anthropic) {
-        return res.json({
-          suggestions: fallbackApplicationSuggestions(ctx),
-          source: "fallback",
-        })
-      }
-
-      const message = await anthropic.messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: 1600,
-        messages: [{ role: "user", content: buildApplicationSuggestPrompt(ctx) }],
-      })
-      const text = extractAssistantText(message.content)
-      const suggestions = parseApplicationSuggestionsJson(text)
-      res.json({ suggestions, source: "ai" })
-    } catch (err) {
-      console.error(err)
-      try {
-        const uid = userId(req)
-        const [{ applications }, { contacts }, { profile }] = await Promise.all([
-          store.getApplications(uid),
-          store.getContacts(uid),
-          store.getProfile(uid),
-        ])
-        res.json({
-          suggestions: fallbackApplicationSuggestions({
-            careerGoals: profile?.careerGoals || "",
-            contacts: contacts || [],
-            existing: applications || [],
-          }),
-          source: "fallback",
-          warning: "AI suggestions were unavailable, so these are based on your contacts and goals.",
-        })
-      } catch (e) {
-        const msg = formatAnthropicError(err)
-        res.status(500).json({ error: msg || "Failed to suggest applications" })
-      }
     }
   })
 
@@ -1222,6 +1227,59 @@ async function start() {
     }
   })
 
+  app.post("/api/resume/ats-text", async (req, res) => {
+    try {
+      const uid = userId(req)
+      const bucketId = req.body?.bucketId != null ? Number(req.body.bucketId) : null
+      const versionId = req.body?.versionId != null ? Number(req.body.versionId) : null
+      const pasted = typeof req.body?.text === "string" ? req.body.text.trim() : ""
+
+      const [{ profile }, { buckets }] = await Promise.all([
+        store.getProfile(uid),
+        store.getResumeBuckets(uid),
+      ])
+      const bucketList = buckets || []
+      const bucket =
+        (Number.isFinite(bucketId) ? bucketList.find((b) => b.id === bucketId) : null) ||
+        bucketList.find((b) => typeof b.text === "string" && b.text.trim())
+
+      let resumeText = pasted
+      if (!resumeText && bucket && Number.isFinite(versionId)) {
+        const version = (bucket.versions || []).find((v) => v.id === versionId)
+        resumeText = typeof version?.text === "string" ? version.text.trim() : ""
+      }
+      if (!resumeText) {
+        resumeText = typeof bucket?.text === "string" ? bucket.text.trim() : ""
+      }
+      if (!resumeText) {
+        return res.status(400).json({ error: "Upload a résumé first, then export a .txt for Workday or other ATS." })
+      }
+
+      if (!anthropic) {
+        return res.json({ text: resumeText, source: "original" })
+      }
+
+      const userName = typeof profile?.name === "string" ? profile.name.trim() : ""
+      const message = await anthropic.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 4500,
+        messages: [{ role: "user", content: buildAtsPrompt(resumeText, userName) }],
+      })
+      const formatted = parseAtsResponse(extractAssistantText(message.content))
+      if (!formatted) {
+        return res.json({ text: resumeText, source: "original", warning: "AI returned empty text." })
+      }
+      res.json({ text: formatted, source: "ai" })
+    } catch (err) {
+      console.error(err)
+      const msg = formatAnthropicError(err)
+      const lowCredits =
+        /credit balance|billing|Plans & Billing/i.test(msg) || /too low to access/i.test(msg)
+      const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
+      res.status(status).json({ error: msg || "Failed to format résumé for ATS" })
+    }
+  })
+
   // —— Outreach logs ——
   app.get("/api/outreach-logs", async (req, res) => {
     try {
@@ -1544,6 +1602,13 @@ Do not add any explanation, just the email.`
     if (!apiKey) console.warn("ANTHROPIC_API_KEY is not set — /compose will return 503")
     if (USE_MONGO && !authGoogle.isLoginConfigured()) {
       console.warn("Google login is not configured — set GOOGLE_CLIENT_ID/SECRET and GOOGLE_LOGIN_REDIRECT_URI")
+    }
+    if (USE_MONGO) {
+      const cleanupDemos = async () => {
+        for (const id of await store.expiredDemoUserIds()) await store.deleteAccount(id)
+      }
+      setInterval(() => cleanupDemos().catch((e) => console.warn("Demo cleanup:", e.message)), 60 * 60 * 1000)
+      cleanupDemos().catch((e) => console.warn("Demo cleanup:", e.message))
     }
     setInterval(() => {
       processScheduledEmails().catch((e) => console.warn("Schedule processor:", e.message))

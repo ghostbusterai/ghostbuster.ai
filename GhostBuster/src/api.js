@@ -82,6 +82,8 @@ async function uploadRequest(path, formData) {
 export const api = {
   getMe: () => request("/api/auth/me"),
   logout: () => request("/api/auth/logout", { method: "POST" }),
+  getDemoStatus: () => request("/api/auth/demo"),
+  demoLogin: (code) => request("/api/auth/demo", { method: "POST", body: JSON.stringify({ code }) }),
   deleteAccount: () => request("/api/auth/account", { method: "DELETE" }),
   getContacts: () => request("/api/contacts"),
   createContact: (body) => request("/api/contacts", { method: "POST", body: JSON.stringify(body) }),
@@ -97,7 +99,6 @@ export const api = {
   patchApplication: (id, body) =>
     request(`/api/applications/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteApplication: (id) => request(`/api/applications/${id}`, { method: "DELETE" }),
-  suggestApplications: () => request("/api/applications/suggest", { method: "POST", body: JSON.stringify({}) }),
   reportApplicationFill: (id, body) =>
     request(`/api/applications/${id}/fill-report`, { method: "POST", body: JSON.stringify(body || {}) }),
   searchJobs: ({ company, q, workdayUrl }) => {
@@ -157,6 +158,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(bucketId != null ? { bucketId } : {}),
     }),
+  formatResumeForAts: (body) =>
+    request("/api/resume/ats-text", { method: "POST", body: JSON.stringify(body || {}) }),
   getGoogleCalendarStatus: () => request("/api/google/status"),
   disconnectGoogleCalendar: () => request("/api/google/disconnect", { method: "DELETE" }),
   saveGmailDraft: (body) => request("/api/gmail/draft", { method: "POST", body: JSON.stringify(body) }),

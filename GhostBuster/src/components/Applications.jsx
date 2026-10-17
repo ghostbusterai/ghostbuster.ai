@@ -5,7 +5,6 @@ import { inputStyle } from "../uiStyles"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import ViewMoreButton from "./ViewMoreButton"
 import { previewHiddenCount, previewSlice } from "../listPreview"
-import AiDisclaimer from "./AiDisclaimer"
 import AutofillProfile from "./AutofillProfile"
 import JobSearch, { ATS_LABELS } from "./JobSearch"
 import { AUTOFILL_EVENT, extensionInstalled, requestAllSitesAccess, startFill } from "../autofillBridge"
@@ -34,11 +33,6 @@ export default function Applications() {
   const [form, setForm] = useState(emptyForm)
   const [filter, setFilter] = useState("todo")
   const [showAll, setShowAll] = useState(false)
-  const [suggestions, setSuggestions] = useState([])
-  const [suggestSource, setSuggestSource] = useState(null)
-  const [suggestWarning, setSuggestWarning] = useState(null)
-  const [suggesting, setSuggesting] = useState(false)
-  const [addingKey, setAddingKey] = useState(null)
   const [extReady, setExtReady] = useState(extensionInstalled)
   const [extAllSites, setExtAllSites] = useState(true)
   const [fillingId, setFillingId] = useState(null)
@@ -159,65 +153,6 @@ export default function Applications() {
     }
   }
 
-  async function loadSuggestions() {
-    setSuggesting(true)
-    setActionError(null)
-    setSuggestWarning(null)
-    try {
-      const data = await api.suggestApplications()
-      setSuggestions(data.suggestions || [])
-      setSuggestSource(data.source || "ai")
-      setSuggestWarning(data.warning || null)
-      if (!(data.suggestions || []).length) {
-        setNotice({ type: "success", text: "No new suggestions. Add career goals or a résumé for better matches." })
-      }
-    } catch (e) {
-      setActionError(e.message)
-    } finally {
-      setSuggesting(false)
-    }
-  }
-
-  async function addSuggestion(s) {
-    const key = `${s.company}|${s.role}|${s.url}`
-    setAddingKey(key)
-    setActionError(null)
-    const payload = {
-      company: s.company || "",
-      role: s.role || "",
-      url: s.url || s.urls?.linkedin || "",
-      notes: s.why || "",
-      status: "todo",
-      source: "ai",
-    }
-    try {
-      await api.createApplication(payload)
-      await refresh()
-      setSuggestions((prev) => prev.filter((x) => x !== s))
-      setNotice({
-        type: "success",
-        text: "Saved to complete. Use Edit link to paste the real application URL when you have it.",
-      })
-    } catch (e) {
-      if (loadError) {
-        persist([
-          {
-            id: Date.now(),
-            ...payload,
-            createdAt: new Date().toISOString(),
-            completedAt: "",
-          },
-          ...applications,
-        ])
-        setSuggestions((prev) => prev.filter((x) => x !== s))
-      } else {
-        setActionError(e.message)
-      }
-    } finally {
-      setAddingKey(null)
-    }
-  }
-
   async function fill(application) {
     setActionError(null)
     setNotice(null)
@@ -310,8 +245,7 @@ export default function Applications() {
         }
       >
         <p style={{ color: "var(--gb-text-muted)", fontSize: 14, fontFamily: font.body, marginTop: 8, marginBottom: 0 }}>
-          Save links you still need to submit, then move them to completed when you apply. AI can suggest searches
-          from your résumé, career goals, and contacts.
+          Search open roles, save links you still need to submit, and move them to completed when you apply.
         </p>
         {loadError && (
           <p style={{ margin: "8px 0 0", color: "var(--gb-warning)", fontSize: 13, fontFamily: font.body }}>
@@ -357,111 +291,6 @@ export default function Applications() {
       <JobSearch onSave={saveJob} savedUrls={savedUrls} />
 
       <AutofillProfile />
-
-      <ContentCard padding="18px 18px 16px" marginBottom={24}>
-        <CardTitle helper="Uses your career goals, résumé, and contact companies. Results are search links, not live postings — listings change fast.">
-          Suggested applications
-        </CardTitle>
-        <button
-          type="button"
-          onClick={loadSuggestions}
-          disabled={suggesting}
-          style={{
-            background: "var(--gb-accent-soft)",
-            border: "1px solid var(--gb-border-subtle)",
-            color: "var(--gb-accent)",
-            padding: "10px 16px",
-            borderRadius: 9,
-            fontFamily: font.body,
-            fontWeight: 600,
-            fontSize: 13,
-            cursor: suggesting ? "not-allowed" : "pointer",
-            boxShadow: "none",
-            marginBottom: 12,
-          }}
-        >
-          {suggesting ? "Suggesting…" : "Suggest applications"}
-        </button>
-        {suggestWarning && (
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--gb-warning)", fontFamily: font.body }}>
-            {suggestWarning}
-          </p>
-        )}
-        {suggestSource === "ai" && suggestions.length > 0 && (
-          <AiDisclaimer
-            text="These are AI-generated search targets and may be outdated or a poor fit. Open the listing yourself before you apply."
-            style={{ marginBottom: 12 }}
-          />
-        )}
-        {suggestions.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {suggestions.map((s) => {
-              const key = `${s.company}|${s.role}|${s.url}`
-              return (
-                <div
-                  key={key}
-                  style={{
-                    border: "1px solid var(--gb-border)",
-                    borderRadius: 12,
-                    padding: "12px 14px",
-                    background: "var(--gb-surface-hover)",
-                  }}
-                >
-                  <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-                    {s.role || "Role"}
-                    {s.company ? ` · ${s.company}` : ""}
-                  </div>
-                  {s.location ? (
-                    <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginBottom: 6, fontFamily: font.mono }}>
-                      {s.location}
-                    </div>
-                  ) : null}
-                  {s.why ? (
-                    <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--gb-text-muted)", lineHeight: 1.45, fontFamily: font.body }}>
-                      {s.why}
-                    </p>
-                  ) : null}
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <button
-                      type="button"
-                      onClick={() => addSuggestion(s)}
-                      disabled={addingKey === key}
-                      style={{
-                        background: "var(--gb-accent-bright)",
-                        color: "var(--gb-accent-text-on)",
-                        border: "1px solid rgba(10,15,9,0.22)",
-                        padding: "7px 12px",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: addingKey === key ? "not-allowed" : "pointer",
-                        boxShadow: "none",
-                      }}
-                    >
-                      {addingKey === key ? "Adding…" : "Save to complete"}
-                    </button>
-                    {s.urls?.linkedin && (
-                      <a href={s.urls.linkedin} target="_blank" rel="noreferrer" style={linkBtn()}>
-                        LinkedIn
-                      </a>
-                    )}
-                    {s.urls?.handshake && (
-                      <a href={s.urls.handshake} target="_blank" rel="noreferrer" style={linkBtn()}>
-                        Handshake
-                      </a>
-                    )}
-                    {s.urls?.google && (
-                      <a href={s.urls.google} target="_blank" rel="noreferrer" style={linkBtn()}>
-                        Google
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </ContentCard>
 
       <ContentCard padding="14px 14px 12px" marginBottom={24}>
         <CardTitle style={{ marginBottom: 12 }}>View</CardTitle>
@@ -590,7 +419,7 @@ export default function Applications() {
           <p style={{ margin: "8px 18px 16px", color: "var(--gb-text-faint)", fontSize: 14, fontFamily: font.body }}>
             {filter === "completed"
               ? "No completed applications yet."
-              : "No applications to complete. Add a link or get AI suggestions."}
+              : "No applications to complete. Search open roles or add a link."}
           </p>
         ) : (
           visible.map((a) => (
@@ -617,24 +446,6 @@ export default function Applications() {
       </ContentCard>
     </PageShell>
   )
-}
-
-function linkBtn() {
-  return {
-    color: "var(--gb-accent)",
-    fontSize: 12,
-    fontFamily: font.mono,
-    textDecoration: "none",
-    padding: "7px 10px",
-    border: "1px solid var(--gb-border)",
-    borderRadius: 8,
-  }
-}
-
-const FILL_BADGES = {
-  needs_input: { text: "Needs your answers", color: "var(--gb-warning)" },
-  needs_review: { text: "Filled · review before submitting", color: "var(--gb-accent)" },
-  reviewed: { text: "Reviewed", color: "var(--gb-text-subtle)" },
 }
 
 function ApplicationRow({ application: a, onComplete, onReopen, onDelete, onSaveUrl, onFill, filling }) {

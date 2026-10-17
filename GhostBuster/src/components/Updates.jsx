@@ -13,6 +13,7 @@ import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import ViewMoreButton from "./ViewMoreButton"
 import { previewHiddenCount, previewSlice } from "../listPreview"
+import { atsResumeFileName, downloadTextFile, formatAtsResumeText } from "../atsResumeText"
 
 const LS_LOGS = "gb_outreach_logs"
 
@@ -137,6 +138,8 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [archiveActionKey, setArchiveActionKey] = useState(null)
   const [showAllArchiveItems, setShowAllArchiveItems] = useState(false)
   const [showAllUpdatesHistory, setShowAllUpdatesHistory] = useState(false)
+  const [copiedAtsKey, setCopiedAtsKey] = useState(null)
+  const [atsBusyKey, setAtsBusyKey] = useState(null)
 
   const resumeArchiveItems = useMemo(() => {
     const items = []
@@ -645,6 +648,62 @@ export default function Updates({ setPage, setComposePrefill }) {
     navigator.clipboard.writeText(message)
     setCopiedContactId(contactId)
     setTimeout(() => setCopiedContactId(null), 2000)
+  }
+
+  function downloadAtsText(rawText, meta) {
+    const formatted = formatAtsResumeText(rawText)
+    downloadTextFile(
+      atsResumeFileName({
+        personName: profileName,
+        bucketName: meta.bucketName,
+        fileName: meta.fileName,
+      }),
+      formatted
+    )
+  }
+
+  async function copyAtsText(rawText, key) {
+    try {
+      await navigator.clipboard.writeText(formatAtsResumeText(rawText))
+      setCopiedAtsKey(key)
+      setTimeout(() => setCopiedAtsKey(null), 2000)
+    } catch {
+      setActionError("Could not copy. Try Download ATS .txt instead.")
+    }
+  }
+
+  async function downloadAiAtsText(rawText, meta) {
+    const key = meta.key
+    setAtsBusyKey(key)
+    setActionError(null)
+    try {
+      let sourceText = rawText
+      let source = "cleaned"
+      if (!loadError) {
+        const data = await api.formatResumeForAts({
+          bucketId: meta.bucketId,
+          versionId: meta.versionId,
+          text: rawText,
+        })
+        if (typeof data?.text === "string" && data.text.trim()) {
+          sourceText = data.text
+          source = data.source || "ai"
+        }
+      }
+      downloadAtsText(sourceText, meta)
+      if (source !== "ai") {
+        setActionError(null)
+      }
+    } catch (e) {
+      downloadAtsText(rawText, meta)
+      setActionError(
+        e.message
+          ? `${e.message} Downloaded a cleaned .txt of your uploaded text instead.`
+          : "AI format unavailable. Downloaded a cleaned .txt of your uploaded text instead."
+      )
+    } finally {
+      setAtsBusyKey(null)
+    }
   }
 
   return (
