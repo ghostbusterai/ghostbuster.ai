@@ -1,6 +1,20 @@
 # GhostBuster (local run)
 Website: https://ghostbuster-ai-js5l.onrender.com/
 
+## For application reviewers
+
+You can try GhostBuster without a Google account. Google sign-in is limited to our approved beta testers, so reviewers use a demo account instead.
+
+1. Open the demo link included in our application: **https://ghostbuster-ai-js5l.onrender.com/?demo=YOUR-CODE**. It signs you in directly.
+2. Or open **https://ghostbuster-ai-js5l.onrender.com/**, click **Have a demo code? Try GhostBuster without Google**, and enter the access code: "app-reviewer".
+
+Each visit creates a private demo account with sample data for a student, Alex Rivera: contacts, reminders, applications, and a résumé. Feel free to add, edit, and delete anything.
+
+- **AI features** (message composer, résumé suggestions, Ghostwriter summaries) work, with a limited number of requests per demo account.
+- **Gmail and Google Calendar** connections aren't available in demo accounts.
+- **Demo accounts and their data** are deleted after 7 days.
+- **The first load can take up to a minute** while the server wakes up.
+
 Two apps: **`ghostbuster-server`** (Express API) and **`GhostBuster`** (Vite + React). Run both for full functionality.
 
 Data is stored in a single JSON file on the API machine: `ghostbuster-server/data/app-data.json` (no accounts or sign-in).
@@ -29,6 +43,9 @@ Push to `main` on GitHub. Render redeploys automatically when the repo is connec
 | `MONGODB_URI` | For multi-user + Google sign-in | If unset, the app runs in **legacy single-user mode** (JSON file storage, no Google login) |
 | `SESSION_SECRET` | Recommended in production | Long random string for session cookies |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | For Google sign-in + Calendar/Gmail | Only when `MONGODB_URI` is set |
+| `DEMO_ACCESS_CODE` | For reviewer demo accounts | Enables demo sign-in without Google. Share `/?demo=<code>` links. Requires `MONGODB_URI` |
+| `DEMO_AI_LIMIT` | No | AI requests per demo account (default 15) |
+| `DEMO_TTL_DAYS` | No | Days before a demo account is deleted (default 7) |
 
 `PORT`, `APP_URL`, and Google redirect URIs are set in `render.yaml`.
 
