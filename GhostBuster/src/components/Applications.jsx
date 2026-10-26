@@ -448,6 +448,12 @@ export default function Applications() {
   )
 }
 
+const FILL_BADGES = {
+  needs_input: { text: "Needs your answers", color: "var(--gb-warning)" },
+  needs_review: { text: "Filled · review before submitting", color: "var(--gb-accent)" },
+  reviewed: { text: "Reviewed", color: "var(--gb-text-subtle)" },
+}
+
 function ApplicationRow({ application: a, onComplete, onReopen, onDelete, onSaveUrl, onFill, filling }) {
   const host = a.url ? hostname(a.url) : ""
   const done = a.status === "completed"
