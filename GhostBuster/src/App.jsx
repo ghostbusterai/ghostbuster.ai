@@ -230,6 +230,8 @@ export default function App() {
       <header
         style={{
           flexShrink: 0,
+          position: "sticky",
+          top: 0,
           background: "var(--gb-header-bg)",
           borderBottom: "1px solid var(--gb-border)",
           zIndex: 10,
@@ -245,7 +247,14 @@ export default function App() {
             width: "100%",
           }}
         >
-          <div
+          <button
+            type="button"
+            onClick={() => {
+              setComposeOpen(false)
+              setPage("dashboard")
+            }}
+            aria-label="GhostBuster home"
+            title="Home"
             style={{
               display: "flex",
               alignItems: "center",
@@ -256,6 +265,10 @@ export default function App() {
               fontSize: HEADER_BRAND_FONT_SIZE,
               letterSpacing: "-0.3px",
               flexShrink: 0,
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
             }}
           >
             <span
@@ -273,7 +286,7 @@ export default function App() {
               <GhostBusterLogo size={HEADER_LOGO_SIZE} />
             </span>
             <BrandName variant="header" />
-          </div>
+          </button>
 
           <nav
             role="tablist"
