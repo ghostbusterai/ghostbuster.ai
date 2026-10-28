@@ -35,7 +35,14 @@ const upload = multer({
 })
 
 const apiKey = process.env.ANTHROPIC_API_KEY
-const anthropic = apiKey ? new Anthropic.default({ apiKey }) : null
+// Organization-level keys (not scoped to a workspace) must name the workspace to bill.
+const workspaceId = String(process.env.ANTHROPIC_WORKSPACE_ID || "").trim()
+const anthropic = apiKey
+  ? new Anthropic.default({
+      apiKey,
+      ...(workspaceId ? { defaultHeaders: { "anthropic-workspace-id": workspaceId } } : {}),
+    })
+  : null
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6"
 
 function extractAssistantText(content) {

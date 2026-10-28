@@ -7,7 +7,7 @@ import {
 } from "../outreachMessage"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
-import { readLocalProfile, saveLocalProfile } from "../profile"
+import { readLocalProfile, saveLocalProfile, PROFILE_UPDATED_EVENT } from "../profile"
 import { contactsNeedingResumeNudge, buildResumeShareComposePrefill } from "../resumeNudge"
 import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
@@ -231,6 +231,18 @@ export default function Updates({ setPage, setComposePrefill }) {
   useEffect(() => {
     load()
   }, [load])
+
+  // Profile edits (e.g. career goals from the profile menu) apply here without a page refresh.
+  useEffect(() => {
+    function onProfileUpdated(e) {
+      const p = e.detail || {}
+      setCareerGoals(p.careerGoals?.trim() || "")
+      setProfileName(p.name?.trim() || "")
+      setResumeDate(p.lastResumeUpdate || "")
+    }
+    window.addEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated)
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated)
+  }, [])
 
   useEffect(() => {
     if (!relevanceModal) return

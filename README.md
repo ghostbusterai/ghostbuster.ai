@@ -40,6 +40,7 @@ Push to `main` on GitHub. Render redeploys automatically when the repo is connec
 | Variable | Required | Notes |
 |----------|----------|--------|
 | `ANTHROPIC_API_KEY` | For Compose AI | Optional otherwise |
+| `ANTHROPIC_WORKSPACE_ID` | Only for org-level keys | Workspace to bill when the API key isn't scoped to a workspace |
 | `MONGODB_URI` | For multi-user + Google sign-in | If unset, the app runs in **legacy single-user mode** (JSON file storage, no Google login) |
 | `SESSION_SECRET` | Recommended in production | Long random string for session cookies |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | For Google sign-in + Calendar/Gmail | Only when `MONGODB_URI` is set |
