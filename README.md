@@ -1,12 +1,22 @@
 # GhostBuster (local run)
+
+> [!IMPORTANT]
+> ## 👋 Application reviewers: try the demo
+>
+> **Demo access code: `app-reviewer`**
+>
+> **One-click demo:** **[ghostbuster-ai-js5l.onrender.com/?demo=app-reviewer](https://ghostbuster-ai-js5l.onrender.com/?demo=app-reviewer)**
+>
+> No Google account needed. The first load can take up to a minute while the server wakes up.
+
 Website: https://ghostbuster-ai-js5l.onrender.com/
 
 ## For application reviewers
 
 You can try GhostBuster without a Google account. Google sign-in is limited to our approved beta testers, so reviewers use a demo account instead.
 
-1. Open the demo link included in our application: **https://ghostbuster-ai-js5l.onrender.com/?demo=YOUR-CODE**. It signs you in directly.
-2. Or open **https://ghostbuster-ai-js5l.onrender.com/**, click **Have a demo code? Try GhostBuster without Google**, and enter the access code: "app-reviewer".
+1. Open **https://ghostbuster-ai-js5l.onrender.com/?demo=app-reviewer**. It signs you in directly.
+2. Or open **https://ghostbuster-ai-js5l.onrender.com/**, click **Have a demo code? Try GhostBuster without Google**, and enter the access code **`app-reviewer`**.
 
 Each visit creates a private demo account with sample data for a student, Alex Rivera: contacts, reminders, applications, and a résumé. Feel free to add, edit, and delete anything.
 
