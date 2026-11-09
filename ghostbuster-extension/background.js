@@ -89,7 +89,7 @@ async function ensureFiller(tabId, frameId, url) {
 
   if (await hasAccess(url)) {
     await chrome.scripting
-      .executeScript({ target: { tabId, frameIds: [frameId] }, files: ["filler.js"] })
+      .executeScript({ target: { tabId, frameIds: [frameId] }, files: ["resume-picker.js", "filler.js"] })
       .catch(() => {
         /* frame went away or is a browser page */
       })
@@ -122,7 +122,7 @@ chrome.permissions.onAdded.addListener(async () => {
     for (const f of frames || []) {
       if (await hasAccess(f.url)) {
         await chrome.scripting
-          .executeScript({ target: { tabId, frameIds: [f.frameId] }, files: ["filler.js"] })
+          .executeScript({ target: { tabId, frameIds: [f.frameId] }, files: ["resume-picker.js", "filler.js"] })
           .catch(() => {})
       }
     }
@@ -130,7 +130,7 @@ chrome.permissions.onAdded.addListener(async () => {
 })
 
 async function injectInto(tabId) {
-  await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files: ["filler.js"] }).catch(() => {})
+  await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files: ["resume-picker.js", "filler.js"] }).catch(() => {})
   await chrome.tabs.sendMessage(tabId, { type: "FILL_NOW" }).catch(() => {})
 }
 
@@ -152,6 +152,16 @@ async function handle(msg, sender) {
     case "SYNC_PROFILE":
       if (msg.profile) await chrome.storage.local.set({ lastProfile: msg.profile })
       return { ok: true }
+
+    // From the app: résumé files from your buckets, offered on applications and in Gmail.
+    case "SYNC_RESUMES":
+      await chrome.storage.local.set({ resumeFiles: Array.isArray(msg.files) ? msg.files : [] })
+      return { ok: true }
+
+    case "GET_RESUMES": {
+      const { resumeFiles } = await chrome.storage.local.get("resumeFiles")
+      return { files: resumeFiles || [] }
+    }
 
     case "GET_STATUS":
       return { allSites: await hasAllSites() }
@@ -257,6 +267,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     .then(sendResponse)
     .catch((e) => sendResponse({ ok: false, error: e.message }))
   return true
+})
+
+// After an install, update or reload, Chrome disconnects the scripts in tabs that were already open,
+// so an open GhostBuster or LinkedIn tab would stop working until refreshed. Reconnect them.
+chrome.runtime.onInstalled.addListener(async () => {
+  const targets = [
+    { url: ["http://localhost/*", "http://127.0.0.1/*", "https://*.onrender.com/*"], file: "app-bridge.js" },
+    { url: ["https://www.linkedin.com/*"], file: "linkedin.js" },
+    { url: ["https://mail.google.com/*"], files: ["resume-picker.js", "gmail.js"] },
+  ]
+  for (const { url, file, files } of targets) {
+    for (const tab of await chrome.tabs.query({ url }).catch(() => [])) {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: files || [file] }).catch(() => {})
+    }
+  }
 })
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {

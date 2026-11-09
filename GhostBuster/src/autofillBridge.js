@@ -99,12 +99,17 @@ export function initAutofillBridge() {
     if (m.type === "READY") {
       emit({ type: "ready", allSites: Boolean(m.allSites) })
       syncProfileToExtension()
+      syncResumesToExtension()
     }
     else if (m.type === "FILL_STARTED") emit({ type: "started", ...m })
     else if (m.type === "FILL_REPORT") saveReport(m.report)
     else if (m.type === "SAVE_CONTACT") saveContact(m.contact)
   })
   post({ type: "PING" })
+  // Coming back from LinkedIn or an application tab: collect anything the extension is holding.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") post({ type: "PING" })
+  })
 }
 
 /** Ask the extension to resend fill results it's still holding (e.g. after signing in). */
@@ -137,6 +142,17 @@ export async function syncProfileToExtension() {
   try {
     const { autofill } = await api.getAutofillProfile()
     post({ type: "SYNC_PROFILE", profile: autofill })
+  } catch {
+    /* not signed in yet; synced again after sign-in */
+  }
+}
+
+/** Give the extension your résumé files so it can offer them on applications and in Gmail. */
+export async function syncResumesToExtension() {
+  if (!extensionInstalled()) return
+  try {
+    const { files } = await api.getResumeFiles()
+    post({ type: "SYNC_RESUMES", files: files || [] })
   } catch {
     /* not signed in yet; synced again after sign-in */
   }

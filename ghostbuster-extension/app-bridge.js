@@ -9,8 +9,11 @@
   const VERSION = chrome.runtime.getManifest().version
   const origin = window.location.origin
   const post = (data) => window.postMessage({ source: "gb-extension", ...data }, origin)
+  // Once the extension reloads, this copy is cut off (a fresh copy is injected); stop answering the page.
+  const alive = () => Boolean(chrome.runtime?.id)
 
   function announce() {
+    if (!alive()) return
     chrome.runtime.sendMessage({ type: "GET_STATUS" }, (status) => {
       post({ type: "READY", version: VERSION, allSites: Boolean(status?.allSites) })
     })
@@ -26,7 +29,7 @@
   window.addEventListener("message", (e) => {
     if (e.source !== window || e.origin !== origin) return
     const m = e.data
-    if (!m || m.source !== "gb-app") return
+    if (!m || m.source !== "gb-app" || !alive()) return
 
     if (m.type === "PING") {
       announce()
@@ -39,6 +42,8 @@
           error: resp?.error || (chrome.runtime.lastError ? "Extension unavailable — reload the page." : ""),
         })
       })
+    } else if (m.type === "SYNC_RESUMES") {
+      chrome.runtime.sendMessage({ type: "SYNC_RESUMES", files: m.files })
     } else if (m.type === "SYNC_PROFILE") {
       chrome.runtime.sendMessage({ type: "SYNC_PROFILE", profile: m.profile })
     } else if (m.type === "REQUEST_ALL_SITES") {

@@ -354,6 +354,38 @@
     return true
   }
 
+  // Résumés from GhostBuster buckets: one is attached right away; with several, the user picks.
+  const offeredPicker = new WeakSet()
+  async function offerBucketResumes(el) {
+    if (offeredPicker.has(el)) return
+    offeredPicker.add(el)
+    const resumes = await window.__gbResumePicker.getResumes()
+    if (!resumes.length) return false
+    const put = (r) => {
+      const dt = new DataTransfer()
+      dt.items.add(window.__gbResumePicker.toFile(r))
+      el.files = dt.files
+      el.dispatchEvent(new Event("input", { bubbles: true }))
+      el.dispatchEvent(new Event("change", { bubbles: true }))
+      state.filledCount++
+      state.review.delete(CHOOSE_RESUME)
+      render()
+      report()
+    }
+    if (resumes.length === 1) {
+      put(resumes[0])
+      return true
+    }
+    state.review.set(CHOOSE_RESUME, el)
+    render()
+    // File inputs are usually hidden behind an "Attach" button; anchor to what the user sees.
+    let anchor = el
+    while (anchor && anchor !== document.body && !isVisible(anchor)) anchor = anchor.parentElement
+    window.__gbResumePicker.show({ anchor, resumes, title: "Which résumé for this application?", onPick: put })
+    return true
+  }
+  const CHOOSE_RESUME = "Choose which résumé to attach"
+
   function isResumeInput(el) {
     const text = `${labelInfo(el).text.toLowerCase()} ${hintText(el)}`
     if (/cover letter/.test(text) && !/resume|résumé|\bcv\b/.test(text)) return false
@@ -439,6 +471,14 @@
 
     if (type === "file") {
       if (!isResumeInput(el)) return
+      if (!el.files?.length && window.__gbResumePicker && !offeredPicker.has(el)) {
+        state.touched.add(el)
+        offerBucketResumes(el).then((offered) => {
+          // No bucket files: fall back to the résumé saved in the extension's options.
+          if (offered === false && attachResume(el)) state.filledCount++
+        })
+        return
+      }
       if (attachResume(el)) {
         state.touched.add(el)
         state.filledCount++

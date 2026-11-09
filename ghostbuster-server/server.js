@@ -7,6 +7,7 @@ const session = require("express-session")
 const MongoStore = require("connect-mongo").MongoStore || require("connect-mongo").default || require("connect-mongo")
 require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
+const { askGhostBuster } = require("./ask")
 
 const { connectDb } = require("./db")
 let USE_MONGO = Boolean(String(process.env.MONGODB_URI || "").trim())
@@ -430,6 +431,7 @@ async function start() {
     /^\/api\/resume\/suggestions$/,
     /^\/api\/resume\/ats-text$/,
     /^\/api\/ghostwriter\/[^/]+\/summarize$/,
+    /^\/api\/ask$/,
   ]
   app.use(async (req, res, next) => {
     if (!req.session?.demo || req.method !== "POST" || !AI_ROUTES.some((r) => r.test(req.path))) return next()
@@ -1142,6 +1144,12 @@ async function start() {
         fileName: req.file.originalname,
       })
       if (!out) return res.status(404).json({ error: "Bucket not found" })
+      // Keep the original so the extension can attach it to applications and emails.
+      await store.saveResumeFile(userId(req), id, {
+        fileName: req.file.originalname,
+        mimeType: req.file.mimetype || "application/octet-stream",
+        buffer: req.file.buffer,
+      })
       res.status(201).json(out)
     } catch (e) {
       const msg = typeof e.message === "string" ? e.message : "Failed to process file"
@@ -1151,12 +1159,33 @@ async function start() {
     }
   })
 
+  // Original résumé files for the extension to attach (data URLs; at most one per bucket).
+  app.get("/api/resume-files", async (req, res) => {
+    try {
+      const files = await store.getResumeFiles(userId(req))
+      res.json({
+        files: files.map((f) => ({
+          bucketId: f.bucketId,
+          bucketName: f.bucketName,
+          fileName: f.fileName,
+          mimeType: f.mimeType,
+          dataUrl: `data:${f.mimeType};base64,${f.data.toString("base64")}`,
+        })),
+      })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to load résumé files" })
+    }
+  })
+
   app.delete("/api/resume-buckets/:id/resume", async (req, res) => {
     const id = parseId(req.params.id)
     if (id == null) return res.status(400).json({ error: "Invalid id" })
     try {
       const out = await store.deleteBucketResume(userId(req), id)
       if (!out) return res.status(404).json({ error: "No résumé in this bucket" })
+      // The stored file no longer matches this bucket's résumé.
+      await store.deleteResumeFile(userId(req), id)
       res.json(out)
     } catch (e) {
       console.error(e)
@@ -1171,6 +1200,8 @@ async function start() {
     try {
       const out = await store.restoreResumeVersion(userId(req), bucketId, versionId)
       if (!out) return res.status(404).json({ error: "Archived version not found" })
+      // The stored file no longer matches this bucket's résumé.
+      await store.deleteResumeFile(userId(req), bucketId)
       res.json(out)
     } catch (e) {
       console.error(e)
@@ -1234,6 +1265,13 @@ async function start() {
         fileName: req.file.originalname,
         bucketId: Number.isFinite(bucketId) ? bucketId : undefined,
       })
+      if (out?.resume?.bucketId != null) {
+        await store.saveResumeFile(userId(req), out.resume.bucketId, {
+          fileName: req.file.originalname,
+          mimeType: req.file.mimetype || "application/octet-stream",
+          buffer: req.file.buffer,
+        })
+      }
       res.status(201).json(out)
     } catch (e) {
       const msg = typeof e.message === "string" ? e.message : "Failed to process file"
@@ -1249,6 +1287,7 @@ async function start() {
       const ok = await store.deleteFullResume(userId(req), {
         bucketId: Number.isFinite(bucketId) ? bucketId : undefined,
       })
+      if (ok && Number.isFinite(bucketId)) await store.deleteResumeFile(userId(req), bucketId)
       if (!ok) return res.status(404).json({ error: "No résumé on file" })
       res.status(204).end()
     } catch (e) {
@@ -1530,6 +1569,35 @@ async function start() {
         /credit balance|billing|Plans & Billing/i.test(msg) || /too low to access/i.test(msg)
       const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
       res.status(status).json({ error: msg || "Failed to summarize Ghostwriter note" })
+    }
+  })
+
+  // —— Ask GhostBuster (answers from the user's own records) ——
+  app.post("/api/ask", async (req, res) => {
+    if (!anthropic) {
+      return res.status(503).json({ error: "Ask GhostBuster requires ANTHROPIC_API_KEY on the server" })
+    }
+    const question = typeof req.body?.question === "string" ? req.body.question.trim() : ""
+    if (!question) return res.status(400).json({ error: "Ask a question first" })
+    if (question.length > 2000) return res.status(400).json({ error: "Keep questions under 2,000 characters" })
+    try {
+      const out = await askGhostBuster({
+        anthropic,
+        model: CLAUDE_MODEL,
+        store,
+        uid: userId(req),
+        question,
+        history: req.body?.history,
+        extractText: extractAssistantText,
+      })
+      res.json(out)
+    } catch (err) {
+      console.error(err)
+      const msg = formatAnthropicError(err)
+      const lowCredits =
+        /credit balance|billing|Plans & Billing/i.test(msg) || /too low to access/i.test(msg)
+      const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
+      res.status(status).json({ error: msg || "Ask GhostBuster failed. Try again." })
     }
   })
 

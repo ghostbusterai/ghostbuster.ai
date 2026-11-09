@@ -135,6 +135,7 @@ export const api = {
     const q = bucketId != null ? `?bucketId=${encodeURIComponent(bucketId)}` : ""
     return request(`/api/resume${q}`, { method: "DELETE" })
   },
+  getResumeFiles: () => request("/api/resume-files"),
   getResumeBucketSuggestions: () => request("/api/resume-buckets/suggestions"),
   getResumeBuckets: () => request("/api/resume-buckets"),
   createResumeBucket: (body) =>
@@ -176,6 +177,8 @@ export const api = {
   patchGhostwriter: (id, body) =>
     request(`/api/ghostwriter/${id}`, { method: "PATCH", body: JSON.stringify(body || {}) }),
   deleteGhostwriter: (id) => request(`/api/ghostwriter/${id}`, { method: "DELETE" }),
+  ask: (question, history) =>
+    request("/api/ask", { method: "POST", body: JSON.stringify({ question, history }) }),
   summarizeGhostwriter: (id, body) =>
     request(`/api/ghostwriter/${id}/summarize`, {
       method: "POST",

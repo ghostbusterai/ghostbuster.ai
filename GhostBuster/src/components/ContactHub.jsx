@@ -145,8 +145,16 @@ export default function ContactHub({
         /* shown on next load */
       }
     }
+    // Also refresh when returning to this tab, in case a save landed while it was hidden.
+    function onVisible() {
+      if (document.visibilityState === "visible") onAutofill({ detail: { type: "contact" } })
+    }
     window.addEventListener(AUTOFILL_EVENT, onAutofill)
-    return () => window.removeEventListener(AUTOFILL_EVENT, onAutofill)
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      window.removeEventListener(AUTOFILL_EVENT, onAutofill)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [])
 
   useEffect(() => {

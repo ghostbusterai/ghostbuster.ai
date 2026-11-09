@@ -9,6 +9,7 @@ import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
 import About from "./components/About"
 import Ghostwriter from "./components/Ghostwriter"
+import AskGhostBuster from "./components/AskGhostBuster"
 import Applications from "./components/Applications"
 import Login from "./components/Login"
 import { font } from "./theme"
@@ -34,6 +35,7 @@ const NAV = [
   { id: "applications", label: "Applications" },
   { id: "reminders", label: "Reminders" },
   { id: "ghostwriter", label: "Ghostwriter" },
+  { id: "ask", label: "Ask" },
   { id: "about", label: "About" },
 ]
 
@@ -414,6 +416,7 @@ export default function App() {
         {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
         {page === "applications" && <Applications />}
         {page === "ghostwriter" && <Ghostwriter />}
+        {page === "ask" && <AskGhostBuster setPage={setPage} />}
         {page === "about" && <About />}
       </main>
     </div>

@@ -623,10 +623,44 @@ exports.deleteResumeBucket = async (userId, id) => {
   const bid = Number(id)
   const result = await getDb().collection("resumeBuckets").deleteOne({ userId: uid(userId), id: bid })
   if (result.deletedCount === 0) return false
+  await getDb().collection("resumeFiles").deleteMany({ userId: uid(userId), bucketId: bid })
   await getDb()
     .collection("contacts")
     .updateMany({ userId: uid(userId), resumeBucketId: bid }, { $set: { resumeBucketId: null } })
   return true
+}
+
+// Original résumé files (PDF/DOCX), kept apart from buckets so bucket lists stay small. Only the
+// current file per bucket is kept; older versions keep their text only.
+
+exports.saveResumeFile = async (userId, bucketId, { fileName, mimeType, buffer }) => {
+  await getDb().collection("resumeFiles").updateOne(
+    { userId: uid(userId), bucketId: Number(bucketId) },
+    { $set: { fileName, mimeType, data: buffer, size: buffer.length, uploadedAt: new Date().toISOString() } },
+    { upsert: true }
+  )
+}
+
+exports.deleteResumeFile = async (userId, bucketId) => {
+  await getDb().collection("resumeFiles").deleteOne({ userId: uid(userId), bucketId: Number(bucketId) })
+}
+
+/** [{ bucketId, bucketName, fileName, mimeType, data: Buffer }] for buckets that have a file. */
+exports.getResumeFiles = async (userId) => {
+  const db = getDb()
+  const files = await db.collection("resumeFiles").find({ userId: uid(userId) }).toArray()
+  if (!files.length) return []
+  const buckets = await db.collection("resumeBuckets").find({ userId: uid(userId) }).toArray()
+  const names = new Map(buckets.map((b) => [b.id, b.name]))
+  return files
+    .filter((f) => names.has(f.bucketId))
+    .map((f) => ({
+      bucketId: f.bucketId,
+      bucketName: names.get(f.bucketId) || "Résumé",
+      fileName: f.fileName,
+      mimeType: f.mimeType,
+      data: Buffer.from(f.data.buffer || f.data),
+    }))
 }
 
 function ensureBucketVersions(bucket) {
@@ -920,6 +954,7 @@ exports.deleteAccount = async (userId) => {
     "profiles",
     "ghostIts",
     "applications",
+    "resumeFiles",
   ]
   for (const name of collections) {
     await db.collection(name).deleteMany({ userId: id })

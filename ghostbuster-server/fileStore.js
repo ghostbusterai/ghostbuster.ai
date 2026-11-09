@@ -862,3 +862,8 @@ exports.numId = (param) => {
   const id = Number(param)
   return Number.isFinite(id) ? id : null
 }
+
+// The single-user file store keeps résumé text only; original files need MongoDB.
+exports.saveResumeFile = async () => {}
+exports.deleteResumeFile = async () => {}
+exports.getResumeFiles = async () => []

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { api } from "../api"
+import { syncResumesToExtension } from "../autofillBridge"
 import { suggestContactsForUpdate } from "../updateRelevance"
 import {
   buildResumeUpdateComposePayload,
@@ -441,6 +442,7 @@ export default function Updates({ setPage, setComposePrefill }) {
     setActionError(null)
     try {
       await api.deleteResumeBucket(id)
+      syncResumesToExtension()
       setResumeBuckets((prev) => {
         const next = prev.filter((b) => b.id !== id)
         saveLocalResumeBuckets(next)
@@ -469,6 +471,7 @@ export default function Updates({ setPage, setComposePrefill }) {
     setUploadingBucketId(bucketId)
     try {
       const { bucket } = await api.uploadBucketResume(bucketId, file)
+      syncResumesToExtension()
       setResumeBuckets((prev) => {
         const next = prev.map((b) => (b.id === bucket.id ? bucket : b))
         saveLocalResumeBuckets(next)
@@ -538,6 +541,7 @@ export default function Updates({ setPage, setComposePrefill }) {
     setActionError(null)
     try {
       const { bucket } = await api.deleteBucketResume(bucketId)
+      syncResumesToExtension()
       updateBucketInState(bucket)
       if (suggestionsBucketId === bucketId) {
         setSuggestions([])
@@ -574,6 +578,7 @@ export default function Updates({ setPage, setComposePrefill }) {
     setActionError(null)
     try {
       const { bucket } = await api.restoreResumeVersion(bucketId, versionId)
+      syncResumesToExtension()
       updateBucketInState(bucket)
     } catch (err) {
       if (loadError) {

@@ -31,6 +31,17 @@ never clicks Next, Submit, or Easy Apply. The user reviews every application and
   - **Check before submitting**: dropdowns and other choices it couldn't answer from the profile.
 - **Reporting results.** **I reviewed it** and **I submitted it** report back to GhostBuster. If the GhostBuster tab was closed, results wait in the extension until GhostBuster is open again.
 
+## Attach your résumés
+
+Résumés you upload to buckets on GhostBuster's Résumé page are passed to the extension whenever GhostBuster is open.
+
+- **Applications:** on a form with a résumé upload, a pop-up lists your résumés; pick one and it's attached. With a
+  single résumé it's attached automatically.
+- **Gmail:** when the email you're writing mentions a résumé or CV, a pop-up offers your résumés and attaches the one
+  you pick. It appears once per email and never sends anything.
+
+The résumé saved in the extension's options is still used when you have no résumé files in GhostBuster.
+
 ## Save LinkedIn profiles
 
 On a LinkedIn profile page (`linkedin.com/in/…`) a **Save to GhostBuster** pill appears. Clicking it opens a card

@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "GhostBuster Autofill",
-  "version": "0.3.0",
-  "description": "Fills job applications from your GhostBuster profile and saves LinkedIn profiles as contacts. You always review and submit.",
+  "version": "0.4.0",
+  "description": "Fills job applications from your GhostBuster profile, attaches your saved r\u00e9sum\u00e9s, and saves LinkedIn profiles as contacts. You always review and submit.",
   "permissions": [
     "storage",
     "scripting",
     "webNavigation",
-    "activeTab"
+    "activeTab",
+    "unlimitedStorage"
   ],
   "optional_host_permissions": [
     "https://*/*",
@@ -43,6 +44,7 @@
         "https://jobs.ashbyhq.com/*"
       ],
       "js": [
+        "resume-picker.js",
         "filler.js"
       ],
       "run_at": "document_idle",
@@ -56,6 +58,23 @@
         "linkedin.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "resume-picker.js",
+        "gmail.js"
+      ],
+      "run_at": "document_idle"
     }
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*.onrender.com/*",
+    "https://www.linkedin.com/*",
+    "https://mail.google.com/*"
   ]
 }

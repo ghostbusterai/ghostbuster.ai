@@ -184,7 +184,10 @@
   </svg>`
 
   // ---- UI (shadow DOM so LinkedIn's styles don't leak in) ----
+  // A copy from before an extension reload may still be on the page; replace it.
+  for (const old of document.querySelectorAll("[data-gb-linkedin]")) old.remove()
   const host = document.createElement("div")
+  host.dataset.gbLinkedin = "1"
   host.style.cssText = "position:fixed;right:20px;bottom:20px;z-index:2147483646;"
   const shadow = host.attachShadow({ mode: "open" })
   shadow.innerHTML = `
@@ -384,6 +387,11 @@
   // LinkedIn navigates without reloading; show the pill only on profile pages.
   let lastPath = null
   function sync() {
+    if (!chrome.runtime?.id) {
+      // Extension reloaded: this copy is cut off and a fresh one takes over.
+      clearInterval(syncTimer)
+      return
+    }
     if (window.location.pathname === lastPath) return
     lastPath = window.location.pathname
     const onProfile = Boolean(profileUrl())
@@ -394,6 +402,6 @@
     closeCard()
     if (onProfile && autoSave) autoSaveProfile(lastPath)
   }
+  const syncTimer = setInterval(sync, 800)
   sync()
-  setInterval(sync, 800)
 })()
