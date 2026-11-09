@@ -4,6 +4,7 @@
  *
  * jobs (storage.session): { [tabId]: { application, profile, appTabId, hops, promptedOrigins } }
  * pendingReports (storage.local): fill results not yet saved by the app (survive the app tab closing)
+ * pendingContacts (storage.local): LinkedIn profiles the user saved, waiting for the app to add them
  *
  * Known ATS hosts get filler.js from the manifest. Every other site needs host permission, which the
  * user grants per site or for all sites (optional_host_permissions); until then nothing runs there.
@@ -32,6 +33,21 @@ async function updateJob(tabId, fn) {
 async function getPending() {
   const { pendingReports } = await chrome.storage.local.get("pendingReports")
   return pendingReports || []
+}
+
+async function getPendingContacts() {
+  const { pendingContacts } = await chrome.storage.local.get("pendingContacts")
+  return pendingContacts || []
+}
+
+/** Tabs running the GhostBuster app, recorded when their app-bridge says hello (APP_READY). */
+async function appTabs() {
+  const { appTabIds } = await chrome.storage.session.get("appTabIds")
+  return appTabIds || []
+}
+
+async function setAppTabs(ids) {
+  await chrome.storage.session.set({ appTabIds: [...new Set(ids)] })
 }
 
 function originPattern(url) {
@@ -189,7 +205,39 @@ async function handle(msg, sender) {
     }
 
     case "APP_READY":
-      return { pending: await getPending() }
+      if (sender.tab?.id != null) await setAppTabs([...(await appTabs()), sender.tab.id])
+      return { pending: await getPending(), contacts: await getPendingContacts() }
+
+    // From linkedin.js: the user saved the profile they're viewing.
+    case "SAVE_CONTACT": {
+      const c = msg.contact || {}
+      if (!String(c.name || "").trim()) return { ok: false, error: "Name is required." }
+      const contact = {
+        name: String(c.name).slice(0, 120),
+        company: String(c.company || "").slice(0, 120),
+        role: String(c.role || "").slice(0, 120),
+        notes: String(c.notes || "").slice(0, 500),
+        linkedin: String(c.linkedin || "").slice(0, 300),
+        contactId: `li-${Date.now()}`,
+      }
+      const pending = (await getPendingContacts()).filter((p) => !contact.linkedin || p.linkedin !== contact.linkedin)
+      pending.push(contact)
+      await chrome.storage.local.set({ pendingContacts: pending })
+      // Deliver to open GhostBuster tabs; ones that closed or navigated away are forgotten.
+      const live = []
+      for (const id of await appTabs()) {
+        const resp = await chrome.tabs.sendMessage(id, { type: "SAVE_CONTACT", contact }).catch(() => null)
+        if (resp?.app) live.push(id)
+      }
+      await setAppTabs(live)
+      return { ok: true, delivered: live.length > 0 }
+    }
+
+    case "CONTACT_ACK": {
+      const pending = (await getPendingContacts()).filter((p) => p.contactId !== msg.contactId)
+      await chrome.storage.local.set({ pendingContacts: pending })
+      return { ok: true }
+    }
 
     // From the popup: fill the tab the user is looking at (activeTab grants access for this click).
     case "FILL_ACTIVE_TAB": {
@@ -212,6 +260,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 })
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
+  await setAppTabs((await appTabs()).filter((id) => id !== tabId))
   const jobs = await getJobs()
   if (jobs[tabId]) {
     delete jobs[tabId]

@@ -115,6 +115,10 @@ function read() {
               typeof raw.googleCalendar.connectedAt === "string"
                 ? raw.googleCalendar.connectedAt
                 : "",
+            gmailScan:
+              raw.googleCalendar.gmailScan && typeof raw.googleCalendar.gmailScan === "object"
+                ? raw.googleCalendar.gmailScan
+                : null,
           }
         : null,
     scheduledEmails: Array.isArray(raw.scheduledEmails) ? raw.scheduledEmails : [],

@@ -25,6 +25,15 @@ function emptyReminderForm() {
   }
 }
 
+/** Fired by App when the background Gmail scan adds reminders, so this page can refresh. */
+export const GMAIL_FOLLOWUPS_EVENT = "gb-gmail-followups"
+
+function localDateString() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export default function Reminders({ googleNotice = null, onConsumeGoogleNotice = () => {} }) {
   const [reminders, setReminders] = useState([])
   const [contacts, setContacts] = useState([])
@@ -38,6 +47,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
   const [googleStatus, setGoogleStatus] = useState({ connected: false, configured: false })
   const [googleLoading, setGoogleLoading] = useState(true)
   const [showAllReminders, setShowAllReminders] = useState(false)
+  const [gmailScanning, setGmailScanning] = useState(false)
 
   useEffect(() => {
     if (!googleNotice) return
@@ -124,6 +134,62 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       } else {
         setActionError(e.message)
       }
+    }
+  }
+
+  useEffect(() => {
+    async function onFollowups() {
+      try {
+        const { reminders: list } = await api.getReminders()
+        setReminders(list)
+        localStorage.setItem("gb_reminders", JSON.stringify(list))
+        const status = await api.getGoogleCalendarStatus()
+        setGoogleStatus(status)
+      } catch {
+        /* shown on next load */
+      }
+    }
+    window.addEventListener(GMAIL_FOLLOWUPS_EVENT, onFollowups)
+    return () => window.removeEventListener(GMAIL_FOLLOWUPS_EVENT, onFollowups)
+  }, [])
+
+  function enableGmailFollowups() {
+    window.location.href = `${BASE}/api/google/auth?returnTo=gmailscan`
+  }
+
+  async function scanGmailNow() {
+    setActionError(null)
+    setGmailScanning(true)
+    try {
+      const r = await api.scanGmailFollowups({ localDate: localDateString() })
+      const { reminders: list } = await api.getReminders()
+      setReminders(list)
+      localStorage.setItem("gb_reminders", JSON.stringify(list))
+      setGoogleStatus((g) => ({ ...g, gmailScan: { enabled: true, lastScanAt: r.lastScanAt || g.gmailScan?.lastScanAt } }))
+      setNotice({
+        type: "success",
+        text: r.running
+          ? "A scan is already running. Check back in a moment."
+          : r.created
+            ? `Added ${r.created} follow-up reminder${r.created === 1 ? "" : "s"} from Gmail.`
+            : "No recruiter emails need a follow-up right now.",
+      })
+    } catch (e) {
+      setActionError(e.message)
+      if (e.status === 403) setGoogleStatus((g) => ({ ...g, gmailScan: { enabled: false, lastScanAt: "" } }))
+    } finally {
+      setGmailScanning(false)
+    }
+  }
+
+  async function disableGmailFollowups() {
+    setActionError(null)
+    try {
+      await api.disableGmailFollowups()
+      setGoogleStatus((g) => ({ ...g, gmailScan: { enabled: false, lastScanAt: "" } }))
+      setNotice({ type: "success", text: "Gmail follow-up reminders turned off." })
+    } catch (e) {
+      setActionError(e.message)
     }
   }
 
@@ -315,6 +381,94 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
             </button>
           )}
           </ContentCard>
+
+          <ContentCard
+            style={{
+              background: "var(--gb-bg-elevated)",
+              border: `1px solid var(--gb-border-subtle)`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              flexWrap: "wrap",
+            }}
+            padding="16px 20px"
+          >
+            <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+              <CardTitle
+                helper={
+                  googleStatus.gmailScan?.enabled
+                    ? `Checks your inbox twice a day for recruiter emails waiting on you (reply after 2 days) or on them (follow up after 5 days).${
+                        googleStatus.gmailScan.lastScanAt
+                          ? ` Last checked ${new Date(googleStatus.gmailScan.lastScanAt).toLocaleString()}.`
+                          : ""
+                      }`
+                    : "Let GhostBuster read your recent email headers to remind you when a recruiter is waiting on a reply or it's time to follow up."
+                }
+                style={{ marginBottom: 0 }}
+              >
+                Recruiter follow-ups from Gmail {googleStatus.gmailScan?.enabled ? "on" : "off"}
+              </CardTitle>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {googleStatus.gmailScan?.enabled ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={scanGmailNow}
+                    disabled={gmailScanning}
+                    style={{
+                      background: "var(--gb-accent-soft)",
+                      border: "1px solid var(--gb-border-subtle)",
+                      color: "var(--gb-accent)",
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: gmailScanning ? "default" : "pointer",
+                      boxShadow: "none",
+                    }}
+                  >
+                    {gmailScanning ? "Checking…" : "Check now"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={disableGmailFollowups}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid var(--gb-border)",
+                      color: "var(--gb-text-subtle)",
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      boxShadow: "none",
+                    }}
+                  >
+                    Turn off
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={enableGmailFollowups}
+                  style={{
+                    background: "var(--gb-accent-soft)",
+                    border: "1px solid var(--gb-border-subtle)",
+                    color: "var(--gb-accent)",
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "none",
+                  }}
+                >
+                  Turn on
+                </button>
+              )}
+            </div>
+          </ContentCard>
         </>
       )}
 
@@ -483,6 +637,19 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                   </div>
                   <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 2, fontFamily: font.body }}>
                     {r.reason || "General check-in"}
+                    {r.gmailThreadId && (
+                      <>
+                        {" · "}
+                        <a
+                          href={`https://mail.google.com/mail/u/0/#all/${encodeURIComponent(r.gmailThreadId)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "var(--gb-accent)" }}
+                        >
+                          Open email
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

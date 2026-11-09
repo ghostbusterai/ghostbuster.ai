@@ -8,6 +8,7 @@ import MessageComposer from "./MessageComposer"
 import FirstContactCelebration from "./FirstContactCelebration"
 import ViewMoreButton from "./ViewMoreButton"
 import { previewHiddenCount, previewSlice } from "../listPreview"
+import { AUTOFILL_EVENT } from "../autofillBridge"
 
 const EMPTY = {
   name: "", email: "", phone: "", company: "", role: "", notes: "", lastContacted: "",
@@ -132,6 +133,21 @@ export default function ContactHub({
   }
 
   const activePrefill = composePrefill || localComposePrefill
+
+  // LinkedIn profiles saved from the extension show up without a refresh.
+  useEffect(() => {
+    async function onAutofill(e) {
+      if (e.detail?.type !== "contact" || e.detail.duplicate) return
+      try {
+        const { contacts: list } = await api.getContacts()
+        setContacts(list)
+      } catch {
+        /* shown on next load */
+      }
+    }
+    window.addEventListener(AUTOFILL_EVENT, onAutofill)
+    return () => window.removeEventListener(AUTOFILL_EVENT, onAutofill)
+  }, [])
 
   useEffect(() => {
     let cancelled = false

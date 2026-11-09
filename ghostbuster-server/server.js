@@ -20,6 +20,7 @@ const { buildAtsPrompt, parseAtsResponse } = require("./atsResumeText")
 const { suggestContactsForUpdateSmart } = require("./contactRelevance")
 const googleCal = require("./googleCalendar")
 const gmail = require("./gmail")
+const gmailFollowups = require("./gmailFollowups")
 const { SUGGESTED_BUCKET_NAMES } = require("./resumeBucketMatch")
 const { buildGhostItSummaryPrompt, parseGhostItSummaryJson } = require("./ghostwriterSummary")
 const { searchJobs } = require("./jobSearch")
@@ -769,8 +770,10 @@ async function start() {
   app.get("/api/google/status", async (req, res) => {
     try {
       const status = await store.getGoogleCalendarStatus(userId(req))
+      const scan = status.connected ? await store.getGmailScan(userId(req)) : null
       res.json({
         ...status,
+        gmailScan: { enabled: Boolean(scan?.enabled), lastScanAt: scan?.lastScanAt || "" },
         configured: googleCal.isConfigured(),
         redirectUri: process.env.GOOGLE_REDIRECT_URI || null,
       })
@@ -785,7 +788,7 @@ async function start() {
       return res.status(503).json({ error: "Google is not configured on the server" })
     }
     try {
-      const returnTo = ["compose", "settings"].includes(req.query.returnTo)
+      const returnTo = ["compose", "settings", "gmailscan"].includes(req.query.returnTo)
         ? req.query.returnTo
         : "reminders"
       res.redirect(googleCal.getAuthUrl(returnTo))
@@ -811,6 +814,14 @@ async function start() {
     try {
       const tokens = await googleCal.exchangeCode(code)
       await store.saveGoogleCalendarTokens(req.session.userId, tokens)
+      if (req.query.state === "gmailscan") {
+        // The user can untick Gmail access on Google's consent screen; only turn scanning on if granted.
+        if (!String(tokens.scope || "").includes("gmail.readonly")) {
+          return fail("Gmail read access wasn't granted, so follow-up reminders stay off")
+        }
+        await store.setGmailScan(req.session.userId, { enabled: true, lastScanAt: "" })
+        return res.redirect(`${origin}/?google=connected&page=gmailscan`)
+      }
       res.redirect(`${origin}/?google=connected&page=${returnPage}`)
     } catch (e) {
       console.error(e)
@@ -827,6 +838,76 @@ async function start() {
       console.error(e)
       res.status(500).json({ error: "Failed to disconnect Google account" })
     }
+  })
+
+  // —— Gmail follow-up reminders ——
+  // Scans recent mail for recruiter threads waiting on a reply or a follow-up and adds reminders.
+  // auto: true is the background scan on app load; it runs at most every GMAIL_AUTO_SCAN_HOURS.
+  const GMAIL_AUTO_SCAN_HOURS = 12
+  const gmailScansRunning = new Set()
+
+  app.post("/api/gmail/scan-followups", async (req, res) => {
+    const id = userId(req)
+    const scan = await store.getGmailScan(id)
+    if (!scan?.enabled && req.body?.auto) return res.json({ skipped: true, created: 0 })
+    if (!scan?.enabled) return res.status(400).json({ error: "Turn on Gmail follow-up reminders first", needsPermission: true })
+    const refreshToken = await store.getGoogleRefreshToken(id)
+    if (!refreshToken) return res.status(400).json({ error: "Connect Google first", needsPermission: true })
+
+    const auto = Boolean(req.body?.auto)
+    const last = Date.parse(scan.lastScanAt || "") || 0
+    if (auto && Date.now() - last < GMAIL_AUTO_SCAN_HOURS * 3600 * 1000) {
+      return res.json({ skipped: true, created: 0, lastScanAt: scan.lastScanAt })
+    }
+
+    if (gmailScansRunning.has(id)) return res.json({ skipped: true, created: 0, running: true })
+    gmailScansRunning.add(id)
+
+    const localDate = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.localDate || "")
+      ? req.body.localDate
+      : new Date().toISOString().slice(0, 10)
+
+    try {
+      const { contacts } = await store.getContacts(id)
+      const found = await gmailFollowups.findFollowUps(refreshToken, { contacts })
+      const existing = await store.gmailReminderKeys(id)
+      const seenKeys = new Set(existing.map((r) => r.gmailKey))
+      // One open reminder per thread; new activity after it's done can create a fresh one.
+      const openThreads = new Set(existing.filter((r) => !r.done).map((r) => r.gmailThreadId))
+
+      let created = 0
+      for (const f of found) {
+        if (seenKeys.has(f.key) || openThreads.has(f.threadId)) continue
+        await store.createReminder(id, {
+          contactName: f.name,
+          reason: f.kind === "reply" ? `Reply to "${f.subject}"` : `Follow up on "${f.subject}"`,
+          dueDate: localDate,
+          done: false,
+          customReason: "",
+          gmailThreadId: f.threadId,
+          gmailKey: f.key,
+        })
+        openThreads.add(f.threadId)
+        created++
+      }
+      const lastScanAt = new Date().toISOString()
+      await store.setGmailScan(id, { lastScanAt })
+      res.json({ created, found: found.length, lastScanAt })
+    } catch (e) {
+      if (gmailFollowups.isPermissionError(e) || /invalid_grant/i.test(e?.message || "")) {
+        await store.setGmailScan(id, { enabled: false })
+        return res.status(403).json({ error: "GhostBuster no longer has Gmail read access. Turn follow-up reminders on again.", needsPermission: true })
+      }
+      console.error(e)
+      res.status(500).json({ error: "Couldn't scan Gmail" })
+    } finally {
+      gmailScansRunning.delete(id)
+    }
+  })
+
+  app.delete("/api/gmail/scan-followups", async (req, res) => {
+    await store.setGmailScan(userId(req), { enabled: false })
+    res.status(204).end()
   })
 
   // —— Gmail ——

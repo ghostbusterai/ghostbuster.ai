@@ -54,6 +54,40 @@ async function saveReport(report) {
   }
 }
 
+function linkedinHandle(url) {
+  const m = String(url || "").match(/linkedin\.com\/in\/([^/?#]+)/i)
+  return m ? decodeURIComponent(m[1]).toLowerCase() : ""
+}
+
+const handledContacts = new Set()
+
+/** A LinkedIn profile saved from the extension. Skips people already in contacts. */
+async function saveContact(contact) {
+  if (!contact?.contactId || handledContacts.has(contact.contactId)) return
+  handledContacts.add(contact.contactId)
+  try {
+    const handle = linkedinHandle(contact.linkedin)
+    const { contacts } = await api.getContacts()
+    const exists = (contacts || []).some((c) =>
+      handle ? linkedinHandle(c.linkedin) === handle : c.name?.trim().toLowerCase() === contact.name.trim().toLowerCase()
+    )
+    if (!exists) {
+      await api.createContact({
+        name: contact.name,
+        company: contact.company,
+        role: contact.role,
+        notes: contact.notes,
+        linkedin: contact.linkedin,
+      })
+    }
+    post({ type: "CONTACT_ACK", contactId: contact.contactId })
+    emit({ type: "contact", contact, duplicate: exists })
+  } catch {
+    // Not signed in or API down: the extension keeps it and resends next time.
+    handledContacts.delete(contact.contactId)
+  }
+}
+
 /** Call once at startup, before the app renders, so pending fill results aren't missed. */
 export function initAutofillBridge() {
   if (initialized) return
@@ -68,6 +102,7 @@ export function initAutofillBridge() {
     }
     else if (m.type === "FILL_STARTED") emit({ type: "started", ...m })
     else if (m.type === "FILL_REPORT") saveReport(m.report)
+    else if (m.type === "SAVE_CONTACT") saveContact(m.contact)
   })
   post({ type: "PING" })
 }

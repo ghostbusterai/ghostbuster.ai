@@ -164,6 +164,9 @@ export const api = {
   disconnectGoogleCalendar: () => request("/api/google/disconnect", { method: "DELETE" }),
   saveGmailDraft: (body) => request("/api/gmail/draft", { method: "POST", body: JSON.stringify(body) }),
   scheduleGmailSend: (body) => request("/api/gmail/schedule", { method: "POST", body: JSON.stringify(body) }),
+  scanGmailFollowups: (body) =>
+    request("/api/gmail/scan-followups", { method: "POST", body: JSON.stringify(body || {}) }),
+  disableGmailFollowups: () => request("/api/gmail/scan-followups", { method: "DELETE" }),
   syncReminderToCalendar: (id) =>
     request(`/api/reminders/${id}/sync-calendar`, { method: "POST", body: JSON.stringify({}) }),
   getGhostwriters: () => request("/api/ghostwriter"),

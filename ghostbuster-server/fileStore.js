@@ -121,7 +121,7 @@ exports.getReminders = async () => {
 }
 
 exports.createReminder = async (_userId, body) => {
-  const { contactName, reason, dueDate, done, customReason } = body || {}
+  const { contactName, reason, dueDate, done, customReason, gmailThreadId, gmailKey } = body || {}
   const data = read()
   const reminder = {
     id: Date.now(),
@@ -131,6 +131,7 @@ exports.createReminder = async (_userId, body) => {
     done: Boolean(done),
     customReason: customReason ?? "",
     googleEventId: "",
+    ...(gmailKey ? { gmailThreadId: String(gmailThreadId || ""), gmailKey: String(gmailKey) } : {}),
   }
   data.reminders.push(reminder)
   write(data)
@@ -267,6 +268,18 @@ exports.clearGoogleCalendar = async () => {
   write(data)
   return true
 }
+
+exports.getGmailScan = async () => read().googleCalendar?.gmailScan || null
+
+exports.setGmailScan = async (_userId, patch) => {
+  const data = read()
+  if (!data.googleCalendar) return null
+  data.googleCalendar.gmailScan = patch ? { ...(data.googleCalendar.gmailScan || {}), ...patch } : null
+  write(data)
+  return data.googleCalendar.gmailScan
+}
+
+exports.gmailReminderKeys = async () => read().reminders.filter((r) => r.gmailKey)
 
 exports.getGoogleRefreshToken = async () => {
   const data = read()

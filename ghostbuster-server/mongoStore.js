@@ -223,7 +223,7 @@ exports.getReminders = async (userId) => {
 }
 
 exports.createReminder = async (userId, body) => {
-  const { contactName, reason, dueDate, done, customReason } = body || {}
+  const { contactName, reason, dueDate, done, customReason, gmailThreadId, gmailKey } = body || {}
   const reminder = {
     userId: uid(userId),
     id: nextNumericId(),
@@ -233,6 +233,7 @@ exports.createReminder = async (userId, body) => {
     done: Boolean(done),
     customReason: customReason ?? "",
     googleEventId: "",
+    ...(gmailKey ? { gmailThreadId: String(gmailThreadId || ""), gmailKey: String(gmailKey) } : {}),
   }
   await getDb().collection("reminders").insertOne(reminder)
   return { reminder: stripMongo(reminder) }
@@ -367,9 +368,32 @@ exports.clearGoogleCalendar = async (userId) => {
   if (!user?.googleRefreshToken) return false
   await getDb().collection("users").updateOne(
     { _id: user._id },
-    { $set: { googleRefreshToken: null, googleConnectedAt: "" } }
+    { $set: { googleRefreshToken: null, googleConnectedAt: "", gmailScan: null } }
   )
   return true
+}
+
+/** Gmail follow-up scanning: { enabled, lastScanAt } or null. */
+exports.getGmailScan = async (userId) => {
+  const user = await exports.findUserById(userId)
+  return user?.gmailScan || null
+}
+
+exports.setGmailScan = async (userId, patch) => {
+  const user = await exports.findUserById(userId)
+  if (!user) return null
+  const next = patch ? { ...(user.gmailScan || {}), ...patch } : null
+  await getDb().collection("users").updateOne({ _id: user._id }, { $set: { gmailScan: next } })
+  return next
+}
+
+/** Gmail threads that already produced a reminder (thread:lastMessage keys). */
+exports.gmailReminderKeys = async (userId) => {
+  const rows = await getDb()
+    .collection("reminders")
+    .find({ userId: uid(userId), gmailKey: { $exists: true } }, { projection: { gmailKey: 1, gmailThreadId: 1, done: 1 } })
+    .toArray()
+  return rows
 }
 
 exports.getGoogleRefreshToken = async (userId) => {

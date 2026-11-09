@@ -178,6 +178,128 @@
     return o === v || o.includes(v) || (o.length > 3 && v.includes(o))
   }
 
+  // —— Countries and states: "USA", "US" and "United States" are the same answer ——
+
+  const COUNTRY_ALIASES = {
+    US: ["USA", "U.S.", "U.S.A.", "United States of America", "America"],
+    GB: ["UK", "U.K.", "United Kingdom", "Great Britain", "Britain", "England", "Scotland", "Wales", "Northern Ireland"],
+    AE: ["UAE", "United Arab Emirates"],
+    KR: ["South Korea", "Korea", "Republic of Korea", "Korea, Republic of"],
+    CN: ["PRC", "People's Republic of China"],
+    TW: ["Taiwan, Province of China"],
+    RU: ["Russian Federation"],
+    VN: ["Viet Nam"],
+    IR: ["Iran, Islamic Republic of"],
+    CZ: ["Czech Republic"],
+    TR: ["Turkey", "Türkiye"],
+    NL: ["Holland", "The Netherlands"],
+    IN: ["Bharat"],
+  }
+  const US_STATES = {
+    AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut",
+    DE: "Delaware", DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois",
+    IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+    MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana",
+    NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York",
+    NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania",
+    PR: "Puerto Rico", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
+    UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+    AB: "Alberta", BC: "British Columbia", MB: "Manitoba", NB: "New Brunswick", NL: "Newfoundland and Labrador",
+    NS: "Nova Scotia", ON: "Ontario", PE: "Prince Edward Island", QC: "Quebec", SK: "Saskatchewan",
+  }
+
+  let countryTable = null
+  function countries() {
+    if (countryTable) return countryTable
+    countryTable = []
+    let names = null
+    try {
+      names = new Intl.DisplayNames(["en"], { type: "region" })
+    } catch {
+      /* very old browser: aliases only */
+    }
+    const A = 65
+    for (let i = 0; i < 26; i++) {
+      for (let j = 0; j < 26; j++) {
+        const code = String.fromCharCode(A + i, A + j)
+        let name = ""
+        try {
+          name = names?.of(code) || ""
+        } catch {
+          name = ""
+        }
+        if ((!name || name === code) && !COUNTRY_ALIASES[code]) continue
+        countryTable.push({ code, names: [name, ...(COUNTRY_ALIASES[code] || [])].filter(Boolean) })
+      }
+    }
+    return countryTable
+  }
+
+  function findCountry(value) {
+    const v = norm(value)
+    if (!v) return null
+    return countries().find((c) => norm(c.code) === v || c.names.some((n) => norm(n) === v)) || null
+  }
+
+  function findState(value) {
+    const v = norm(value)
+    if (!v) return null
+    const hit = Object.entries(US_STATES).find(([abbr, name]) => norm(abbr) === v || norm(name) === v)
+    return hit ? { code: hit[0], names: [hit[1]] } : null
+  }
+
+  /** Every way an answer might be written in a dropdown, e.g. country "USA" → United States, US, USA… */
+  function answerTerms(key, value) {
+    const region = key === "country" ? findCountry(value) : key === "state" ? findState(value) : null
+    if (!region) return { names: [value], codes: [] }
+    return { names: region.names, codes: [region.code] }
+  }
+
+  /** How well a dropdown option fits the answer: 0 = no match. */
+  function optionScore(optionText, key, value) {
+    // "United States +1" (phone country pickers) → "united states"
+    const o = norm(String(optionText || "").replace(/\(?\+\d[\d\s-]*\)?\s*$/, ""))
+    if (!o) return 0
+    if (key === "location") {
+      const p = state.profile || {}
+      const city = norm(p.city)
+      if (!city || !o.startsWith(city)) return 0
+      const st = findState(p.state)
+      let score = 50
+      if (st && (o.includes(norm(st.names[0])) || o.split(" ").includes(norm(st.code)))) score += 30
+      if (p.country && answerTerms("country", p.country).names.some((n) => o.includes(norm(n)))) score += 10
+      return score - o.length / 100
+    }
+    const { names, codes } = answerTerms(key, value)
+    let best = 0
+    for (const n of names.map(norm).filter(Boolean)) {
+      if (o === n) best = Math.max(best, 100)
+      else if (o.startsWith(`${n} `)) best = Math.max(best, 70)
+      else if (n.length > 3 && o.includes(n)) best = Math.max(best, 40)
+    }
+    for (const c of codes.map(norm)) {
+      if (o === c) best = Math.max(best, 90)
+      // "US - United States", "California (CA)"
+      else if (o.startsWith(`${c} `) || o.endsWith(` ${c}`)) best = Math.max(best, 60)
+    }
+    if (!best && !codes.length && optionMatches(optionText, value)) best = 30
+    // Prefer the shortest fit: "United States" over "United States Minor Outlying Islands".
+    return best ? best - o.length / 100 : 0
+  }
+
+  function bestOption(options, key, value, textOf = (o) => o.textContent) {
+    let best = null
+    let bestScore = 0
+    for (const o of options) {
+      const score = Math.max(optionScore(textOf(o), key, value), o.value ? optionScore(o.value, key, value) : 0)
+      if (score > bestScore) {
+        best = o
+        bestScore = score
+      }
+    }
+    return best
+  }
+
   // React / Workday ignore plain `.value =`; go through the native setter and fire the events they listen for.
   function setNativeValue(el, value) {
     const proto =
@@ -193,9 +315,9 @@
     el.dispatchEvent(new Event("blur"))
   }
 
-  function fillElement(el, value) {
+  function fillElement(el, value, key) {
     if (el instanceof HTMLSelectElement) {
-      const opt = [...el.options].find((o) => !isPlaceholderOption(o) && optionMatches(o.textContent, value))
+      const opt = bestOption([...el.options].filter((o) => !isPlaceholderOption(o)), key, value)
       if (!opt) return false
       setNativeValue(el, opt.value)
       return true
@@ -305,6 +427,7 @@
     if (el.disabled || el.readOnly) return
     if (state.touched.has(el)) {
       // Autocompletes (e.g. Lever's location) clear typed text until an option is picked.
+      if (el.getAttribute("role") === "combobox") return // its queued fill reports the outcome
       if (el.type !== "file" && isVisible(el) && !hasValue(el)) {
         const info = labelInfo(el)
         if (info.required && info.text) state.review.set(info.text, el)
@@ -332,10 +455,18 @@
     const label = info.text || el.placeholder || "Untitled question"
 
     if (el.getAttribute("role") === "combobox") {
-      const control = el.closest("[class*='control' i]")
-      const chosen = control?.querySelector("[class*='single-value' i], [class*='multi-value' i]")
-      if (info.required && !chosen && !el.value) state.review.set(label, el)
-      else state.review.delete(label)
+      if (comboChosen(el)) {
+        state.review.delete(label)
+        return
+      }
+      const key = ruleFor(info.text, hintText(el))
+      const value = key ? valueFor(key, state.profile) : ""
+      if (value) {
+        state.touched.add(el)
+        queueCombobox(el, label, key, value, info.required)
+      } else if (info.required) {
+        state.review.set(label, el)
+      }
       return
     }
 
@@ -347,7 +478,7 @@
 
     const key = el instanceof HTMLTextAreaElement ? null : ruleFor(info.text, hintText(el))
     const value = key ? valueFor(key, state.profile) : ""
-    if (value && fillElement(el, value)) {
+    if (value && fillElement(el, value, key)) {
       state.touched.add(el)
       state.filledCount++
       state.questions.delete(label)
@@ -362,6 +493,118 @@
     } else if (el instanceof HTMLTextAreaElement && QUESTION_RE.test(label.toLowerCase())) {
       state.review.set(`Optional: ${label}`, el)
     }
+  }
+
+  // —— Searchable dropdowns (react-select on Greenhouse, Lever, Ashby…) ——
+  // Type the answer, wait for the options (some load from a server), click the best one.
+  // One at a time, since an open menu would swallow another dropdown's clicks.
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+  const comboQueue = []
+  let comboBusy = false
+
+  function comboChosen(el) {
+    const control = el.closest("[class*='control' i]") || el.parentElement
+    return Boolean(control?.querySelector("[class*='single-value' i], [class*='multi-value' i]"))
+  }
+
+  function comboOptions(el) {
+    const id = el.getAttribute("aria-controls") || el.getAttribute("aria-owns")
+    const list = id ? document.getElementById(id) : null
+    const scope = list || el.closest("[class*='container' i]") || document
+    return [...scope.querySelectorAll('[role="option"]')].filter(
+      (o) => isVisible(o) && o.getAttribute("aria-disabled") !== "true"
+    )
+  }
+
+  // Unlike setNativeValue, no blur: that would close the menu we're about to pick from.
+  function typeInto(el, text) {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, text)
+    el.dispatchEvent(new Event("input", { bubbles: true }))
+  }
+
+  function comboSearchText(key, value) {
+    if (key === "location") return state.profile?.city || value
+    if (key === "country") return findCountry(value)?.names[0] || value
+    if (key === "state") return findState(value)?.names[0] || value
+    return value
+  }
+
+  function comboOpen(el) {
+    return el.getAttribute("aria-expanded") === "true" || comboOptions(el).length > 0
+  }
+
+  // react-select only opens once it believes it has focus, and the browser skips focus events when the
+  // window isn't focused, so announce focus ourselves, then try the ways react-select opens its menu.
+  async function openCombobox(el) {
+    el.focus()
+    el.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
+    const control = el.closest("[class*='control' i]") || el.parentElement
+    const attempts = [
+      () => el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0, view: window })),
+      () => control.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0, view: window })),
+      () => control.dispatchEvent(new TouchEvent("touchend", { bubbles: true, cancelable: true })),
+      () => el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", keyCode: 40, bubbles: true, cancelable: true })),
+    ]
+    for (const attempt of attempts) {
+      if (comboOpen(el)) return true
+      try {
+        attempt()
+      } catch {
+        /* TouchEvent is missing on some desktop builds */
+      }
+      await sleep(150)
+    }
+    return comboOpen(el)
+  }
+
+  async function fillCombobox(el, key, value) {
+    await openCombobox(el)
+    // First see if the full list already has it (short Yes/No lists), then search.
+    for (const text of ["", comboSearchText(key, value)]) {
+      if (text) typeInto(el, text)
+      for (let i = 0; i < (text ? 20 : 3); i++) {
+        await sleep(150)
+        const opt = bestOption(comboOptions(el), key, value)
+        if (opt) {
+          opt.scrollIntoView?.({ block: "nearest" })
+          opt.click()
+          await sleep(100)
+          if (comboChosen(el) || !comboOptions(el).length) return true
+        }
+      }
+    }
+    typeInto(el, "")
+    el.blur()
+    return false
+  }
+
+  function queueCombobox(el, label, key, value, required) {
+    comboQueue.push({ el, label, key, value, required })
+    if (!comboBusy) runComboQueue()
+  }
+
+  async function runComboQueue() {
+    comboBusy = true
+    while (comboQueue.length) {
+      const { el, label, key, value, required } = comboQueue.shift()
+      if (!el.isConnected) continue
+      let ok = false
+      try {
+        ok = comboChosen(el) || (await fillCombobox(el, key, value))
+      } catch (e) {
+        console.warn("GhostBuster Autofill skipped a dropdown:", e)
+      }
+      if (ok) {
+        state.filledCount++
+        state.review.delete(label)
+      } else if (required) {
+        state.review.set(label, el)
+      }
+      render()
+      report()
+    }
+    comboBusy = false
   }
 
   function fillRadios() {

@@ -31,6 +31,20 @@ never clicks Next, Submit, or Easy Apply. The user reviews every application and
   - **Check before submitting**: dropdowns and other choices it couldn't answer from the profile.
 - **Reporting results.** **I reviewed it** and **I submitted it** report back to GhostBuster. If the GhostBuster tab was closed, results wait in the extension until GhostBuster is open again.
 
+## Save LinkedIn profiles
+
+On a LinkedIn profile page (`linkedin.com/in/…`) a **Save to GhostBuster** pill appears. Clicking it opens a card
+prefilled with the person's name, company, role and location; edit anything, then **Save** to add them to Contacts
+with their LinkedIn URL. If GhostBuster isn't open, the contact is kept and added the next time it is. People already
+in Contacts (same LinkedIn URL) aren't added twice.
+
+**Auto-save:** tick **Auto-save every profile I open** on that card, and each profile you open is added
+automatically after 4 seconds, with a **Cancel** button in the meantime. Your own profile and people you've
+already saved are skipped. Untick it on the card to turn it off.
+
+It only reads profiles you open yourself, when you click Save or with auto-save on. It never crawls, visits profiles in the background,
+or bulk-exports connections, which LinkedIn's terms prohibit.
+
 ## App URLs
 
 `manifest.json` matches `localhost`, `127.0.0.1`, and `*.onrender.com` for the GhostBuster app. If the app moves to a custom domain, add it to the first `content_scripts` entry.

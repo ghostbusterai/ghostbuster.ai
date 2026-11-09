@@ -7,7 +7,6 @@ const PRESETS = {
     aiSize: 10,
     aiPad: "2px 5px",
     gap: 6,
-    text: "Ghost Buster",
     fontFamily: font.display,
     fontWeight: 700,
     letterSpacing: "-0.3px",
@@ -59,7 +58,7 @@ export default function BrandName({ variant = "header", style, className }) {
         ...style,
       }}
     >
-      <span>{preset.text || "GhostBuster"}</span>
+      <span>GhostBuster</span>
       <span
         style={{
           fontFamily: font.mono,

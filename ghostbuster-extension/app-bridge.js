@@ -16,6 +16,7 @@
     })
     chrome.runtime.sendMessage({ type: "APP_READY" }, (resp) => {
       for (const report of resp?.pending || []) post({ type: "FILL_REPORT", report })
+      for (const contact of resp?.contacts || []) post({ type: "SAVE_CONTACT", contact })
     })
   }
 
@@ -44,10 +45,16 @@
       chrome.runtime.sendMessage({ type: "REQUEST_ALL_SITES" })
     } else if (m.type === "REPORT_ACK") {
       chrome.runtime.sendMessage({ type: "REPORT_ACK", reportId: m.reportId })
+    } else if (m.type === "CONTACT_ACK") {
+      chrome.runtime.sendMessage({ type: "CONTACT_ACK", contactId: m.contactId })
     }
   })
 
-  chrome.runtime.onMessage.addListener((msg) => {
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === "FILL_REPORT") post({ type: "FILL_REPORT", report: msg.report })
+    else if (msg?.type === "SAVE_CONTACT") {
+      post({ type: "SAVE_CONTACT", contact: msg.contact })
+      sendResponse({ app: true })
+    }
   })
 })()

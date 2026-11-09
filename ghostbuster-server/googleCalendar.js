@@ -6,6 +6,9 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
 ]
 
+// Read access is asked for separately, only when the user turns on Gmail follow-up reminders.
+const GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+
 function isConfigured() {
   return Boolean(
     process.env.GOOGLE_CLIENT_ID &&
@@ -26,12 +29,11 @@ function getOAuthClient() {
 function getAuthUrl(returnTo) {
   const client = getOAuthClient()
   if (!client) throw new Error("Google Calendar is not configured on the server")
-  const state =
-    returnTo === "compose" ? "compose" : returnTo === "settings" ? "settings" : "reminders"
+  const state = ["compose", "settings", "gmailscan"].includes(returnTo) ? returnTo : "reminders"
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    scope: SCOPES,
+    scope: state === "gmailscan" ? [...SCOPES, GMAIL_READ_SCOPE] : SCOPES,
     include_granted_scopes: true,
     state,
   })

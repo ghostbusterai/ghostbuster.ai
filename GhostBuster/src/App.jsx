@@ -18,6 +18,13 @@ import { PAGE_PADDING_X } from "./layout"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 import { api } from "./api"
 import { requestPendingFillReports } from "./autofillBridge"
+import { GMAIL_FOLLOWUPS_EVENT } from "./components/Reminders"
+
+function localDateString() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
 const NAV = [
   { id: "dashboard", label: "Home" },
@@ -82,7 +89,9 @@ export default function App() {
       setGoogleNotice({
         type: "success",
         text:
-          returnTo === "compose" || returnTo === "contacts"
+          returnTo === "gmailscan"
+            ? "Gmail follow-up reminders are on. GhostBuster checks your recruiter emails a couple of times a day."
+            : returnTo === "compose" || returnTo === "contacts"
             ? "Google connected. You can save drafts and schedule emails."
             : returnTo === "settings"
               ? "Google account connected."
@@ -130,6 +139,15 @@ export default function App() {
           setAuthUser(user)
           setAuthError(null)
           requestPendingFillReports()
+          if (!user.demo) {
+            // Background check for recruiter emails needing a follow-up (server limits it to twice a day).
+            api
+              .scanGmailFollowups({ auto: true, localDate: localDateString() })
+              .then((r) => {
+                if (r?.created) window.dispatchEvent(new CustomEvent(GMAIL_FOLLOWUPS_EVENT, { detail: r }))
+              })
+              .catch(() => {})
+          }
         }
       } catch (e) {
         if (!cancelled) {
