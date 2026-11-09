@@ -105,7 +105,7 @@ export default function Login({ error, onDemoLogin }) {
             color: "rgba(240,240,245,0.55)",
           }}
         >
-          Sign in to save contacts, draft outreach, and keep follow-ups on track — private to your account.
+          Sign in to save contacts, draft outreach, and keep follow-ups on track, all private to your account.
         </p>
 
         {error && (

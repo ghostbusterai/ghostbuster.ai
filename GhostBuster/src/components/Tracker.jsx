@@ -191,8 +191,8 @@ function formatOutreachWindow(count, windowDays) {
 function warmthDetail(daysSinceTouch) {
   if (daysSinceTouch === Infinity) return "No outreach logged yet"
   if (daysSinceTouch <= 21) return `Last outreach ${formatDaysAgo(daysSinceTouch)}`
-  if (daysSinceTouch <= 45) return `${daysSinceTouch} days since last outreach — time to check in`
-  return `${daysSinceTouch} days since last outreach — overdue for a follow-up`
+  if (daysSinceTouch <= 45) return `${daysSinceTouch} days since last outreach. Time to check in`
+  return `${daysSinceTouch} days since last outreach. Overdue for a follow-up`
 }
 
 export default function Tracker() {
@@ -421,11 +421,11 @@ export default function Tracker() {
       <PageHero
         eyebrow="Relationship health"
         title="Tracker"
-        subtitle="Who's warm, who needs a nudge. Filter and sort below — log outreach from the button in the corner."
+        subtitle="Who's warm, who needs a nudge. Filter and sort below. Log outreach from the button in the corner."
       >
         {loadError && (
           <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
-            API offline — using local copy. Run the server to sync across devices.
+            API offline. Using local copy. Run the server to sync across devices.
           </p>
         )}
         {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
@@ -446,7 +446,7 @@ export default function Tracker() {
             {contacts.map((c) => (
               <option key={c.id} value={String(c.id)}>
                 {c.name}
-                {c.company ? ` — ${c.company}` : ""}
+                {c.company ? ` · ${c.company}` : ""}
               </option>
             ))}
           </select>
@@ -454,9 +454,9 @@ export default function Tracker() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)" }}>SORT</label>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ ...inputStyle(), maxWidth: 280 }}>
-            <option value="warmth">Warmth — needs attention first</option>
-            <option value="touch">Last touch — oldest first</option>
-            <option value="name">Name — A to Z</option>
+            <option value="warmth">Warmth: needs attention first</option>
+            <option value="touch">Last touch: oldest first</option>
+            <option value="name">Name: A to Z</option>
           </select>
         </div>
       </div>
@@ -637,7 +637,7 @@ export default function Tracker() {
                           marginBottom: 6,
                         }}
                       >
-                        Outreach rhythm — last 12 weeks
+                        Outreach rhythm: last 12 weeks
                       </div>
                       <div
                         title="Each bar is one week. Bright = at least one logged touch that week."
@@ -706,13 +706,13 @@ export default function Tracker() {
 
       {/* Recent logs table */}
       <CardTitle
-        helper="A log of every outreach you record. Newest first — click a row to open that contact's timeline."
+        helper="A log of every outreach you record. Newest first. Click a row to open that contact's timeline."
         style={{ marginTop: 26 }}
       >
         Touchpoint history
       </CardTitle>
       {filteredLogs.length === 0 ? (
-        <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>No logs yet — use the Log touchpoint button.</div>
+        <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>No logs yet. Use the Log touchpoint button.</div>
       ) : (
         <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--gb-surface-active)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -898,7 +898,7 @@ export default function Tracker() {
                   {contacts.map((c) => (
                     <option key={c.id} value={String(c.id)}>
                       {c.name}
-                      {c.company ? ` — ${c.company}` : ""}
+                      {c.company ? ` · ${c.company}` : ""}
                     </option>
                   ))}
                 </select>
@@ -1165,7 +1165,7 @@ export default function Tracker() {
               {timelineEntries.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--gb-text-muted)", fontSize: 14, fontFamily: font.h1, lineHeight: 1.6 }}>
                   No outreach logged yet. Use the{" "}
-                  <strong style={{ color: "var(--gb-text)" }}>Log touchpoint</strong> button to record when you reach out —
+                  <strong style={{ color: "var(--gb-text)" }}>Log touchpoint</strong> button to record when you reach out, and
                   it will show up here.
                 </div>
               ) : (

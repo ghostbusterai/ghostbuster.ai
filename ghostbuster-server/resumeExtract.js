@@ -45,7 +45,7 @@ async function extractResumeText(buffer, originalName) {
     return typeof value === "string" ? value : ""
   }
 
-  throw new Error("Unsupported file type — use PDF, DOCX, TXT, or MD")
+  throw new Error("Unsupported file type. Use PDF, DOCX, TXT, or MD")
 }
 
 module.exports = { extractResumeText, MAX_BYTES }

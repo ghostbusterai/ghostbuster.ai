@@ -72,7 +72,7 @@ function suggestContactsForUpdate(contacts, haystack) {
     const first = fullName.split(/\s+/)[0] || ""
     if (first.length >= 4 && lower.includes(first.toLowerCase())) {
       reasons.push(
-        `Their first name (${first}) appears in the text — useful only if you meant to reference them personally.`
+        `Their first name (${first}) appears in the text. Useful only if you meant to reference them personally.`
       )
     }
 

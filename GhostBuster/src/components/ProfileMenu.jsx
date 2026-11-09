@@ -464,7 +464,7 @@ export default function ProfileMenu({
                     fontFamily: font.body,
                   }}
                 >
-                  Set your name and career goals — GhostBuster uses this to personalize your experience.
+                  Set your name and career goals. GhostBuster uses this to personalize your experience.
                 </p>
 
                 <form onSubmit={save}>

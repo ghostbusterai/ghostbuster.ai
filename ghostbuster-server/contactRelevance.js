@@ -190,7 +190,7 @@ function buildThematicReason(contact, sharedThemes, sharedTokens) {
 
   if (sharedThemes.length > 0) {
     const labels = sharedThemes.slice(0, 2).map((t) => THEME_LABELS[t] || t)
-    return `This update fits what ${contact.name} is doing (${who}) — you both touch ${labels.join(" and ")}.`
+    return `This update fits what ${contact.name} is doing (${who}). You both touch ${labels.join(" and ")}.`
   }
 
   if (sharedTokens.length >= 2) {
@@ -312,7 +312,8 @@ Return ONLY valid JSON (no markdown):
 - Each contact may have resumeBucket — the role-based résumé version that fits their job.
 - reasons[0] should read like: "This fits well with [Name] because …" referencing their role/work.
 - Do not invent facts about contacts not in the JSON.
-- Order matches by relevanceScore descending.`
+- Order matches by relevanceScore descending.
+- Do not use em dashes (—) in reasons.`
 }
 
 function parseAiMatches(text, contacts) {

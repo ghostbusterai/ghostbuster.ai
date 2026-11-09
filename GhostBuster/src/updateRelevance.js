@@ -151,7 +151,7 @@ function buildThematicReason(contact, sharedThemes, sharedTokens) {
 
   if (sharedThemes.length > 0) {
     const labels = sharedThemes.slice(0, 2).map((t) => THEME_LABELS[t] || t)
-    return `This update fits what ${contact.name} is doing (${who}) — you both touch ${labels.join(" and ")}.`
+    return `This update fits what ${contact.name} is doing (${who}). You both touch ${labels.join(" and ")}.`
   }
 
   if (sharedTokens.length >= 2) {

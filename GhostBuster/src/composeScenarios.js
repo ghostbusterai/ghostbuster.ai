@@ -1,7 +1,7 @@
 /** Scenario config for Message Composer — examples, defaults, and offline templates. */
 
 export const COMPOSE_SITUATIONS = [
-  "Cold outreach — never met",
+  "Cold outreach (never met)",
   "Follow up after career fair",
   "Follow up after coffee chat",
   "Reconnecting after a while",
@@ -13,10 +13,10 @@ export const COMPOSE_SITUATIONS = [
 ]
 
 export const SCENARIO_CONFIG = {
-  "Cold outreach — never met": {
+  "Cold outreach (never met)": {
     shortLabel: "Cold outreach",
     purposeExample:
-      "Introduce myself briefly, explain why their work resonates with me, and ask for a 15–20 minute informational chat — no hard ask for a job.",
+      "Introduce myself briefly, explain why their work resonates with me, and ask for a 15–20 minute informational chat, with no hard ask for a job.",
     extraContextExample:
       "Found them through a mutual connection / company blog / LinkedIn post about [topic]. I admire their path from X to Y.",
     template: ({ contact, yourBackground }) => {
@@ -24,15 +24,15 @@ export const SCENARIO_CONFIG = {
       const company = contact?.company?.trim()
       const role = contact?.role?.trim()
       const bg = yourBackground?.trim() || "I'm exploring roles in this space and learning from people who've built careers there."
-      return `Subject: Quick intro — ${first !== "there" ? `${first}, ` : ""}admire your work${company ? ` at ${company}` : ""}
+      return `Subject: Quick intro: ${first !== "there" ? `${first}, ` : ""}admire your work${company ? ` at ${company}` : ""}
 
 Hi ${first},
 
-I'm ${bg.split(".")[0]}.${company || role ? ` I've been following ${company || "your team"}${role ? ` and your work as a ${role}` : ""} — your perspective on the industry really stood out.` : " Your background stood out as I research this field."}
+I'm ${bg.split(".")[0]}.${company || role ? ` I've been following ${company || "your team"}${role ? ` and your work as a ${role}` : ""}, and your perspective on the industry really stood out.` : " Your background stood out as I research this field."}
 
 Would you be open to a brief 15–20 minute chat in the next couple of weeks? I'd love to learn how you got started and any advice you'd share with someone early in their path.
 
-No pressure at all — happy to work around your schedule.
+No pressure at all. Happy to work around your schedule.
 
 Best,
 [Your name]`
@@ -47,13 +47,13 @@ Best,
     template: ({ contact, yourBackground }) => {
       const first = contactFirstName(contact)
       const company = contact?.company?.trim() || "your company"
-      return `Subject: Great meeting you at the career fair — ${first}
+      return `Subject: Great meeting you at the career fair, ${first}
 
 Hi ${first},
 
 It was great speaking with you at the career fair${contact?.company ? ` about ${company}` : ""}. I especially appreciated hearing about [specific topic you discussed].
 
-${yourBackground?.trim() ? `${yourBackground.trim().split(".")[0]}.\n\n` : ""}I'm still very interested in learning more about opportunities on your team. Could you point me to the best next step — or someone else I should connect with?
+${yourBackground?.trim() ? `${yourBackground.trim().split(".")[0]}.\n\n` : ""}I'm still very interested in learning more about opportunities on your team. Could you point me to the best next step, or someone else I should connect with?
 
 Thanks again for your time at the fair.
 
@@ -69,11 +69,11 @@ Best,
       "Coffee chat on [date]. They suggested I [action]. I took their advice on [specific thing].",
     template: ({ contact }) => {
       const first = contactFirstName(contact)
-      return `Subject: Thank you — and a quick follow-up
+      return `Subject: Thank you, and a quick follow-up
 
 Hi ${first},
 
-Thank you again for taking the time to chat. Your point about [specific advice] really stuck with me — I [what you did with it].
+Thank you again for taking the time to chat. Your point about [specific advice] really stuck with me. I [what you did with it].
 
 I had one follow-up question if you have a moment: [focused question related to your goals].
 
@@ -91,11 +91,11 @@ Best,
       "Last spoke [timeframe] about [topic]. Saw their [LinkedIn post / news / promotion] recently.",
     template: ({ contact, yourBackground }) => {
       const first = contactFirstName(contact)
-      return `Subject: Catching up — hope you're doing well
+      return `Subject: Catching up: hope you're doing well
 
 Hi ${first},
 
-It's been a while since we last connected — hope things are going well${contact?.company ? ` at ${contact.company}` : ""}!
+It's been a while since we last connected. Hope things are going well${contact?.company ? ` at ${contact.company}` : ""}!
 
 ${yourBackground?.trim() ? `Quick update on my end: ${yourBackground.trim().split(".").slice(0, 2).join(".")}.\n\n` : ""}I'd love to hear what you've been working on lately. Would you be up for a quick catch-up call or coffee in the next few weeks?
 
@@ -112,15 +112,15 @@ Best,
     template: ({ contact, yourBackground }) => {
       const first = contactFirstName(contact)
       const company = contact?.company?.trim()
-      return `Subject: Quick career update — thought of you
+      return `Subject: Quick career update: thought of you
 
 Hi ${first},
 
-I wanted to share a brief update: [your headline update — e.g. new internship, shipped project, changed focus area].
+I wanted to share a brief update: [your headline update, e.g. new internship, shipped project, changed focus area].
 
 ${yourBackground?.trim() ? `${yourBackground.trim()}\n\n` : ""}${company ? `Given your work at ${company}, I thought this might be especially relevant.` : "I thought you might find this relevant given our past conversations."}
 
-Happy to send my updated résumé or jump on a quick call if helpful — no pressure either way.
+Happy to send my updated résumé or jump on a quick call if helpful. No pressure either way.
 
 Best,
 [Your name]`
@@ -138,11 +138,11 @@ Best,
 
 Hi ${first},
 
-I wanted to share a quick update: [your news in one sentence — project, role, milestone, or focus area].
+I wanted to share a quick update: [your news in one sentence: project, role, milestone, or focus area].
 
 You came to mind because [how they're relevant or how they supported you]. Thank you for [specific encouragement if any].
 
-Happy to share more detail if helpful — would love to hear your thoughts when you have a moment.
+Happy to share more detail if helpful. Would love to hear your thoughts when you have a moment.
 
 Best,
 [Your name]`
@@ -157,7 +157,7 @@ Best,
     template: ({ contact, yourBackground }) => {
       const first = contactFirstName(contact)
       const company = contact?.company?.trim() || "[Company]"
-      return `Subject: Referral question — ${company} [Role title]
+      return `Subject: Referral question: ${company} [Role title]
 
 Hi ${first},
 
@@ -165,7 +165,7 @@ I hope you're doing well. I'm applying for the [Role title] position at ${compan
 
 ${yourBackground?.trim() ? `${yourBackground.trim()}\n\n` : ""}Would you be comfortable referring me, or pointing me to the best person to talk to about the role? I've attached / can send my résumé and happy to share a short blurb you could forward.
 
-Totally understand if the timing isn't right — either way, thank you for considering.
+Totally understand if the timing isn't right. Either way, thank you for considering.
 
 Best,
 [Your name]`
@@ -180,7 +180,7 @@ Best,
     template: ({ contact }) => {
       const first = contactFirstName(contact)
       const company = contact?.company?.trim() || "the team"
-      return `Subject: Thank you — [Role] interview
+      return `Subject: Thank you: [Role] interview
 
 Hi ${first},
 
@@ -188,7 +188,7 @@ Thank you for taking the time to speak with me about the [Role] opportunity at $
 
 Our discussion reinforced my excitement about [team/mission/project]. Please let me know if I can provide any additional information as you move forward.
 
-Thanks again — hope to stay in touch.
+Thanks again, and I hope to stay in touch.
 
 Best,
 [Your name]`
@@ -203,13 +203,13 @@ Best,
     template: ({ contact }) => {
       const first = contactFirstName(contact)
       const company = contact?.company?.trim() || "your team"
-      return `Subject: Following up — [Role] application
+      return `Subject: Following up: [Role] application
 
 Hi ${first},
 
 I hope you're doing well. I wanted to follow up on my application for the [Role] position at ${company}, which I submitted on [date].
 
-I remain very interested in the opportunity — especially [specific aspect of role/team]. Could you share any update on timing or next steps when you have a chance?
+I remain very interested in the opportunity, especially [specific aspect of role/team]. Could you share any update on timing or next steps when you have a chance?
 
 Thank you again for your time and consideration.
 

@@ -184,7 +184,7 @@ export default function MessageComposer({
         err.message?.includes("not configured") ||
         err.message?.includes("ANTHROPIC")
       if (aiUnavailable) {
-        setExampleNotice("AI is offline — loaded an editable starter template for this scenario. Customize it below.")
+        setExampleNotice("AI is offline, so we loaded an editable starter template for this scenario. Customize it below.")
       } else {
         setError(err.message || "Could not connect to server. Showing a starter template you can edit.")
       }
@@ -379,7 +379,7 @@ export default function MessageComposer({
               style={inputStyle()}
             >
               <option value="">No specific contact</option>
-              {contacts.map(c => <option key={c.id} value={c.id}>{c.name} {c.company ? `— ${c.company}` : ""}</option>)}
+              {contacts.map(c => <option key={c.id} value={c.id}>{c.name} {c.company ? `· ${c.company}` : ""}</option>)}
             </select>
             {contact && (
               <div style={{
@@ -526,10 +526,10 @@ export default function MessageComposer({
           <div>
             <label style={{ fontSize: 12, fontFamily: font.mono, color: "var(--gb-text-faint)", display: "block", marginBottom: 7, letterSpacing: 0.5 }}>PREVIOUS COMMUNICATION</label>
             <p style={{ fontSize: 12, color: "var(--gb-text-dim)", margin: "0 0 8px 0", lineHeight: 1.55, fontFamily: font.body }}>
-              Paste full threads or detailed notes — the more concrete, the better. Include their wording when you can, open questions, what you promised, and dates they gave. The draft will reference those specifics (up to ~200 words when you add history here).
+              Paste full threads or detailed notes. The more concrete, the better. Include their wording when you can, open questions, what you promised, and dates they gave. The draft will reference those specifics (up to ~200 words when you add history here).
             </p>
             <textarea
-              placeholder={"e.g.\nThem (Mar 2): \"Happy to chat after my team’s release — try me mid-April.\"\nMe: Asked about interning on X team.\nThem: Suggested I look at the roles page and send a resume + 2 bullets on the ML project we discussed."}
+              placeholder={"e.g.\nThem (Mar 2): \"Happy to chat after my team’s release, try me mid-April.\"\nMe: Asked about interning on X team.\nThem: Suggested I look at the roles page and send a resume + 2 bullets on the ML project we discussed."}
               value={previousCommunication} onChange={e => setPreviousCommunication(e.target.value)}
               style={{ ...inputStyle(), height: 140, minHeight: 96, resize: "vertical", lineHeight: 1.45 }}
             />
@@ -601,7 +601,7 @@ export default function MessageComposer({
                 <textarea
                   value={result}
                   onChange={(e) => setResult(e.target.value)}
-                  aria-label="Generated message — editable"
+                  aria-label="Generated message (editable)"
                   style={{
                     ...inputStyle(),
                     flex: 1,

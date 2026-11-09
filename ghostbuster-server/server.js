@@ -1031,7 +1031,7 @@ async function start() {
     const bodyText = typeof details === "string" ? details : ""
     if (!bodyText.trim()) {
       return res.status(400).json({
-        error: "Details are required — we match keywords from this text to your contacts.",
+        error: "Details are required. We match keywords from this text to your contacts.",
       })
     }
     try {
@@ -1336,7 +1336,7 @@ async function start() {
       const text = extractAssistantText(message.content)
       const suggestions = parseSuggestionsJson(text)
       if (suggestions.length === 0) {
-        return res.status(502).json({ error: "No suggestions returned — try again" })
+        return res.status(502).json({ error: "No suggestions returned. Try again." })
       }
 
       res.json({ suggestions })
@@ -1348,7 +1348,7 @@ async function start() {
       const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
       const body =
         status === 500 && /JSON|format|Empty response/i.test(msg)
-          ? "Could not parse AI suggestions — try again"
+          ? "Could not parse AI suggestions. Try again."
           : msg || "Failed to generate suggestions"
       res.status(status).json({ error: body })
     }
@@ -1679,6 +1679,7 @@ ${
     : ""
 }- ${lengthHint}
 - Sound genuine, not salesy or template-like
+- Do not use em dashes (—); use commas, periods, or parentheses instead
 - Include a clear subject line
 - Format it as:
   Subject: [subject line]

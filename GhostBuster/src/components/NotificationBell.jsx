@@ -178,7 +178,7 @@ export default function NotificationBell({ setPage, currentPage }) {
               {loading
                 ? "Loading…"
                 : summary.pending === 0
-                  ? "You're all caught up — no pending reminders."
+                  ? "You're all caught up. No pending reminders."
                   : `${summary.pending} pending reminder${summary.pending !== 1 ? "s" : ""} need your attention.`}
             </p>
 

@@ -249,7 +249,7 @@ export default function Applications() {
         </p>
         {loadError && (
           <p style={{ margin: "8px 0 0", color: "var(--gb-warning)", fontSize: 13, fontFamily: font.body }}>
-            API unavailable — using local data. Start the server and refresh to sync.
+            API unavailable. Using local data. Start the server and refresh to sync.
           </p>
         )}
         {actionError && (

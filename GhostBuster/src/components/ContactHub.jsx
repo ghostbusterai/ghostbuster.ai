@@ -578,7 +578,7 @@ export default function ContactHub({
       <PageHero
         eyebrow="Network"
         title="Contact Hub"
-        subtitle="Save people you've already met — career fairs, coffee chats, referrals. Draft outreach from the compose button, then track touchpoints on Tracker."
+        subtitle="Save people you've already met: career fairs, coffee chats, referrals. Draft outreach from the compose button, then track touchpoints on Tracker."
       >
         <p style={{ color: "var(--gb-text-muted)", fontSize: 15, fontFamily: font.body, marginTop: 10, marginBottom: 0 }}>
           {listLoading ? (
@@ -596,7 +596,7 @@ export default function ContactHub({
           )}
           {loadError && (
             <span style={{ display: "block", marginTop: 8, color: "var(--gb-warning)", fontSize: 13 }}>
-              API unavailable — using local copy. Start the server and refresh to sync.
+              API unavailable. Using local copy. Start the server and refresh to sync.
             </span>
           )}
         </p>
@@ -628,7 +628,7 @@ export default function ContactHub({
               helper={
                 isAdding
                   ? "Fill in their details in the form below. Role and notes help GhostBuster match résumé updates later."
-                  : "Met someone worth staying in touch with? Add their profile — you can't message or track them until they're saved here."
+                  : "Met someone worth staying in touch with? Add their profile. You can't message or track them until they're saved here."
               }
             >
               {isAdding ? "Add someone you met" : "Add someone to your network"}
@@ -891,7 +891,7 @@ export default function ContactHub({
             </>
           ) : (
             <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)", fontFamily: font.body }}>
-              No companies yet — add a company when you create or edit a contact.
+              No companies yet. Add a company when you create or edit a contact.
             </p>
           )}
           </ContentCard>
@@ -931,7 +931,7 @@ export default function ContactHub({
                 Your network starts with one contact
               </div>
               <p style={{ margin: "0 0 20px", maxWidth: 420, marginLeft: "auto", marginRight: "auto", lineHeight: 1.55, fontFamily: font.body }}>
-                Add someone from a career fair, intro, or coffee chat — then use Compose and Tracker to stay in touch.
+                Add someone from a career fair, intro, or coffee chat, then use Compose and Tracker to stay in touch.
               </p>
               {!isAdding && (
                 <button

@@ -65,7 +65,7 @@ function eventResource(reminder) {
   return {
     summary: `${donePrefix}Follow up with ${reminder.contactName}`,
     description: reason
-      ? `${reason}\n\n— GhostBuster reminder`
+      ? `${reason}\n\nGhostBuster reminder`
       : "GhostBuster networking reminder",
     start: { date: reminder.dueDate },
     end: { date: addOneDay(reminder.dueDate) },

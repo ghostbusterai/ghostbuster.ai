@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 /** Positive, realistic Home welcome lines — encouraging networking nudges */
 export const ANTI_GHOST_GREETINGS = [
   "A timely note keeps good connections growing.",
-  "You already made the connection — now stay in touch.",
+  "You already made the connection. Now stay in touch.",
   "One thoughtful follow-up can start the next great conversation.",
   "Small check-ins keep your network warm.",
   "You're building relationships one message at a time.",
@@ -16,9 +16,9 @@ export const ANTI_GHOST_GREETINGS = [
   "Compose is here when you want help finding the right words.",
   "Reminders turn good intentions into real connections.",
   "Staying in touch keeps opportunities flowing both ways.",
-  "You met them for a reason — keep that momentum going.",
+  "You met them for a reason. Keep that momentum going.",
   "Warm relationships grow with a little regular care.",
-  "One person, one message — that's a win for today.",
+  "One person, one message. That's a win for today.",
   "Your tracker helps you nurture the connections that matter.",
   "Consistency builds trust over time.",
   "Fresh conversations deserve a friendly follow-up.",

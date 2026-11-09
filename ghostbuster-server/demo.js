@@ -32,7 +32,7 @@ const SAMPLE_RESUME = `Alex Rivera
 alex.rivera@example.com · Boston, MA · linkedin.com/in/alexrivera-demo
 
 EDUCATION
-Northeastern University — B.S. Computer Science, expected May 2027 · GPA 3.7
+Northeastern University, B.S. Computer Science, expected May 2027 · GPA 3.7
 
 EXPERIENCE
 Software Engineering Co-op, Brightpath Health (Jan–Jun 2026)
@@ -43,7 +43,7 @@ Teaching Assistant, Fundamentals of Computer Science (Sep–Dec 2025)
 - Led weekly labs for 30 students; wrote autograder tests in Python
 
 PROJECTS
-Campus Rideshare — React Native app matching students for airport trips (1,200 users)
+Campus Rideshare: React Native app matching students for airport trips (1,200 users)
 
 SKILLS
 JavaScript, TypeScript, React, Node.js, Python, SQL, AWS`

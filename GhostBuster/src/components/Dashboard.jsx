@@ -16,7 +16,7 @@ const GETTING_STARTED_STEPS = [
   {
     step: 1,
     title: "Add someone you've met",
-    detail: "Career fair, coffee chat, LinkedIn — save their name and how you know them.",
+    detail: "Career fair, coffee chat, LinkedIn: save their name and how you know them.",
     page: "contacts",
     cta: "Go to Contacts",
   },
@@ -412,7 +412,7 @@ export default function Dashboard({ setPage }) {
         <div style={{ ...type.eyebrow, marginBottom: 10 }}>Bridging ambition with experience</div>
         <h1 style={{ ...type.heroTitle, margin: "0 0 10px" }}>{greeting}</h1>
         <p style={{ ...type.heroSubtitle, margin: 0 }}>
-          Stay in touch with people you&apos;ve already met — add contacts, send messages, and log follow-ups here.
+          Stay in touch with people you&apos;ve already met. Add contacts, send messages, and log follow-ups here.
         </p>
       </section>
 
@@ -454,7 +454,7 @@ export default function Dashboard({ setPage }) {
                 color: "var(--gb-text)",
               }}
             >
-              Welcome — here&apos;s how to connect with people
+              Welcome! Here&apos;s how to connect with people
             </h2>
             <p
               style={{
@@ -466,7 +466,7 @@ export default function Dashboard({ setPage }) {
               }}
             >
               GhostBuster doesn&apos;t find strangers for you. It helps you nurture relationships with people
-              you&apos;ve already met — at a career fair, through a friend, on LinkedIn, or after an interview.
+              you&apos;ve already met: at a career fair, through a friend, on LinkedIn, or after an interview.
             </p>
           </div>
 
@@ -999,7 +999,7 @@ export default function Dashboard({ setPage }) {
                   fontFamily: font.body,
                 }}
               >
-                Add someone from a career fair, class, or LinkedIn conversation — then use Compose to reach out.
+                Add someone from a career fair, class, or LinkedIn conversation, then use Compose to reach out.
               </p>
               <button
                 type="button"

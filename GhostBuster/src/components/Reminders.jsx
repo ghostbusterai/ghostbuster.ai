@@ -263,7 +263,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
   const summary = summarizePendingReminders(reminders)
 
   const REASONS = [
-    "Keep warm — check in",
+    "Keep warm: check in",
     "Resume update",
     "New accomplishment to share",
     "Follow up after meeting",
@@ -294,11 +294,11 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
               </span>
             )}
             <span style={{ color: "var(--gb-text-faint)" }}>
-              Reminders stay pending until you check them off — passing the due date only highlights them.
+              Reminders stay pending until you check them off. Passing the due date only highlights them.
             </span>
             {loadError && (
               <span style={{ display: "block", marginTop: 8, color: "var(--gb-warning)", fontSize: 13 }}>
-                API unavailable — using local data. Start the server and refresh to sync.
+                API unavailable. Using local data. Start the server and refresh to sync.
               </span>
             )}
           </p>
@@ -575,7 +575,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
           borderRadius: 14, padding: 48, textAlign: "center",
           color: "var(--gb-text-dim)", fontSize: 14, fontFamily: font.body
         }}>
-          {filter === "pending" ? "No pending reminders — you're on top of it! 🎉" : "Nothing here yet."}
+          {filter === "pending" ? "No pending reminders. You're on top of it! 🎉" : "Nothing here yet."}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

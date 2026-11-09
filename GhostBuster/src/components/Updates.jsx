@@ -102,7 +102,7 @@ function formatResumeDate(iso) {
 async function readTextFileLocally(file) {
   const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase()
   if (![".txt", ".md", ".text"].includes(ext)) {
-    throw new Error("Offline mode supports TXT and MD only — start the server for PDF/DOCX.")
+    throw new Error("Offline mode supports TXT and MD only. Start the server for PDF/DOCX.")
   }
   return file.text()
 }
@@ -728,11 +728,11 @@ export default function Updates({ setPage, setComposePrefill }) {
       <PageHero
         eyebrow="Resume"
         title="Resume"
-        subtitle="Log résumé or career changes here — no need to name contacts. Each update can optionally turn into matched outreach, AI-drafted messages, and follow-up reminders when you're ready."
+        subtitle="Log résumé or career changes here. No need to name contacts. Each update can optionally turn into matched outreach, AI-drafted messages, and follow-up reminders when you're ready."
       >
         {loadError && (
           <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0, fontFamily: font.body }}>
-            API offline — saving locally. Run the server (with ANTHROPIC_API_KEY for best matching) to sync and use AI recommendations.
+            API offline. Saving locally. Run the server (with ANTHROPIC_API_KEY for best matching) to sync and use AI recommendations.
           </p>
         )}
         {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0, fontFamily: font.body }}>{actionError}</p>}
@@ -744,7 +744,7 @@ export default function Updates({ setPage, setComposePrefill }) {
         }}
         padding="24px"
       >
-        <CardTitle helper="When did you last refresh your résumé? We'll optionally suggest contacts you haven't messaged since then — with draft messages and reminders in Notifications when you want them.">
+        <CardTitle helper="When did you last refresh your résumé? We'll optionally suggest contacts you haven't messaged since then, with draft messages and reminders in Notifications when you want them.">
           Résumé last updated
         </CardTitle>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -839,13 +839,13 @@ export default function Updates({ setPage, setComposePrefill }) {
 
         {resumeDate && resumeNudgeContacts.length === 0 && contacts.length > 0 && (
           <p style={{ fontSize: 13, color: "var(--gb-text-faint)", marginTop: 16, marginBottom: 0, fontFamily: font.body }}>
-            You&apos;re caught up — everyone has heard from you since this date.
+            You&apos;re caught up. Everyone has heard from you since this date.
           </p>
         )}
       </ContentCard>
 
       <ContentCard padding="24px">
-        <CardTitle helper="Upload a résumé for each role you're targeting — for example, a PM version and a SWE version. Create a role bucket below, then drag in a PDF, DOCX, or text file. Contacts are auto-matched from their job role. Replacing or removing a résumé saves the previous version to your archive below.">
+        <CardTitle helper="Upload a résumé for each role you're targeting, for example, a PM version and a SWE version. Create a role bucket below, then drag in a PDF, DOCX, or text file. Contacts are auto-matched from their job role. Replacing or removing a résumé saves the previous version to your archive below.">
           Upload your résumé by role
         </CardTitle>
 
@@ -929,7 +929,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               fontSize: 14,
             }}
           >
-            No buckets yet — create one above, then upload a résumé for that role.
+            No buckets yet. Create one above, then upload a résumé for that role.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -964,7 +964,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4 }}>
                         {assignedCount > 0
                           ? `${assignedCount} contact${assignedCount !== 1 ? "s" : ""} assigned`
-                          : "No contacts assigned yet — we'll auto-match from their role"}
+                          : "No contacts assigned yet. We'll auto-match from their role"}
                       </div>
                     </div>
                     <button
@@ -1147,7 +1147,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               fontSize: 14,
             }}
           >
-            No archived résumés yet — upload a new version to a role bucket and the previous file will appear here.
+            No archived résumés yet. Upload a new version to a role bucket and the previous file will appear here.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1309,7 +1309,7 @@ export default function Updates({ setPage, setComposePrefill }) {
           }}
         >
           <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-            <CardTitle helper="AI feedback tailored to your career goals — rewording, stronger activities, metrics, and more.">
+            <CardTitle helper="AI feedback tailored to your career goals: rewording, stronger activities, metrics, and more.">
               Suggested improvements
             </CardTitle>
           </div>
@@ -1502,7 +1502,7 @@ export default function Updates({ setPage, setComposePrefill }) {
       </ContentCard>
 
       <ContentCard padding="24px" marginBottom={36}>
-        <CardTitle helper="Describe a résumé or career change in plain language. You don't have to message anyone right away — saving an update is the first step toward optional outreach later.">
+        <CardTitle helper="Describe a résumé or career change in plain language. You don't have to message anyone right away. Saving an update is the first step toward optional outreach later.">
           Career update
         </CardTitle>
 
@@ -1522,7 +1522,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             {
               step: "1",
               title: "Save the update",
-              detail: "Stored in History — no contacts named upfront.",
+              detail: "Stored in History. No contacts named upfront.",
             },
             {
               step: "2",
@@ -1599,7 +1599,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                 marginBottom: 6,
               }}
             >
-              DETAILS * (describe the update — we match it to contacts automatically)
+              DETAILS * (describe the update; we match it to contacts automatically)
             </label>
             <textarea
               placeholder="e.g. Shipped a recommendation feature, completed a data science internship, led a campus hackathon project… You don't need to name companies or people."
@@ -1628,7 +1628,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             {saving ? "Saving…" : "Save update & see matches"}
           </button>
           <p style={{ margin: 0, fontSize: 12, color: "var(--gb-text-faint)", lineHeight: 1.5, maxWidth: 560, fontFamily: font.body }}>
-            After saving, you can review optional message drafts. Set reminders anytime from the Reminders tab — we
+            After saving, you can review optional message drafts. Set reminders anytime from the Reminders tab. We
             also surface nudges in Notifications when follow-ups are due.
           </p>
         </form>
@@ -1650,7 +1650,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             color: "var(--gb-text-faint)",
           }}
         >
-          No updates yet — add your first one above.
+          No updates yet. Add your first one above.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1783,25 +1783,25 @@ export default function Updates({ setPage, setComposePrefill }) {
                 {relevanceModal.notice === "no_contacts"
                   ? "Update saved"
                   : relevanceModal.notice === "no_matches"
-                    ? "Update saved — no matches yet"
+                    ? "Update saved. No matches yet"
                     : "Recommended outreach"}
               </div>
               <p style={{ margin: "12px 0 0", fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5, fontFamily: font.body }}>
                 {relevanceModal.notice === "no_contacts" ? (
                   <>
                     Your update was saved, but there are no contacts yet. Add people on the{" "}
-                    <strong style={{ color: "var(--gb-accent)" }}>Contacts</strong> page first — include their role,
+                    <strong style={{ color: "var(--gb-accent)" }}>Contacts</strong> page first. Include their role,
                     company, and notes so we can recommend who to message.
                   </>
                 ) : relevanceModal.notice === "no_matches" ? (
                   <>
-                    Your update was saved. We couldn&apos;t find strong contact matches yet — fill in{" "}
+                    Your update was saved. We couldn&apos;t find strong contact matches yet. Fill in{" "}
                     <strong style={{ color: "var(--gb-accent)" }}>role, company, and notes</strong> on your contacts
                     (e.g. a consultant for a consulting club update) and try again.
                   </>
                 ) : (
                   <>
-                    These matches are optional. Copy an AI draft or open Compose to edit — then set a follow-up
+                    These matches are optional. Copy an AI draft or open Compose to edit, then set a follow-up
                     reminder in Reminders if you want a nudge later (Notifications will flag due items).
                   </>
                 )}
@@ -1835,7 +1835,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                 >
                   {relevanceModal.notice === "no_contacts"
                     ? "Tip: Even one contact with a role like “Consultant” or notes about their industry is enough for us to suggest outreach."
-                    : "Tip: Restart isn’t needed — just add or edit contacts, then save another update (or re-save this one from History after deleting duplicates)."}
+                    : "Tip: Restart isn’t needed. Just add or edit contacts, then save another update (or re-save this one from History after deleting duplicates)."}
                 </div>
               )}
               {relevanceModal.relevance.map((row) => {
@@ -1864,7 +1864,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     }}
                   >
                     This fits well with {row.name.split(/\s+/)[0] || row.name}
-                    {outreach.loading ? " — generating your message…" : ":"}
+                    {outreach.loading ? " Generating your message…" : ":"}
                   </div>
                   <ul style={{ margin: "10px 0 0", paddingLeft: 18, color: "var(--gb-text-subtle)", fontSize: 12, lineHeight: 1.5 }}>
                     {row.reasons.map((r, i) => (

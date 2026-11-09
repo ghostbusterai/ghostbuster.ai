@@ -74,13 +74,13 @@ export default function Notifications({ setPage }) {
           loading
             ? "Loading…"
             : summary.pending === 0
-              ? "You're all caught up — no pending reminders."
+              ? "You're all caught up. No pending reminders."
               : `${summary.pending} pending reminder${summary.pending !== 1 ? "s" : ""} need your attention.`
         }
       >
         {loadError && (
           <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0, fontFamily: font.body }}>
-            API offline — showing local copy.
+            API offline. Showing local copy.
           </p>
         )}
         {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0, fontFamily: font.body }}>{actionError}</p>}

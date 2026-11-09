@@ -58,13 +58,13 @@ export function generateTemplateOutreachMessage(contact, update, reasons, sender
     "",
     `${reason}${company ? ` Given your work at ${company}, I thought this might be especially relevant.` : " I thought you might find this relevant."}`,
     "",
-    "Happy to share more detail if helpful — would love to stay in touch.",
+    "Happy to share more detail if helpful. Would love to stay in touch.",
     "",
     "Best,",
     signOff
   )
 
-  return `Subject: Quick update — ${title}\n\n${bodyParts.join("\n")}`
+  return `Subject: Quick update: ${title}\n\n${bodyParts.join("\n")}`
 }
 
 export async function generateResumeUpdateOutreachMessage({

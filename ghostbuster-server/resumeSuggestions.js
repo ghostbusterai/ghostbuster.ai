@@ -41,7 +41,8 @@ Rules:
 - Be concrete — quote or closely reference their actual résumé content in "original" when possible.
 - Do not invent employers, degrees, or jobs they do not have. You may suggest metrics or rewording of real experiences.
 - "suggested" must be copy-paste-ready text they could put on a résumé.
-- Keep each "suggested" under 45 words unless replacing a full bullet list.`
+- Keep each "suggested" under 45 words unless replacing a full bullet list.
+- Do not use em dashes (—) anywhere in your output.`
 }
 
 function normalizeSuggestion(raw, index) {
