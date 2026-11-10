@@ -11,6 +11,43 @@ const CONTEXT_BUDGET = 60000 // characters of records sent to Claude per questio
 const MAX_RECORD_CHARS = 4000
 const RESUME_CHUNK_CHARS = 2500
 const MAX_HISTORY_TURNS = 6
+const CACHE_TTL_MS = 30 * 60 * 1000
+const CACHE_MAX_USERS = 300
+const TYPE_ORDER = ["contact", "outreach", "reminder", "application", "note", "resume"]
+
+/*
+ * Per-user records cache. The server bumps a user's version whenever their data changes
+ * (markUserDataChanged), so a question reuses the records built for the last one until then.
+ * In-process is right for a single server; with several instances, keep the version in Mongo.
+ */
+const versions = new Map() // uid -> number
+const cache = new Map() // uid -> { version, records, at }; Map order doubles as LRU order
+
+function markUserDataChanged(uid) {
+  if (uid == null) return
+  const key = String(uid)
+  versions.set(key, (versions.get(key) || 0) + 1)
+  cache.delete(key)
+}
+
+async function getRecords(store, uid) {
+  const key = String(uid)
+  const version = versions.get(key) || 0
+  const hit = cache.get(key)
+  if (hit && hit.version === version && Date.now() - hit.at < CACHE_TTL_MS) {
+    cache.delete(key) // move to the back: most recently used
+    cache.set(key, hit)
+    return { records: hit.records, cached: true }
+  }
+  const records = await buildRecords(store, uid)
+  // A write may have landed while we were reading; only cache if nothing changed meanwhile.
+  if ((versions.get(key) || 0) === version) {
+    cache.delete(key)
+    cache.set(key, { version, records, at: Date.now() })
+    while (cache.size > CACHE_MAX_USERS) cache.delete(cache.keys().next().value)
+  }
+  return { records, cached: false }
+}
 
 const STOP = new Set(
   "a an and are as at be but by can did do does for from had has have how i if in into is it its me my of on or our so than that the their them then there these they this to was we were what when where which who whom why will with would you your about any all been did get got just know last met more most should tell".split(
@@ -183,7 +220,19 @@ function score(record, terms) {
   return s
 }
 
+function stableOrder(records) {
+  const rank = (t) => (TYPE_ORDER.indexOf(t) + 1 || TYPE_ORDER.length + 1)
+  return [...records].sort(
+    (a, b) => rank(a.type) - rank(b.type) || String(b.date).localeCompare(String(a.date)) || a.id.localeCompare(b.id)
+  )
+}
+
 function retrieve(records, question) {
+  // Everything fits (the usual case): send it all in a fixed order so Claude's prompt cache can be
+  // reused across follow-up questions. Only rank by keywords when we have to leave records out.
+  const size = records.reduce((n, r) => n + r.text.length, 0)
+  if (size <= CONTEXT_BUDGET) return { picked: stableOrder(records), total: records.length }
+
   const terms = [...new Set(words(question))]
   const ranked = records
     .map((r, i) => ({ r, i, s: score(r, terms) }))
@@ -196,7 +245,7 @@ function retrieve(records, question) {
     picked.push(r)
     used += r.text.length
   }
-  return { picked, total: records.length }
+  return { picked: stableOrder(picked), total: records.length }
 }
 
 function buildSystemPrompt({ userName, today, truncated }) {
@@ -204,7 +253,7 @@ function buildSystemPrompt({ userName, today, truncated }) {
 
 Today is ${today}.${userName ? ` The user's name is ${userName}.` : ""}
 
-The user's records are in <records>. Each has an id attribute.
+The user's records are in <records> below. Each has an id attribute.
 
 Rules:
 - Answer only from the records. If they don't contain the answer, say so plainly and suggest what the user could add or check in GhostBuster. Never invent people, companies, dates, or conversations.
@@ -255,24 +304,34 @@ function extractSources(answer, records) {
 
 async function askGhostBuster({ anthropic, model, store, uid, question, history, extractText }) {
   const q = String(question || "").trim()
-  const [records, profileR] = await Promise.all([buildRecords(store, uid), store.getProfile(uid)])
+  const [{ records, cached }, profileR] = await Promise.all([getRecords(store, uid), store.getProfile(uid)])
   const { picked, total } = retrieve(records, q)
   const userName = typeof profileR?.profile?.name === "string" ? profileR.profile.name.trim() : ""
   const today = new Date().toISOString().slice(0, 10)
 
-  const content = picked.length
-    ? `${recordsBlock(picked)}\n\nQuestion: ${q}`
-    : `<records>\n(The user has no saved records yet.)\n</records>\n\nQuestion: ${q}`
+  const recordsText = picked.length ? recordsBlock(picked) : "<records>\n(The user has no saved records yet.)\n</records>"
 
+  // Instructions and records go in the system prompt, ahead of the chat, and the records block is
+  // marked cacheable: follow-up questions resend the same prefix, so Claude bills it at the cache rate.
   const message = await anthropic.messages.create({
     model,
     max_tokens: 1200,
-    system: buildSystemPrompt({ userName, today, truncated: picked.length < total }),
-    messages: [...cleanHistory(history), { role: "user", content }],
+    system: [
+      { type: "text", text: buildSystemPrompt({ userName, today, truncated: picked.length < total }) },
+      { type: "text", text: recordsText, cache_control: { type: "ephemeral" } },
+    ],
+    messages: [...cleanHistory(history), { role: "user", content: q }],
   })
   const raw = extractText(message.content)
   const { text, sources } = extractSources(raw, picked)
-  return { answer: text, sources, searched: total, used: picked.length }
+  return {
+    answer: text,
+    sources,
+    searched: total,
+    used: picked.length,
+    recordsCached: cached,
+    usage: message.usage,
+  }
 }
 
-module.exports = { askGhostBuster, buildRecords, retrieve, extractSources, words }
+module.exports = { askGhostBuster, markUserDataChanged, buildRecords, retrieve, extractSources, words }

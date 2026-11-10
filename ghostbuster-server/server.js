@@ -7,7 +7,7 @@ const session = require("express-session")
 const MongoStore = require("connect-mongo").MongoStore || require("connect-mongo").default || require("connect-mongo")
 require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
-const { askGhostBuster } = require("./ask")
+const { askGhostBuster, markUserDataChanged } = require("./ask")
 
 const { connectDb } = require("./db")
 let USE_MONGO = Boolean(String(process.env.MONGODB_URI || "").trim())
@@ -422,6 +422,14 @@ async function start() {
     ) {
       return res.status(403).json({ error: "Gmail and Google Calendar aren't available in the demo." })
     }
+    next()
+  })
+
+  // Any successful change to a user's data invalidates their Ask GhostBuster records cache.
+  app.use((req, res, next) => {
+    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS" || req.path === "/api/ask") return next()
+    const uid = userId(req)
+    if (uid) res.on("finish", () => res.statusCode < 400 && markUserDataChanged(uid))
     next()
   })
 
@@ -892,6 +900,7 @@ async function start() {
         openThreads.add(f.threadId)
         created++
       }
+      if (created) markUserDataChanged(id)
       const lastScanAt = new Date().toISOString()
       await store.setGmailScan(id, { lastScanAt })
       res.json({ created, found: found.length, lastScanAt })
@@ -1590,7 +1599,7 @@ async function start() {
         history: req.body?.history,
         extractText: extractAssistantText,
       })
-      res.json(out)
+      res.json({ answer: out.answer, sources: out.sources })
     } catch (err) {
       console.error(err)
       const msg = formatAnthropicError(err)
