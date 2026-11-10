@@ -417,7 +417,13 @@ export default function App() {
         {page === "ghostwriter" && <Ghostwriter />}
         {page === "about" && <About />}
       </main>
-      <AskGhostBuster setPage={setPage} />
+      <AskGhostBuster
+        setPage={setPage}
+        // Contacts and Tracker have their own button in the bottom right (Compose / Log touchpoint),
+        // so the chat button sits above it there, and steps aside while Compose is open.
+        raised={page === "contacts" || page === "tracker"}
+        hidden={page === "contacts" && composeOpen}
+      />
     </div>
   )
 }

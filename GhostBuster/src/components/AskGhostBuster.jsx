@@ -108,7 +108,7 @@ const bubble = {
 }
 
 /** Floating "Ask GhostBuster" chat: a logo button in the bottom right that opens a chat panel. */
-export default function AskGhostBuster({ setPage }) {
+export default function AskGhostBuster({ setPage, raised = false, hidden = false }) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([]) // { role, content, sources? }
   const [input, setInput] = useState("")
@@ -116,6 +116,8 @@ export default function AskGhostBuster({ setPage }) {
   const [error, setError] = useState("")
   const endRef = useRef(null)
   const inputRef = useRef(null)
+  const panelRef = useRef(null)
+  const launcherRef = useRef(null)
 
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
@@ -125,8 +127,17 @@ export default function AskGhostBuster({ setPage }) {
     if (!open) return
     inputRef.current?.focus()
     const onKey = (e) => e.key === "Escape" && setOpen(false)
+    // Clicking anywhere outside the panel (and its button) closes it; the conversation is kept.
+    const onPointerDown = (e) => {
+      if (panelRef.current?.contains(e.target) || launcherRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
     window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      document.removeEventListener("pointerdown", onPointerDown)
+    }
   }, [open])
 
   async function ask(question) {
@@ -156,8 +167,14 @@ export default function AskGhostBuster({ setPage }) {
     if (src?.page) setPage(src.page)
   }
 
+  // Sits above the page's own corner button (56px tall at bottom 20) on pages that have one.
+  const launcherBottom = raised ? 88 : 20
+
+  if (hidden) return null
+
   const launcher = (
     <button
+      ref={launcherRef}
       type="button"
       onClick={() => setOpen((o) => !o)}
       aria-label={open ? "Close Ask GhostBuster" : "Ask GhostBuster"}
@@ -165,7 +182,7 @@ export default function AskGhostBuster({ setPage }) {
       style={{
         position: "fixed",
         right: 20,
-        bottom: 20,
+        bottom: launcherBottom,
         zIndex: 1000,
         width: 60,
         height: 60,
@@ -194,12 +211,13 @@ export default function AskGhostBuster({ setPage }) {
     <>
       {launcher}
       <div
+        ref={panelRef}
         role="dialog"
         aria-label="Ask GhostBuster"
         style={{
           position: "fixed",
           right: 20,
-          bottom: 92,
+          bottom: launcherBottom + 72,
           zIndex: 1000,
           width: "min(400px, calc(100vw - 32px))",
           height: "min(600px, calc(100vh - 120px))",
