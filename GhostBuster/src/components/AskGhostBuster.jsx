@@ -107,7 +107,25 @@ const bubble = {
   padding: "10px 12px",
 }
 
-/** Floating "Ask GhostBuster" chat: a logo button in the bottom right that opens a chat panel. */
+const SIZE = 60 // launcher diameter
+const MARGIN = 12
+const POS_KEY = "gb-ask-launcher-pos"
+
+function readSavedPos() {
+  try {
+    const p = JSON.parse(localStorage.getItem(POS_KEY) || "null")
+    return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : null
+  } catch {
+    return null
+  }
+}
+
+const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), Math.max(lo, hi))
+
+/**
+ * Floating "Ask GhostBuster" chat: a logo button that opens a chat panel. The button starts in the
+ * bottom right and can be dragged anywhere; its spot is remembered on this device.
+ */
 export default function AskGhostBuster({ setPage, raised = false, hidden = false }) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([]) // { role, content, sources? }
@@ -118,6 +136,16 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
   const inputRef = useRef(null)
   const panelRef = useRef(null)
   const launcherRef = useRef(null)
+  const [pos, setPos] = useState(readSavedPos) // top-left of the button, or null for the default corner
+  const [viewport, setViewport] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
+  const drag = useRef(null) // { startX, startY, originX, originY, moved }
+  const justDragged = useRef(false)
+
+  useEffect(() => {
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
 
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
@@ -167,8 +195,57 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
     if (src?.page) setPage(src.page)
   }
 
-  // Sits above the page's own corner button (56px tall at bottom 20) on pages that have one.
+  // Default spot: bottom right, above the page's own corner button (56px tall at bottom 20) on pages
+  // that have one. Once dragged, the button stays where the user put it (kept on screen on resize).
   const launcherBottom = raised ? 88 : 20
+  const bx = pos ? clamp(pos.x, MARGIN, viewport.w - SIZE - MARGIN) : viewport.w - 20 - SIZE
+  const by = pos ? clamp(pos.y, MARGIN, viewport.h - SIZE - MARGIN) : viewport.h - launcherBottom - SIZE
+
+  function onPointerDown(e) {
+    if (e.button !== 0) return
+    drag.current = { startX: e.clientX, startY: e.clientY, originX: bx, originY: by, moved: false }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+
+  function onPointerMove(e) {
+    const d = drag.current
+    if (!d) return
+    const dx = e.clientX - d.startX
+    const dy = e.clientY - d.startY
+    if (!d.moved && Math.hypot(dx, dy) < 5) return // small wiggles are still clicks
+    d.moved = true
+    setPos({
+      x: clamp(d.originX + dx, MARGIN, viewport.w - SIZE - MARGIN),
+      y: clamp(d.originY + dy, MARGIN, viewport.h - SIZE - MARGIN),
+    })
+  }
+
+  function onPointerUp() {
+    const d = drag.current
+    drag.current = null
+    if (!d?.moved) return
+    justDragged.current = true // the click that follows a drag shouldn't toggle the panel
+    setPos((p) => {
+      try {
+        if (p) localStorage.setItem(POS_KEY, JSON.stringify(p))
+      } catch {
+        /* storage unavailable: position just won't persist */
+      }
+      return p
+    })
+  }
+
+  // Panel: right-aligned with the button, above it when there's room, otherwise below.
+  const panelW = Math.min(400, viewport.w - 32)
+  const panelH = Math.min(600, viewport.h - 120)
+  const panelLeft = clamp(bx + SIZE - panelW, 16, viewport.w - panelW - 16)
+  const roomAbove = by - MARGIN - panelH >= 16
+  const roomBelow = by + SIZE + MARGIN + panelH <= viewport.h - 16
+  const panelTop = roomAbove
+    ? by - MARGIN - panelH
+    : roomBelow
+      ? by + SIZE + MARGIN
+      : clamp(by - panelH / 2, 16, viewport.h - panelH - 16)
 
   if (hidden) return null
 
@@ -176,16 +253,27 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
     <button
       ref={launcherRef}
       type="button"
-      onClick={() => setOpen((o) => !o)}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={() => (drag.current = null)}
+      onClick={() => {
+        if (justDragged.current) {
+          justDragged.current = false
+          return
+        }
+        setOpen((o) => !o)
+      }}
       aria-label={open ? "Close Ask GhostBuster" : "Ask GhostBuster"}
-      title="Ask GhostBuster"
+      title="Ask GhostBuster (drag to move)"
       style={{
         position: "fixed",
-        right: 20,
-        bottom: launcherBottom,
+        left: bx,
+        top: by,
         zIndex: 1000,
-        width: 60,
-        height: 60,
+        width: SIZE,
+        height: SIZE,
+        touchAction: "none",
         borderRadius: "50%",
         border: "1px solid var(--gb-border)",
         background: "var(--gb-bg-elevated)",
@@ -216,11 +304,11 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
         aria-label="Ask GhostBuster"
         style={{
           position: "fixed",
-          right: 20,
-          bottom: launcherBottom + 72,
+          left: panelLeft,
+          top: panelTop,
           zIndex: 1000,
-          width: "min(400px, calc(100vw - 32px))",
-          height: "min(600px, calc(100vh - 120px))",
+          width: panelW,
+          height: panelH,
           display: "flex",
           flexDirection: "column",
           background: "var(--gb-bg-elevated)",
