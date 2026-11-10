@@ -1,0 +1,11 @@
+{
+  "name": "record_embeddings",
+  "collection": "recordEmbeddings",
+  "definition": {
+    "fields": [
+      { "type": "vector", "path": "embedding", "numDimensions": 768, "similarity": "cosine" },
+      { "type": "filter", "path": "userId" },
+      { "type": "filter", "path": "model" }
+    ]
+  }
+}

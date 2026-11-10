@@ -55,6 +55,15 @@ Push to `main` on GitHub. Render redeploys automatically when the repo is connec
 | `DEMO_ACCESS_CODE` | For reviewer demo accounts | Enables demo sign-in without Google. Share `/?demo=<code>` links. Requires `MONGODB_URI` |
 | `DEMO_AI_LIMIT` | No | AI requests per demo account (default 15) |
 | `DEMO_TTL_DAYS` | No | Days before a demo account is deleted (default 7) |
+| `ADMIN_EMAILS` | No | Comma-separated emails that can see **AI metrics** in Settings (latency, cost, cache hits, errors) |
+| `GCP_PROJECT_ID` | For vector search | Google Cloud project with the Vertex AI API enabled. Without GCP settings, Ask GhostBuster uses keyword retrieval only |
+| `GCP_SERVICE_ACCOUNT_JSON` | For vector search | Service-account key JSON (role: Vertex AI User). Locally you can use `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json` instead |
+| `GCP_LOCATION` | No | Vertex AI region (default `us-central1`) |
+| `ATLAS_VECTOR_INDEX` | No | Name of the Atlas Vector Search index on `recordEmbeddings` (see `ghostbuster-server/atlas-vector-index.json`). Unset: similarity is computed in memory |
+
+### Ask GhostBuster evals
+
+`cd ghostbuster-server && npm run eval` scores retrieval (recall@5, recall@10, MRR) on a fixed synthetic dataset in `evals/dataset.js`. `npm run eval:llm` also asks Claude (a few cents) and scores citations and "not found" answers. Results go to `evals/results/`. The eval never touches a real database.
 
 `PORT`, `APP_URL`, and Google redirect URIs are set in `render.yaml`.
 

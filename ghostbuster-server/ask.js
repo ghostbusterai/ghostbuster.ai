@@ -2,10 +2,12 @@
  * "Ask GhostBuster": answers questions about the user's own networking data (contacts, outreach,
  * reminders, applications, Ghostwriter notes, résumés) with Claude, citing the records it used.
  *
- * Retrieval is plain keyword scoring over the user's records, not vectors. One student's data usually
- * fits in a single prompt, so when it does we send everything (matches first); when it doesn't, we send
- * the best matches plus the most recent records. Swapping in vector search later only changes retrieve().
+ * Retrieval is hybrid: keyword scoring plus Vertex AI vector similarity (embeddings.js), merged with
+ * reciprocal rank fusion. One student's data usually fits in a single prompt, so when it does we send
+ * everything in a fixed order (cache-friendly) and skip ranking; when it doesn't, we send the
+ * best-ranked records that fit. Without Google Cloud credentials it falls back to keyword-only.
  */
+const embeddings = require("./embeddings")
 
 const CONTEXT_BUDGET = 60000 // characters of records sent to Claude per question
 const MAX_RECORD_CHARS = 4000
@@ -37,16 +39,23 @@ async function getRecords(store, uid) {
   if (hit && hit.version === version && Date.now() - hit.at < CACHE_TTL_MS) {
     cache.delete(key) // move to the back: most recently used
     cache.set(key, hit)
-    return { records: hit.records, cached: true }
+    return { records: hit.records, vectors: hit.vectors, cached: true }
   }
   const records = await buildRecords(store, uid)
+  // Embed new or changed records (only those; unchanged ones reuse stored vectors).
+  let vectors = null
+  try {
+    vectors = (await embeddings.syncEmbeddings(uid, records))?.vectors || null
+  } catch (e) {
+    console.warn("Embeddings unavailable, using keyword retrieval:", e.message)
+  }
   // A write may have landed while we were reading; only cache if nothing changed meanwhile.
   if ((versions.get(key) || 0) === version) {
     cache.delete(key)
-    cache.set(key, { version, records, at: Date.now() })
+    cache.set(key, { version, records, vectors, at: Date.now() })
     while (cache.size > CACHE_MAX_USERS) cache.delete(cache.keys().next().value)
   }
-  return { records, cached: false }
+  return { records, vectors, cached: false }
 }
 
 const STOP = new Set(
@@ -227,21 +236,52 @@ function stableOrder(records) {
   )
 }
 
-function retrieve(records, question) {
-  // Everything fits (the usual case): send it all in a fixed order so Claude's prompt cache can be
-  // reused across follow-up questions. Only rank by keywords when we have to leave records out.
-  const size = records.reduce((n, r) => n + r.text.length, 0)
-  if (size <= CONTEXT_BUDGET) return { picked: stableOrder(records), total: records.length }
-
+function keywordScored(records, question) {
   const terms = [...new Set(words(question))]
-  const ranked = records
+  return records
     .map((r, i) => ({ r, i, s: score(r, terms) }))
     .sort((a, b) => b.s - a.s || String(b.r.date).localeCompare(String(a.r.date)) || a.i - b.i)
+}
+
+/** Records ordered by keyword relevance to the question, then recency. */
+function rankRecords(records, question) {
+  return keywordScored(records, question).map((x) => x.r)
+}
+
+const RRF_K = 60
+
+/**
+ * Hybrid ranking: reciprocal rank fusion of the keyword ranking (records with any keyword match) and
+ * the vector-similarity ranking. Ties fall back to recency. Keyword-only if vectors are unavailable.
+ */
+async function hybridRank(uid, records, vectors, question) {
+  const kw = keywordScored(records, question)
+  if (!vectors) return kw.map((x) => x.r)
+  let vec
+  try {
+    vec = await embeddings.vectorRank(uid, question, vectors)
+  } catch (e) {
+    console.warn("Vector search failed, using keyword retrieval:", e.message)
+    return kw.map((x) => x.r)
+  }
+  const fused = new Map(records.map((r) => [r.id, 0]))
+  kw.filter((x) => x.s > 0).forEach((x, rank) => fused.set(x.r.id, fused.get(x.r.id) + 1 / (RRF_K + rank + 1)))
+  vec.forEach((v, rank) => fused.has(v.id) && fused.set(v.id, fused.get(v.id) + 1 / (RRF_K + rank + 1)))
+  return [...records].sort(
+    (a, b) => fused.get(b.id) - fused.get(a.id) || String(b.date).localeCompare(String(a.date))
+  )
+}
+
+async function retrieve(records, question, { budget = CONTEXT_BUDGET, uid = null, vectors = null } = {}) {
+  // Everything fits (the usual case): send it all in a fixed order so Claude's prompt cache can be
+  // reused across follow-up questions. Only rank when we have to leave records out.
+  const size = records.reduce((n, r) => n + r.text.length, 0)
+  if (size <= budget) return { picked: stableOrder(records), total: records.length }
 
   const picked = []
   let used = 0
-  for (const { r } of ranked) {
-    if (used + r.text.length > CONTEXT_BUDGET) continue
+  for (const r of await hybridRank(uid, records, vectors, question)) {
+    if (used + r.text.length > budget) continue
     picked.push(r)
     used += r.text.length
   }
@@ -302,10 +342,10 @@ function extractSources(answer, records) {
   return { text, sources }
 }
 
-async function askGhostBuster({ anthropic, model, store, uid, question, history, extractText }) {
+async function askGhostBuster({ anthropic, model, store, uid, question, history, extractText, budget }) {
   const q = String(question || "").trim()
-  const [{ records, cached }, profileR] = await Promise.all([getRecords(store, uid), store.getProfile(uid)])
-  const { picked, total } = retrieve(records, q)
+  const [{ records, vectors, cached }, profileR] = await Promise.all([getRecords(store, uid), store.getProfile(uid)])
+  const { picked, total } = await retrieve(records, q, { uid, vectors, ...(budget ? { budget } : {}) })
   const userName = typeof profileR?.profile?.name === "string" ? profileR.profile.name.trim() : ""
   const today = new Date().toISOString().slice(0, 10)
 
@@ -334,4 +374,14 @@ async function askGhostBuster({ anthropic, model, store, uid, question, history,
   }
 }
 
-module.exports = { askGhostBuster, markUserDataChanged, buildRecords, retrieve, extractSources, words }
+module.exports = {
+  askGhostBuster,
+  markUserDataChanged,
+  getRecords,
+  buildRecords,
+  rankRecords,
+  hybridRank,
+  retrieve,
+  extractSources,
+  words,
+}

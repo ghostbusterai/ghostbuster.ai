@@ -20,6 +20,7 @@ import {
 } from "../preferences"
 import { getReminderUrgencyStyle } from "../reminderUtils"
 import BrandName from "./BrandName"
+import AiMetricsCard from "./AiMetricsCard"
 
 const REMINDER_URGENCY = ["overdue", "today", "soon", "upcoming"]
 
@@ -721,6 +722,7 @@ export default function Settings({
           <SettingsGroup title="Privacy" embedded>
             {privacySection}
           </SettingsGroup>
+          <AiMetricsCard embedded />
         </>
       ) : (
         <>
@@ -732,6 +734,7 @@ export default function Settings({
           {warmthSection}
           {notificationsSection}
           {privacySection}
+          <AiMetricsCard />
         </>
       )}
     </div>

@@ -955,6 +955,8 @@ exports.deleteAccount = async (userId) => {
     "ghostIts",
     "applications",
     "resumeFiles",
+    "aiCalls",
+    "recordEmbeddings",
   ]
   for (const name of collections) {
     await db.collection(name).deleteMany({ userId: id })

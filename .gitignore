@@ -16,3 +16,7 @@ ghostbuster-server/data/
 # Local pitch tooling
 pitch/.venv/
 pitch/
+
+# Google Cloud service-account keys
+gcp-key*.json
+*service-account*.json

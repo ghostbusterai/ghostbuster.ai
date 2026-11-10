@@ -81,6 +81,7 @@ async function uploadRequest(path, formData) {
 
 export const api = {
   getMe: () => request("/api/auth/me"),
+  getAiMetrics: (days = 7) => request(`/api/admin/ai-metrics?days=${days}`),
   logout: () => request("/api/auth/logout", { method: "POST" }),
   getDemoStatus: () => request("/api/auth/demo"),
   demoLogin: (code) => request("/api/auth/demo", { method: "POST", body: JSON.stringify({ code }) }),

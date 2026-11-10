@@ -9,7 +9,8 @@ require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
 const { askGhostBuster, markUserDataChanged } = require("./ask")
 
-const { connectDb } = require("./db")
+const { connectDb, getDb } = require("./db")
+const aiLog = require("./aiLog")
 let USE_MONGO = Boolean(String(process.env.MONGODB_URI || "").trim())
 let store = USE_MONGO ? require("./mongoStore") : require("./fileStore")
 const LEGACY_USER_ID = "legacy"
@@ -45,6 +46,7 @@ const anthropic = apiKey
       ...(workspaceId ? { defaultHeaders: { "anthropic-workspace-id": workspaceId } } : {}),
     })
   : null
+aiLog.traceAnthropic(anthropic) // logs latency, tokens, cost, and errors for every Claude call
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6"
 
 function extractAssistantText(content) {
@@ -88,6 +90,17 @@ function appOrigin(req) {
   const proto = req.get("x-forwarded-proto") || req.protocol || "https"
   const host = req.get("x-forwarded-host") || req.get("host")
   return `${proto}://${host}`
+}
+
+const ADMIN_EMAILS = new Set(
+  String(process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+)
+
+function isAdminEmail(email) {
+  return Boolean(email) && ADMIN_EMAILS.has(String(email).trim().toLowerCase())
 }
 
 function userId(req) {
@@ -161,6 +174,8 @@ async function start() {
   if (USE_MONGO) {
     try {
       await connectDb()
+      aiLog.setAiLogSink((row) => getDb().collection("aiCalls").insertOne({ ...row }))
+      require("./embeddings").useMongo(getDb)
     } catch (err) {
       if (process.env.NODE_ENV === "production") throw err
       console.error("MongoDB connection failed:", err.message)
@@ -318,6 +333,7 @@ async function start() {
       }
       res.json({
         user: store.toPublicUser(user),
+        isAdmin: isAdminEmail(user.email),
         googleConnected: Boolean(user.googleRefreshToken),
         loginConfigured: authGoogle.isLoginConfigured(),
       })
@@ -424,6 +440,9 @@ async function start() {
     }
     next()
   })
+
+  // Tag Claude calls made while handling this request with its route and user (see aiLog.js).
+  app.use(aiLog.aiContextMiddleware(userId))
 
   // Any successful change to a user's data invalidates their Ask GhostBuster records cache.
   app.use((req, res, next) => {
@@ -1578,6 +1597,29 @@ async function start() {
         /credit balance|billing|Plans & Billing/i.test(msg) || /too low to access/i.test(msg)
       const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
       res.status(status).json({ error: msg || "Failed to summarize Ghostwriter note" })
+    }
+  })
+
+  // —— Admin: AI metrics (latency, cost, cache hits, errors) ——
+  app.get("/api/admin/ai-metrics", async (req, res) => {
+    try {
+      if (!USE_MONGO) return res.status(404).json({ error: "AI metrics need MongoDB" })
+      const user = await store.findUserById(userId(req))
+      if (!user || !isAdminEmail(user.email)) return res.status(403).json({ error: "Admins only" })
+      const days = Math.min(30, Math.max(1, Number(req.query.days) || 7))
+      const since = new Date(Date.now() - days * 86400000)
+      const filter = { createdAt: { $gte: since } }
+      if (req.query.includeDemo !== "1") filter.demo = { $ne: true }
+      const rows = await getDb()
+        .collection("aiCalls")
+        .find(filter, { projection: { _id: 0 } })
+        .sort({ createdAt: 1 })
+        .limit(50000)
+        .toArray()
+      res.json({ days, since: since.toISOString(), ...aiLog.buildMetrics(rows) })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to load AI metrics" })
     }
   })
 
