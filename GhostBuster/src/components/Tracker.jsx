@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import { api } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
@@ -209,6 +209,19 @@ export default function Tracker() {
   const [logChannel, setLogChannel] = useState(CHANNELS[0])
   const [logNote, setLogNote] = useState("")
   const [logPanelOpen, setLogPanelOpen] = useState(false)
+  const logAreaRef = useRef(null)
+
+  // Clicking anywhere outside the Log touchpoint window closes it (what you typed is kept).
+  useEffect(() => {
+    if (!logPanelOpen) return
+    const onPointerDown = (e) => {
+      if (logAreaRef.current?.contains(e.target)) return
+      if (e.target.closest?.("[role='dialog']")) return // other floating windows
+      setLogPanelOpen(false)
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => document.removeEventListener("pointerdown", onPointerDown)
+  }, [logPanelOpen])
   const [savingLog, setSavingLog] = useState(false)
 
   /** When set, show full-screen timeline for this contact's logged touchpoints */
@@ -786,6 +799,7 @@ export default function Tracker() {
 
       {/* Log touchpoint FAB / expandable panel */}
       <div
+        ref={logAreaRef}
         style={{
           position: "fixed",
           right: 20,

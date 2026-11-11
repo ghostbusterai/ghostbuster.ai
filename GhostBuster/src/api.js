@@ -88,6 +88,7 @@ export const api = {
   deleteAccount: () => request("/api/auth/account", { method: "DELETE" }),
   getContacts: () => request("/api/contacts"),
   createContact: (body) => request("/api/contacts", { method: "POST", body: JSON.stringify(body) }),
+  findPeople: (body) => request("/api/people/find", { method: "POST", body: JSON.stringify(body || {}) }),
   updateContact: (id, body) => request(`/api/contacts/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteContact: (id) => request(`/api/contacts/${id}`, { method: "DELETE" }),
   getReminders: () => request("/api/reminders"),

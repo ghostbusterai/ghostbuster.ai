@@ -8,6 +8,7 @@ const MongoStore = require("connect-mongo").MongoStore || require("connect-mongo
 require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
 const { askGhostBuster, markUserDataChanged } = require("./ask")
+const { findPeople } = require("./peopleFinder")
 
 const { connectDb, getDb } = require("./db")
 const aiLog = require("./aiLog")
@@ -459,6 +460,7 @@ async function start() {
     /^\/api\/resume\/ats-text$/,
     /^\/api\/ghostwriter\/[^/]+\/summarize$/,
     /^\/api\/ask$/,
+    /^\/api\/people\/find$/,
   ]
   app.use(async (req, res, next) => {
     if (!req.session?.demo || req.method !== "POST" || !AI_ROUTES.some((r) => r.test(req.path))) return next()
@@ -1620,6 +1622,25 @@ async function start() {
     } catch (e) {
       console.error(e)
       res.status(500).json({ error: "Failed to load AI metrics" })
+    }
+  })
+
+  // —— People Finder (suggests people to contact from the public web; LinkedIn excluded) ——
+  app.post("/api/people/find", async (req, res) => {
+    if (!anthropic) {
+      return res.status(503).json({ error: "People Finder requires ANTHROPIC_API_KEY on the server" })
+    }
+    try {
+      const out = await findPeople({ anthropic, model: CLAUDE_MODEL, store, uid: userId(req), body: req.body })
+      res.json({ people: out.people, searched: out.searched, note: out.note })
+    } catch (err) {
+      if (err?.status === 400 || err?.status === 422) return res.status(err.status).json({ error: err.message })
+      console.error(err)
+      const msg = formatAnthropicError(err)
+      const lowCredits =
+        /credit balance|billing|Plans & Billing/i.test(msg) || /too low to access/i.test(msg)
+      const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
+      res.status(status).json({ error: msg || "People search failed. Try again." })
     }
   })
 

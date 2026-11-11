@@ -7,6 +7,20 @@ import { api } from "./api"
  */
 
 export const AUTOFILL_EVENT = "gb-autofill"
+/** Fired when the extension asks to take Ghostwriter notes for a meeting (detail: { title, platform, url }). */
+export const GHOSTWRITER_START_EVENT = "gb-ghostwriter-start"
+const GHOSTWRITER_PENDING_KEY = "gb-ghostwriter-pending"
+
+/** The meeting waiting for Ghostwriter, if any. Clears it so it's only offered once. */
+export function takePendingGhostwriterMeeting() {
+  try {
+    const raw = sessionStorage.getItem(GHOSTWRITER_PENDING_KEY)
+    sessionStorage.removeItem(GHOSTWRITER_PENDING_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
 const handledReports = new Set()
 let initialized = false
@@ -104,6 +118,15 @@ export function initAutofillBridge() {
     else if (m.type === "FILL_STARTED") emit({ type: "started", ...m })
     else if (m.type === "FILL_REPORT") saveReport(m.report)
     else if (m.type === "SAVE_CONTACT") saveContact(m.contact)
+    else if (m.type === "GHOSTWRITER_START" && m.meeting) {
+      // Kept until the Ghostwriter page picks it up (it may not be mounted yet).
+      try {
+        sessionStorage.setItem(GHOSTWRITER_PENDING_KEY, JSON.stringify(m.meeting))
+      } catch {
+        /* storage unavailable: the event below still carries it */
+      }
+      window.dispatchEvent(new CustomEvent(GHOSTWRITER_START_EVENT, { detail: m.meeting }))
+    }
   })
   post({ type: "PING" })
   // Coming back from LinkedIn or an application tab: collect anything the extension is holding.

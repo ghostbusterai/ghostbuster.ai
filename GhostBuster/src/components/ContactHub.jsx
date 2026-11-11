@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { api } from "../api"
+import PeopleFinder from "./PeopleFinder"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
@@ -67,6 +68,7 @@ export default function ContactHub({
   const [showFirstContactCelebration, setShowFirstContactCelebration] = useState(false)
   const [showAllContacts, setShowAllContacts] = useState(false)
   const composeResizeRef = useRef(null)
+  const composeAreaRef = useRef(null)
 
   useEffect(() => {
     composeResizeRef.current = composeSize
@@ -131,6 +133,20 @@ export default function ContactHub({
     onComposeOpenChange(false)
     setLocalComposePrefill(null)
   }
+
+  // Clicking anywhere outside the Compose window closes it. The composer stays mounted while closed,
+  // so a draft (or AI-generated message) is still there when it's reopened.
+  useEffect(() => {
+    if (!composeOpen) return
+    const onPointerDown = (e) => {
+      if (composeAreaRef.current?.contains(e.target)) return
+      if (e.target.closest?.("[role='dialog']")) return // other floating windows
+      closeCompose()
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => document.removeEventListener("pointerdown", onPointerDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composeOpen])
 
   const activePrefill = composePrefill || localComposePrefill
 
@@ -658,6 +674,14 @@ export default function ContactHub({
           )}
         </div>
           </ContentCard>
+          <PeopleFinder
+            onContactAdded={() =>
+              api
+                .getContacts()
+                .then(({ contacts: list }) => setContacts(list))
+                .catch(() => {})
+            }
+          />
         </>
       )}
 
@@ -1038,6 +1062,7 @@ export default function ContactHub({
 
       {/* Compose FAB / expandable panel */}
       <div
+        ref={composeAreaRef}
         style={{
           position: "fixed",
           right: 20,
@@ -1049,8 +1074,7 @@ export default function ContactHub({
           gap: 12,
         }}
       >
-        {composeOpen ? (
-          <div
+        <div
             style={{
               position: "relative",
               width: composeSize.width,
@@ -1062,7 +1086,7 @@ export default function ContactHub({
               borderRadius: 20,
               boxShadow: "var(--gb-shadow-panel)",
               overflow: "hidden",
-              display: "flex",
+              display: composeOpen ? "flex" : "none",
               flexDirection: "column",
             }}
           >
@@ -1109,7 +1133,7 @@ export default function ContactHub({
               onClose={closeCompose}
             />
           </div>
-        ) : (
+        {!composeOpen && (
           <button
             type="button"
             onClick={() => openCompose()}

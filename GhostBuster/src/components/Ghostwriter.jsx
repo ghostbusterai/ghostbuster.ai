@@ -6,6 +6,7 @@ import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../la
 import AiDisclaimer from "./AiDisclaimer"
 import ViewMoreButton from "./ViewMoreButton"
 import { previewHiddenCount, previewSlice } from "../listPreview"
+import { GHOSTWRITER_START_EVENT, takePendingGhostwriterMeeting } from "../autofillBridge"
 
 function speechSupported() {
   return Boolean(typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition))
@@ -72,6 +73,9 @@ export default function Ghostwriter() {
   const speakerModeRef = useRef(speakerMode)
   const themLabelRef = useRef("Them")
   const detectedSpeakerRef = useRef("You")
+  const startBtnRef = useRef(null)
+  const activeRef = useRef(null)
+  const [meetingReady, setMeetingReady] = useState(null) // meeting the extension detected, waiting for Start
 
   const themLabel = contactName.trim() || "Them"
 
@@ -94,6 +98,37 @@ export default function Ghostwriter() {
   useEffect(() => {
     detectedSpeakerRef.current = detectedSpeaker
   }, [detectedSpeaker])
+
+  useEffect(() => {
+    activeRef.current = active
+  }, [active])
+
+  // The extension saw the user join a Meet/Zoom/Teams call and they chose "Start notes".
+  // Browsers only allow capturing audio after a click on this page, so prefill and point at Start.
+  useEffect(() => {
+    function prepare(meeting) {
+      if (!meeting) return
+      const platform = meeting.platform || "meeting"
+      if (activeRef.current) {
+        setNotice({ type: "success", text: `Ghostwriter is already recording. It's capturing your ${platform} call.` })
+        return
+      }
+      setTitle(meeting.title || `${platform} call`)
+      setMeetingReady(meeting)
+      setNotice({
+        type: "success",
+        text: `You joined a ${platform} call. Click Start live notes, then in the share dialog pick the ${platform} tab and turn on "Share tab audio" so Ghostwriter hears both sides.`,
+      })
+      setTimeout(() => {
+        startBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+        startBtnRef.current?.focus()
+      }, 100)
+    }
+    prepare(takePendingGhostwriterMeeting())
+    const onStart = () => prepare(takePendingGhostwriterMeeting())
+    window.addEventListener(GHOSTWRITER_START_EVENT, onStart)
+    return () => window.removeEventListener(GHOSTWRITER_START_EVENT, onStart)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -554,8 +589,12 @@ export default function Ghostwriter() {
           </select>
           {!active ? (
             <button
+              ref={startBtnRef}
               type="button"
-              onClick={startSession}
+              onClick={() => {
+                setMeetingReady(null)
+                startSession()
+              }}
               style={{
                 background: "var(--gb-accent-bright)",
                 color: "var(--gb-accent-text-on)",
@@ -565,7 +604,8 @@ export default function Ghostwriter() {
                 fontWeight: 700,
                 fontSize: 14,
                 cursor: "pointer",
-                boxShadow: "none",
+                // Ring around Start when a meeting is waiting for it.
+                boxShadow: meetingReady ? "0 0 0 3px var(--gb-bg), 0 0 0 5px var(--gb-accent-bright)" : "none",
               }}
             >
               Start live notes

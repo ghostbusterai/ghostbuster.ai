@@ -56,6 +56,19 @@ already saved are skipped. Untick it on the card to turn it off.
 It only reads profiles you open yourself, when you click Save or with auto-save on. It never crawls, visits profiles in the background,
 or bulk-exports connections, which LinkedIn's terms prohibit.
 
+## Ghostwriter notes for meetings
+
+When you join a call on **Google Meet**, **Zoom** (web client, `zoom.us/wc/…`), or **Microsoft Teams** (web), a card
+asks **Take notes with Ghostwriter?**
+
+- **Start notes** brings GhostBuster forward (or opens it) on the Ghostwriter page with the meeting's name filled in.
+  Click **Start live notes** there, then pick the meeting tab and turn on **Share tab audio** in Chrome's share dialog.
+  Browsers only let a page capture audio after a click on that page, so recording never starts by itself.
+- **Not now** hides it for this meeting. **Don't ask again on …** turns it off for that platform.
+
+`meeting.js` only checks whether you're in a call (the meeting's Leave button) and reads the meeting's title. It doesn't
+read chat, participants, or audio.
+
 ## App URLs
 
 `manifest.json` matches `localhost`, `127.0.0.1`, and `*.onrender.com` for the GhostBuster app. If the app moves to a custom domain, add it to the first `content_scripts` entry.

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "GhostBuster Autofill",
-  "version": "0.4.0",
-  "description": "Fills job applications from your GhostBuster profile, attaches your saved r\u00e9sum\u00e9s, and saves LinkedIn profiles as contacts. You always review and submit.",
+  "version": "0.5.0",
+  "description": "Fills job applications from your GhostBuster profile, attaches your saved résumés, saves LinkedIn profiles as contacts, and offers Ghostwriter notes when you join a Meet, Zoom, or Teams call. You always review and submit.",
   "permissions": [
     "storage",
     "scripting",
@@ -68,6 +68,18 @@
         "gmail.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://*.zoom.us/*",
+        "https://teams.microsoft.com/*",
+        "https://teams.live.com/*"
+      ],
+      "js": [
+        "meeting.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "host_permissions": [
@@ -75,6 +87,10 @@
     "http://127.0.0.1/*",
     "https://*.onrender.com/*",
     "https://www.linkedin.com/*",
-    "https://mail.google.com/*"
+    "https://mail.google.com/*",
+    "https://meet.google.com/*",
+    "https://*.zoom.us/*",
+    "https://teams.microsoft.com/*",
+    "https://teams.live.com/*"
   ]
 }

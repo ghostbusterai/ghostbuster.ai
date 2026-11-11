@@ -10,6 +10,14 @@
  * user grants per site or for all sites (optional_host_permissions); until then nothing runs there.
  */
 
+const DEFAULT_APP_ORIGIN = "https://ghostbuster-ai-js5l.onrender.com"
+const MEETING_URLS = [
+  "https://meet.google.com/*",
+  "https://*.zoom.us/*",
+  "https://teams.microsoft.com/*",
+  "https://teams.live.com/*",
+]
+
 const ALL_SITES = ["https://*/*", "http://*/*"]
 const MAX_APPLY_HOPS = 6
 
@@ -214,9 +222,42 @@ async function handle(msg, sender) {
       return { ok: true }
     }
 
-    case "APP_READY":
+    case "APP_READY": {
       if (sender.tab?.id != null) await setAppTabs([...(await appTabs()), sender.tab.id])
-      return { pending: await getPending(), contacts: await getPendingContacts() }
+      if (sender.url) await chrome.storage.local.set({ appOrigin: new URL(sender.url).origin })
+      // A meeting the user asked to take notes on before this GhostBuster tab was open.
+      const { pendingGhostwriter } = await chrome.storage.local.get("pendingGhostwriter")
+      let ghostwriter = null
+      if (pendingGhostwriter && Date.now() - pendingGhostwriter.at < 10 * 60 * 1000) ghostwriter = pendingGhostwriter
+      if (pendingGhostwriter) await chrome.storage.local.remove("pendingGhostwriter")
+      return { pending: await getPending(), contacts: await getPendingContacts(), ghostwriter }
+    }
+
+    // From meeting.js: the user wants Ghostwriter notes for the call they're in. Hand it to an open
+    // GhostBuster tab and bring that tab forward, or open GhostBuster on the Ghostwriter page.
+    case "START_GHOSTWRITER": {
+      const meeting = {
+        title: String(msg.meeting?.title || "").slice(0, 200),
+        platform: String(msg.meeting?.platform || "").slice(0, 40),
+        url: String(msg.meeting?.url || "").slice(0, 500),
+        at: Date.now(),
+      }
+      const live = []
+      for (const id of await appTabs()) {
+        const resp = await chrome.tabs.sendMessage(id, { type: "GHOSTWRITER_START", meeting }).catch(() => null)
+        if (resp?.app) live.push(id)
+      }
+      await setAppTabs(live)
+      if (live.length) {
+        const tab = await chrome.tabs.update(live[0], { active: true })
+        if (tab?.windowId != null) await chrome.windows.update(tab.windowId, { focused: true }).catch(() => {})
+        return { ok: true, opened: false }
+      }
+      await chrome.storage.local.set({ pendingGhostwriter: meeting })
+      const { appOrigin } = await chrome.storage.local.get("appOrigin")
+      await chrome.tabs.create({ url: `${appOrigin || DEFAULT_APP_ORIGIN}/?page=ghostwriter` })
+      return { ok: true, opened: true }
+    }
 
     // From linkedin.js: the user saved the profile they're viewing.
     case "SAVE_CONTACT": {
@@ -276,6 +317,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     { url: ["http://localhost/*", "http://127.0.0.1/*", "https://*.onrender.com/*"], file: "app-bridge.js" },
     { url: ["https://www.linkedin.com/*"], file: "linkedin.js" },
     { url: ["https://mail.google.com/*"], files: ["resume-picker.js", "gmail.js"] },
+    { url: MEETING_URLS, file: "meeting.js" },
   ]
   for (const { url, file, files } of targets) {
     for (const tab of await chrome.tabs.query({ url }).catch(() => [])) {

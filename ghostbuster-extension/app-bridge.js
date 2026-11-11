@@ -20,6 +20,7 @@
     chrome.runtime.sendMessage({ type: "APP_READY" }, (resp) => {
       for (const report of resp?.pending || []) post({ type: "FILL_REPORT", report })
       for (const contact of resp?.contacts || []) post({ type: "SAVE_CONTACT", contact })
+      if (resp?.ghostwriter) post({ type: "GHOSTWRITER_START", meeting: resp.ghostwriter })
     })
   }
 
@@ -57,7 +58,10 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === "FILL_REPORT") post({ type: "FILL_REPORT", report: msg.report })
-    else if (msg?.type === "SAVE_CONTACT") {
+    else if (msg?.type === "GHOSTWRITER_START") {
+      post({ type: "GHOSTWRITER_START", meeting: msg.meeting })
+      sendResponse({ app: true })
+    } else if (msg?.type === "SAVE_CONTACT") {
       post({ type: "SAVE_CONTACT", contact: msg.contact })
       sendResponse({ app: true })
     }

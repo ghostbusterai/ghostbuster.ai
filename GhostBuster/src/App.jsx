@@ -18,7 +18,7 @@ import BrandName from "./components/BrandName"
 import { PAGE_PADDING_X } from "./layout"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 import { api } from "./api"
-import { requestPendingFillReports } from "./autofillBridge"
+import { requestPendingFillReports, GHOSTWRITER_START_EVENT } from "./autofillBridge"
 import { GMAIL_FOLLOWUPS_EVENT } from "./components/Reminders"
 
 function localDateString() {
@@ -116,9 +116,21 @@ export default function App() {
         text: params.get("message") || "Could not connect Google account.",
       })
     }
+    if (!auth && !google && returnTo === "ghostwriter") {
+      // Opened by the extension from a Meet/Zoom/Teams call.
+      setPageState("ghostwriter")
+      window.history.replaceState({}, "", window.location.pathname || "/")
+    }
     if (auth || google) {
       window.history.replaceState({}, "", window.location.pathname || "/")
     }
+  }, [])
+
+  // The extension asked for Ghostwriter notes on a meeting: go to the Ghostwriter page.
+  useEffect(() => {
+    const onStart = () => setPageState("ghostwriter")
+    window.addEventListener(GHOSTWRITER_START_EVENT, onStart)
+    return () => window.removeEventListener(GHOSTWRITER_START_EVENT, onStart)
   }, [])
 
   useEffect(() => {
