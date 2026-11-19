@@ -4,6 +4,9 @@ import GhostBusterLogo from "./GhostBusterLogo"
 import BrandName from "./BrandName"
 import { BASE, api } from "../api"
 
+// Shown on the sign-in page for application reviewers. Must match DEMO_ACCESS_CODE on the server.
+const REVIEWER_DEMO_CODE = "app-reviewer"
+
 export default function Login({ error, onDemoLogin }) {
   const loginHref = `${BASE}/api/auth/google`
   const apiDown = typeof error === "string" && /API isn't running/i.test(error)
@@ -215,7 +218,10 @@ export default function Login({ error, onDemoLogin }) {
             ) : (
               <button
                 type="button"
-                onClick={() => setDemoOpen(true)}
+                onClick={() => {
+                  setDemoCode((c) => c || REVIEWER_DEMO_CODE)
+                  setDemoOpen(true)
+                }}
                 style={{
                   width: "100%",
                   padding: "12px 20px",
@@ -234,6 +240,21 @@ export default function Login({ error, onDemoLogin }) {
             {demoError && (
               <p style={{ margin: "8px 0 0", fontSize: 13, color: "#ff8a8a" }}>{demoError}</p>
             )}
+            <p style={{ margin: "10px 0 0", fontSize: 13, color: "rgba(240,240,245,0.75)", textAlign: "center" }}>
+              Application reviewers: use demo code{" "}
+              <code
+                style={{
+                  color: accentNeon,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  padding: "1px 6px",
+                  borderRadius: 6,
+                  background: "rgba(184,255,87,0.12)",
+                }}
+              >
+                {REVIEWER_DEMO_CODE}
+              </code>
+            </p>
           </div>
         )}
 
