@@ -2,7 +2,7 @@ export const PIPELINE_STATUSES = [
   { id: "saved", label: "To apply", short: "To apply", tone: "var(--gb-text-muted)" },
   { id: "applied", label: "Applied", short: "Applied", tone: "var(--gb-accent)" },
   { id: "screening", label: "Screening", short: "Screening", tone: "#6eb5ff" },
-  { id: "interview", label: "Interview", short: "Interview", tone: "#b482ff" },
+  { id: "interview", label: "Interviewing", short: "Interviewing", tone: "#b482ff" },
   { id: "offer", label: "Offer", short: "Offer", tone: "var(--gb-accent-bright)" },
   { id: "rejected", label: "Rejected", short: "Rejected", tone: "var(--gb-danger)" },
   { id: "withdrawn", label: "Withdrawn", short: "Withdrawn", tone: "var(--gb-text-faint)" },
