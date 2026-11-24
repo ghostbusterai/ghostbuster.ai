@@ -1327,6 +1327,9 @@ async function start() {
         await store.setGmailScan(id, { lastScanAt })
         return ok({ created, found: found.length, contactsAdded: contactsAdded.length, contactSuggestions, lastScanAt })
       } catch (e) {
+        if (gmailFollowups.isQuotaError(e)) {
+          return fail(429, { error: "Gmail is limiting how fast GhostBuster can read right now. Try again in a minute." })
+        }
         if (gmailFollowups.isPermissionError(e) || /invalid_grant/i.test(e?.message || "")) {
           await store.setGmailScan(id, { enabled: false, importContacts: false, readGranted: false })
           return fail(403, { error: "GhostBuster no longer has Gmail read access. Turn Gmail features on again in Settings.", needsPermission: true })

@@ -20,6 +20,31 @@ const DAY = 24 * 60 * 60 * 1000
 const RECRUITING = /\b(recruit\w*|talent|hiring|interview\w*|candidate|position|opening|job|role|application|internship|intern|offer|phone screen|coffee chat|referral|opportunit\w*)\b/i
 const AUTOMATED = /(no-?reply|do-?not-?reply|notifications?|mailer-daemon|postmaster|alerts?@|updates?@|news(letter)?@|marketing@|info@|support@|hello@|jobs-noreply|talent-noreply)/i
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/** Gmail's per-user rate limit ("Quota exceeded ... per minute per user"), sent as 429 or 403. */
+function isQuotaError(e) {
+  const status = e?.code || e?.response?.status
+  const reason = e?.errors?.[0]?.reason || e?.response?.data?.error?.errors?.[0]?.reason || ""
+  return status === 429 || (status === 403 && /rate ?limit|quota/i.test(`${reason} ${e?.message || ""}`))
+}
+
+/**
+ * Calls Gmail, waiting and retrying when the per-user rate limit is hit (1s, 2s, 4s, 8s, 16s + jitter).
+ * Also spaces calls out a little so a scan stays well under the limit to begin with.
+ */
+async function gmailCall(fn, { retries = 5, spacingMs = 120 } = {}) {
+  await sleep(spacingMs)
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn()
+    } catch (e) {
+      if (!isQuotaError(e) || attempt >= retries) throw e
+      await sleep(1000 * 2 ** attempt + Math.random() * 500)
+    }
+  }
+}
+
 function parseAddress(header) {
   const raw = String(header || "").trim()
   const m = raw.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>/)
@@ -58,24 +83,28 @@ async function findFollowUps(refreshToken, { contacts = [], now = Date.now() } =
   const threads = []
   let pageToken
   do {
-    const { data } = await gmail.users.threads.list({
-      userId: "me",
-      q: `newer_than:${LOOKBACK_DAYS}d -in:chats -category:promotions -category:social -category:forums -category:updates`,
-      maxResults: 100,
-      pageToken,
-    })
+    const { data } = await gmailCall(() =>
+      gmail.users.threads.list({
+        userId: "me",
+        q: `newer_than:${LOOKBACK_DAYS}d -in:chats -category:promotions -category:social -category:forums -category:updates`,
+        maxResults: 100,
+        pageToken,
+      })
+    )
     threads.push(...(data.threads || []))
     pageToken = data.nextPageToken
   } while (pageToken && threads.length < MAX_THREADS)
 
   const results = []
   for (const t of threads.slice(0, MAX_THREADS)) {
-    const { data: thread } = await gmail.users.threads.get({
-      userId: "me",
-      id: t.id,
-      format: "metadata",
-      metadataHeaders: ["From", "To", "Subject", "List-Unsubscribe", "Precedence"],
-    })
+    const { data: thread } = await gmailCall(() =>
+      gmail.users.threads.get({
+        userId: "me",
+        id: t.id,
+        format: "metadata",
+        metadataHeaders: ["From", "To", "Subject", "List-Unsubscribe", "Precedence"],
+      })
+    )
     const messages = (thread.messages || []).filter((m) => !(m.labelIds || []).includes("DRAFT"))
     if (!messages.length) continue
 
@@ -131,6 +160,8 @@ function isPermissionError(e) {
 module.exports = {
   findFollowUps,
   isPermissionError,
+  isQuotaError,
+  gmailCall,
   parseAddress,
   firstAddress,
   headerMap,

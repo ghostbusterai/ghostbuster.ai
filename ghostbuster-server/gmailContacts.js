@@ -11,10 +11,10 @@
  */
 const { google } = require("googleapis")
 const { getAuthedClient } = require("./googleCalendar")
-const { firstAddress, parseAddress, headerMap, displayName, AUTOMATED } = require("./gmailFollowups")
+const { firstAddress, parseAddress, headerMap, displayName, AUTOMATED, gmailCall, isQuotaError } = require("./gmailFollowups")
 
 const LOOKBACK_DAYS = 90
-const MAX_THREADS = 300
+const MAX_THREADS = 200
 const MAX_CANDIDATES = 60
 const BATCH = 25
 const AUTO_ADD_CONFIDENCE = 0.8
@@ -38,18 +38,22 @@ function isBulk(h) {
  * @param skip Set of lowercase emails to leave out (existing contacts, dismissed, removed, already seen)
  */
 async function findCandidates(gmail, { skip = new Set() } = {}) {
-  const { data: me } = await gmail.users.getProfile({ userId: "me" })
+  const { data: me } = await gmailCall(() => gmail.users.getProfile({ userId: "me" }), { spacingMs: 0 })
   const myEmail = String(me.emailAddress || "").toLowerCase()
 
   const threads = []
   let pageToken
   do {
-    const { data } = await gmail.users.threads.list({
-      userId: "me",
-      q: `newer_than:${LOOKBACK_DAYS}d -in:chats -category:promotions -category:social -category:forums -category:updates`,
-      maxResults: 100,
-      pageToken,
-    })
+    // Only threads you've sent something in: a two-way conversation always includes one of your
+    // messages, and this skips most of the inbox (keeping the scan under Gmail's per-user rate limit).
+    const { data } = await gmailCall(() =>
+      gmail.users.threads.list({
+        userId: "me",
+        q: `in:sent newer_than:${LOOKBACK_DAYS}d -in:chats`,
+        maxResults: 100,
+        pageToken,
+      })
+    )
     threads.push(...(data.threads || []))
     pageToken = data.nextPageToken
   } while (pageToken && threads.length < MAX_THREADS)
@@ -58,15 +62,17 @@ async function findCandidates(gmail, { skip = new Set() } = {}) {
   for (const t of threads.slice(0, MAX_THREADS)) {
     let thread
     try {
-      ;({ data: thread } = await gmail.users.threads.get({
-        userId: "me",
-        id: t.id,
-        format: "metadata",
-        metadataHeaders: ["From", "To", "Cc", "Subject", "List-Unsubscribe", "List-Id", "Precedence"],
-      }))
+      ;({ data: thread } = await gmailCall(() =>
+        gmail.users.threads.get({
+          userId: "me",
+          id: t.id,
+          format: "metadata",
+          metadataHeaders: ["From", "To", "Cc", "Subject", "List-Unsubscribe", "List-Id", "Precedence"],
+        })
+      ))
     } catch (e) {
-      // Permission problems should stop the scan; one unreadable thread shouldn't.
-      if ((e?.code || e?.response?.status) === 403 || /invalid_grant/i.test(e?.message || "")) throw e
+      // Permission and rate-limit problems (after retries) stop the scan; one unreadable thread doesn't.
+      if (isQuotaError(e) || (e?.code || e?.response?.status) === 403 || /invalid_grant/i.test(e?.message || "")) throw e
       console.warn("Gmail contacts: skipping thread", t.id, e.message)
       continue
     }
