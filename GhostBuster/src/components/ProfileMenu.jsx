@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { initScrollReveal } from "../scrollReveal"
 import { api } from "../api"
 import { font } from "../theme"
-import { inputStyle } from "../uiStyles"
+import { inputStyle, primaryBtn, secondaryBtn } from "../uiStyles"
 import Settings from "./Settings"
 import {
   DEFAULT_PROFILE,
@@ -526,18 +526,7 @@ export default function ProfileMenu({
                       <button
                         type="submit"
                         disabled={saving || !dirty}
-                        style={{
-                          width: "100%",
-                          background: saving || !dirty ? "var(--gb-accent-soft)" : "var(--gb-accent-bright)",
-                          color: saving || !dirty ? "var(--gb-accent-muted)" : "var(--gb-accent-text-on)",
-                          border: "1px solid rgba(10,15,9,0.22)",
-                          padding: "10px 16px",
-                          borderRadius: 9,
-                          fontWeight: 700,
-                          fontSize: 13,
-                          cursor: saving || !dirty ? "not-allowed" : "pointer",
-                          boxShadow: "none",
-                        }}
+                        {...primaryBtn({ fullWidth: true })}
                       >
                         {saving ? "Saving…" : saved && !dirty ? "Saved" : "Save profile"}
                       </button>
@@ -581,19 +570,7 @@ export default function ProfileMenu({
                       type="button"
                       onClick={showGettingStartedAgain}
                       disabled={!tutorialHidden || restoringTutorial}
-                      style={{
-                        width: "100%",
-                        background: !tutorialHidden || restoringTutorial ? "var(--gb-surface-hover)" : "var(--gb-surface-active)",
-                        color: !tutorialHidden || restoringTutorial ? "var(--gb-text-faint)" : "var(--gb-text-strong)",
-                        border: "1px solid var(--gb-border)",
-                        padding: "10px 16px",
-                        borderRadius: 9,
-                        fontFamily: font.body,
-                        fontWeight: 600,
-                        fontSize: 13,
-                        cursor: !tutorialHidden || restoringTutorial ? "not-allowed" : "pointer",
-                        boxShadow: "none",
-                      }}
+                      {...secondaryBtn({ fullWidth: true })}
                     >
                       {restoringTutorial ? "Opening…" : "Show getting started on Home"}
                     </button>

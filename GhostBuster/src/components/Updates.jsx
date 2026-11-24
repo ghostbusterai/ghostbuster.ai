@@ -6,7 +6,16 @@ import {
   generateResumeUpdateOutreachMessage,
 } from "../outreachMessage"
 import { font } from "../theme"
-import { inputStyle } from "../uiStyles"
+import {
+  accentSoftBtn,
+  chipBtn,
+  dangerBtn,
+  ghostBtn,
+  inputStyle,
+  linkBtn,
+  primaryBtn,
+  secondaryBtn,
+} from "../uiStyles"
 import { readLocalProfile, saveLocalProfile } from "../profile"
 import { contactsNeedingResumeNudge, buildResumeShareComposePrefill } from "../resumeNudge"
 import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
@@ -745,22 +754,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             onChange={(e) => setResumeDate(e.target.value)}
             style={{ ...inputStyle(), width: "auto" }}
           />
-          <button
-            type="button"
-            onClick={saveResumeDate}
-            disabled={savingResumeDate}
-            style={{
-              background: "var(--gb-accent-bright)",
-              color: "var(--gb-accent-text-on)",
-              border: "1px solid rgba(10,15,9,0.22)",
-              boxShadow: "none",
-              padding: "10px 20px",
-              borderRadius: 9,
-              fontFamily: font.h1,
-              fontWeight: 700,
-              cursor: savingResumeDate ? "wait" : "pointer",
-            }}
-          >
+          <button type="button" onClick={saveResumeDate} disabled={savingResumeDate} {...primaryBtn()}>
             {savingResumeDate ? "Saving…" : "Save date"}
           </button>
         </div>
@@ -807,18 +801,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   <button
                     type="button"
                     onClick={() => openResumeCompose(c)}
-                    style={{
-                      background: "var(--gb-accent-soft)",
-                      border: "1px solid var(--gb-border-subtle)",
-                      color: "var(--gb-accent)",
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      fontFamily: font.body,
-                      whiteSpace: "nowrap",
-                      boxShadow: "none",
-                    }}
+                    {...accentSoftBtn({ style: { whiteSpace: "nowrap" } })}
                   >
                     Draft message →
                   </button>
@@ -862,17 +845,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               type="button"
               onClick={() => createBucket(newBucketName)}
               disabled={creatingBucket || !newBucketName.trim()}
-              style={{
-                background: newBucketName.trim() && !creatingBucket ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
-                color: newBucketName.trim() && !creatingBucket ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
-                border: "1px solid var(--gb-border-subtle)",
-                boxShadow: "none",
-                padding: "10px 18px",
-                borderRadius: 9,
-                fontFamily: font.h1,
-                fontWeight: 700,
-                cursor: newBucketName.trim() && !creatingBucket ? "pointer" : "not-allowed",
-              }}
+              {...primaryBtn()}
             >
               {creatingBucket ? "Adding…" : "Add bucket"}
             </button>
@@ -890,17 +863,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   type="button"
                   onClick={() => createBucket(name)}
                   disabled={creatingBucket}
-                  style={{
-                    background: "var(--gb-surface-hover)",
-                    border: "1px solid var(--gb-border-strong)",
-                    color: "var(--gb-text-subtle)",
-                    padding: "6px 12px",
-                    borderRadius: 20,
-                    fontSize: 12,
-                    cursor: creatingBucket ? "wait" : "pointer",
-                    fontFamily: font.body,
-                    boxShadow: "none",
-                  }}
+                  {...chipBtn()}
                 >
                   + {name}
                 </button>
@@ -958,20 +921,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                           : "No contacts assigned yet — we'll auto-match from their role"}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeBucket(bucket.id)}
-                      style={{
-                        background: "transparent",
-                        border: "1px solid rgba(255,107,107,0.25)",
-                        color: "var(--gb-danger)",
-                        padding: "5px 10px",
-                        borderRadius: 7,
-                        fontSize: 11,
-                        cursor: "pointer",
-                        boxShadow: "none",
-                      }}
-                    >
+                    <button type="button" onClick={() => removeBucket(bucket.id)} {...dangerBtn()}>
                       Delete bucket
                     </button>
                   </div>
@@ -1008,16 +958,13 @@ export default function Updates({ setPage, setComposePrefill }) {
                         </div>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <label
-                            style={{
-                              background: "var(--gb-accent-soft)",
-                              border: "1px solid var(--gb-border-subtle)",
-                              color: "var(--gb-accent)",
-                              padding: "6px 12px",
-                              borderRadius: 8,
-                              fontSize: 12,
-                              cursor: uploading ? "not-allowed" : "pointer",
-                              opacity: uploading ? 0.5 : 1,
-                            }}
+                            {...accentSoftBtn({
+                              sm: true,
+                              style: {
+                                cursor: uploading ? "not-allowed" : "pointer",
+                                opacity: uploading ? 0.5 : 1,
+                              },
+                            })}
                           >
                             Replace
                             <input
@@ -1028,20 +975,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                               style={{ display: "none" }}
                             />
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => removeBucketResume(bucket.id)}
-                            style={{
-                              background: "transparent",
-                              border: "1px solid rgba(255,107,107,0.35)",
-                              color: "var(--gb-danger)",
-                              padding: "6px 12px",
-                              borderRadius: 8,
-                              fontSize: 12,
-                              cursor: "pointer",
-                              boxShadow: "none",
-                            }}
-                          >
+                          <button type="button" onClick={() => removeBucketResume(bucket.id)} {...dangerBtn()}>
                             Remove file
                           </button>
                         </div>
@@ -1064,16 +998,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                           onClick={() =>
                             setExpandedBucketIds((prev) => ({ ...prev, [bucket.id]: !prev[bucket.id] }))
                           }
-                          style={{
-                            marginTop: 8,
-                            background: "transparent",
-                            border: "none",
-                            color: "var(--gb-accent)",
-                            fontSize: 13,
-                            cursor: "pointer",
-                            padding: 0,
-                            boxShadow: "none",
-                          }}
+                          {...linkBtn({ style: { marginTop: 8 } })}
                         >
                           {expanded ? "Show less" : "Show full text"}
                         </button>
@@ -1087,17 +1012,10 @@ export default function Updates({ setPage, setComposePrefill }) {
                       }}
                       onDragLeave={() => setDragOverBucketId(null)}
                       onDrop={(e) => onResumeDrop(e, bucket.id)}
+                      className={`gb-file-drop${dragOver ? " gb-file-drop--active" : ""}`}
                       style={{
-                        display: "block",
-                        marginTop: 12,
-                        border: dragOver
-                          ? "2px dashed var(--gb-accent-muted)"
-                          : "2px dashed var(--gb-border)",
-                        borderRadius: 10,
-                        padding: "24px 16px",
-                        textAlign: "center",
                         cursor: uploading ? "not-allowed" : "pointer",
-                        background: dragOver ? "var(--gb-surface-hover)" : "var(--gb-surface-hover)",
+                        opacity: uploading ? 0.6 : 1,
                       }}
                     >
                       <input
@@ -1183,17 +1101,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                         type="button"
                         onClick={() => restoreArchiveItem(item.bucketId, item.id)}
                         disabled={Boolean(archiveActionKey)}
-                        style={{
-                          background: restoring ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
-                          border: "1px solid var(--gb-border-subtle)",
-                          color: "var(--gb-accent)",
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: archiveActionKey ? "not-allowed" : "pointer",
-                          boxShadow: "none",
-                        }}
+                        {...accentSoftBtn()}
                       >
                         {restoring ? "Restoring…" : "Restore"}
                       </button>
@@ -1201,16 +1109,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                         type="button"
                         onClick={() => deleteArchiveItem(item.bucketId, item.id)}
                         disabled={Boolean(archiveActionKey)}
-                        style={{
-                          background: "transparent",
-                          border: "1px solid rgba(255,107,107,0.35)",
-                          color: "var(--gb-danger)",
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          fontSize: 12,
-                          cursor: archiveActionKey ? "not-allowed" : "pointer",
-                          boxShadow: "none",
-                        }}
+                        {...dangerBtn()}
                       >
                         {deleting ? "Deleting…" : "Delete"}
                       </button>
@@ -1221,18 +1120,15 @@ export default function Updates({ setPage, setComposePrefill }) {
                     onClick={() =>
                       setExpandedArchiveIds((prev) => ({ ...prev, [archiveKey]: !prev[archiveKey] }))
                     }
-                    style={{
-                      marginTop: 12,
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--gb-text-subtle)",
-                      fontSize: 12,
-                      cursor: "pointer",
-                      padding: 0,
-                      boxShadow: "none",
-                      textDecoration: "underline",
-                      textUnderlineOffset: 3,
-                    }}
+                    {...linkBtn({
+                      style: {
+                        marginTop: 12,
+                        color: "var(--gb-text-subtle)",
+                        fontSize: 12,
+                        textDecoration: "underline",
+                        textUnderlineOffset: 3,
+                      },
+                    })}
                   >
                     {expanded ? "Hide text" : "Preview text"}
                   </button>
@@ -1265,19 +1161,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               <button
                 type="button"
                 onClick={() => setShowAllArchiveItems((v) => !v)}
-                style={{
-                  alignSelf: "flex-start",
-                  background: "var(--gb-surface-hover)",
-                  border: "1px solid var(--gb-border)",
-                  color: "var(--gb-text-secondary)",
-                  padding: "10px 16px",
-                  borderRadius: 9,
-                  fontFamily: font.body,
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: "pointer",
-                  boxShadow: "none",
-                }}
+                {...secondaryBtn({ style: { alignSelf: "flex-start" } })}
               >
                 {showAllArchiveItems
                   ? "Show less"
@@ -1308,27 +1192,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             type="button"
             onClick={fetchSuggestions}
             disabled={suggestionsLoading || !activeSuggestionsBucket?.text?.trim() || !careerGoals}
-            style={{
-              flexShrink: 0,
-              background:
-                suggestionsLoading || !activeSuggestionsBucket?.text?.trim() || !careerGoals
-                  ? "rgba(91,228,216,0.15)"
-                  : "rgba(91,228,216,0.2)",
-              border: "1px solid rgba(91,228,216,0.4)",
-              color:
-                suggestionsLoading || !activeSuggestionsBucket?.text?.trim() || !careerGoals
-                  ? "rgba(91,228,216,0.4)"
-                  : "#5be4d8",
-              padding: "9px 16px",
-              borderRadius: 9,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor:
-                suggestionsLoading || !activeSuggestionsBucket?.text?.trim() || !careerGoals
-                  ? "not-allowed"
-                  : "pointer",
-              boxShadow: "none",
-            }}
+            {...primaryBtn({ style: { flexShrink: 0 } })}
           >
             {suggestionsLoading ? "Analyzing…" : suggestions.length ? "Refresh" : "Get suggestions"}
           </button>
@@ -1603,18 +1467,7 @@ export default function Updates({ setPage, setComposePrefill }) {
           <button
             type="submit"
             disabled={saving || !title.trim() || !details.trim()}
-            style={{
-              alignSelf: "flex-start",
-              background: saving || !title.trim() || !details.trim() ? "var(--gb-accent-soft)" : "var(--gb-accent-bright)",
-              color: saving || !title.trim() || !details.trim() ? "var(--gb-accent-muted)" : "var(--gb-accent-text-on)",
-              border: saving || !title.trim() || !details.trim() ? "1px solid var(--gb-border-subtle)" : "1px solid rgba(10,15,9,0.22)",
-              boxShadow: "none",
-              padding: "11px 22px",
-              borderRadius: 9,
-              fontFamily: font.h1,
-              fontWeight: 700,
-              cursor: saving || !title.trim() || !details.trim() ? "not-allowed" : "pointer",
-            }}
+            {...primaryBtn({ style: { alignSelf: "flex-start" } })}
           >
             {saving ? "Saving…" : "Save update & see matches"}
           </button>
@@ -1682,35 +1535,11 @@ export default function Updates({ setPage, setComposePrefill }) {
                 <button
                   type="button"
                   onClick={() => showOutreachForUpdate(u)}
-                  style={{
-                    background: "var(--gb-accent-soft)",
-                    border: "1px solid var(--gb-border-subtle)",
-                    color: "var(--gb-accent)",
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    boxShadow: "none",
-                    whiteSpace: "nowrap",
-                  }}
+                  {...accentSoftBtn({ style: { whiteSpace: "nowrap" } })}
                 >
                   Matches & jobs →
                 </button>
-                <button
-                  type="button"
-                  onClick={() => remove(u.id)}
-                  style={{
-                    background: "transparent",
-                    border: "1px solid rgba(255,107,107,0.35)",
-                    color: "var(--gb-danger)",
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    cursor: "pointer",
-                    boxShadow: "none",
-                  }}
-                >
+                <button type="button" onClick={() => remove(u.id)} {...dangerBtn()}>
                   Delete
                 </button>
               </div>
@@ -1915,20 +1744,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       type="button"
                       onClick={() => copyOutreachMessage(row.contactId, outreach.message)}
                       disabled={!outreach.message || outreach.loading}
-                      style={{
-                        background:
-                          copiedContactId === row.contactId
-                            ? "var(--gb-accent-soft)"
-                            : "var(--gb-accent-soft)",
-                        border: "1px solid var(--gb-border-subtle)",
-                        color: outreach.message && !outreach.loading ? "var(--gb-accent)" : "var(--gb-accent-border)",
-                        padding: "8px 14px",
-                        borderRadius: 8,
-                        fontSize: 13,
-                        cursor: outreach.message && !outreach.loading ? "pointer" : "not-allowed",
-                        fontFamily: font.body,
-                        boxShadow: "none",
-                      }}
+                      {...accentSoftBtn()}
                     >
                       {copiedContactId === row.contactId ? "Copied!" : "Copy message"}
                     </button>
@@ -1936,17 +1752,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       type="button"
                       onClick={() => openComposeForContact(row, relevanceModal.update)}
                       disabled={outreach.loading}
-                      style={{
-                        background: "transparent",
-                        border: "1px solid var(--gb-border)",
-                        color: outreach.loading ? "var(--gb-text-dim)" : "var(--gb-text-subtle)",
-                        padding: "8px 14px",
-                        borderRadius: 8,
-                        fontSize: 13,
-                        cursor: outreach.loading ? "not-allowed" : "pointer",
-                        fontFamily: font.body,
-                        boxShadow: "none",
-                      }}
+                      {...secondaryBtn()}
                     >
                       Customize in Compose →
                     </button>
@@ -2039,17 +1845,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                               type="button"
                               onClick={() => addJobSuggestionToApplications(s)}
                               disabled={addingJobKey === key}
-                              style={{
-                                background: "var(--gb-accent-bright)",
-                                color: "var(--gb-accent-text-on)",
-                                border: "1px solid rgba(10,15,9,0.22)",
-                                padding: "7px 12px",
-                                borderRadius: 8,
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: addingJobKey === key ? "not-allowed" : "pointer",
-                                boxShadow: "none",
-                              }}
+                              {...primaryBtn()}
                             >
                               {addingJobKey === key ? "Saving…" : "Save to pipeline"}
                             </button>
@@ -2083,35 +1879,14 @@ export default function Updates({ setPage, setComposePrefill }) {
                   type="button"
                   onClick={() => loadJobSuggestionsForUpdate(relevanceModal.update)}
                   disabled={jobSuggestLoading}
-                  style={{
-                    marginTop: 14,
-                    background: "transparent",
-                    border: "1px solid var(--gb-border-strong)",
-                    color: "var(--gb-text-subtle)",
-                    padding: "8px 14px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    cursor: jobSuggestLoading ? "not-allowed" : "pointer",
-                    fontFamily: font.body,
-                    boxShadow: "none",
-                  }}
+                  {...secondaryBtn({ style: { marginTop: 14 } })}
                 >
                   Refresh job ideas
                 </button>
                 <button
                   type="button"
                   onClick={() => setPage("applications")}
-                  style={{
-                    marginTop: 10,
-                    marginLeft: 8,
-                    background: "transparent",
-                    border: "none",
-                    color: "var(--gb-accent)",
-                    padding: "8px 0",
-                    fontSize: 12,
-                    cursor: "pointer",
-                    fontFamily: font.body,
-                  }}
+                  {...linkBtn({ style: { marginTop: 10, marginLeft: 8, fontSize: 12 } })}
                 >
                   Open Job applications →
                 </button>
@@ -2132,20 +1907,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                   if (relevanceModal.notice === "no_contacts") setPage("contacts")
                   closeRelevanceModal()
                 }}
-                style={{
-                  background: relevanceModal.notice === "no_contacts" ? "var(--gb-accent-bright)" : "var(--gb-border-subtle)",
-                  border:
-                    relevanceModal.notice === "no_contacts"
-                      ? "1px solid rgba(10,15,9,0.22)"
-                      : "1px solid var(--gb-border)",
-                  color: relevanceModal.notice === "no_contacts" ? "var(--gb-accent-text-on)" : "var(--gb-text)",
-                  padding: "9px 18px",
-                  borderRadius: 9,
-                  fontSize: 13,
-                  fontWeight: relevanceModal.notice === "no_contacts" ? 700 : 400,
-                  cursor: "pointer",
-                  boxShadow: "none",
-                }}
+                {...(relevanceModal.notice === "no_contacts" ? primaryBtn() : secondaryBtn())}
               >
                 {relevanceModal.notice === "no_contacts" ? "Add contacts →" : "Got it"}
               </button>

@@ -9,6 +9,7 @@ import {
   getReminderUrgency,
   getReminderUrgencyStyle,
   reminderDueLabel,
+  reminderContactInitial,
   summarizePendingReminders,
 } from "../reminderUtils"
 
@@ -157,54 +158,53 @@ export default function Notifications({ setPage }) {
           lede="Add contacts and log outreach — we'll suggest follow-ups here. You can still add your own on Reminders."
         />
       ) : (
-        <div className="gb-record-list">
+        <div className="gb-record-list gb-reminders-list">
           {pending.map((r) => {
             const urgency = getReminderUrgency(r)
             const style = getReminderUrgencyStyle(urgency)
             const auto = isAutoReminder(r)
             const reason = r.customReason || r.reason || "General check-in"
+            const cardStyle = !auto
+              ? { background: style.cardBg, borderColor: style.border, boxShadow: style.shadow }
+              : undefined
             return (
               <div
                 key={r.id}
-                className="gb-record-row gb-reveal-block"
-                style={{
-                  borderLeft: `2px solid ${style.border}`,
-                  paddingLeft: 10,
-                  marginLeft: -4,
-                }}
+                className={[
+                  "gb-record-row",
+                  "gb-reminder-row",
+                  "gb-reveal-block",
+                  auto ? "gb-reminder-row--suggested" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                style={cardStyle}
               >
-                <div className="gb-record-row__main">
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
-                    {auto && (
+                <div className="gb-reminder-row__body">
+                  <span className="gb-reminder-avatar" aria-hidden="true">
+                    {reminderContactInitial(r.contactName)}
+                  </span>
+                  <div className="gb-reminder-row__main">
+                    <div className="gb-reminder-row__title-line">
+                      <span className="gb-reminder-row__name">{r.contactName}</span>
+                      {auto && <span className="gb-reminder-chip gb-reminder-chip--suggested">Suggested</span>}
                       <span
-                        className="gb-badge"
-                        style={{
-                          color: "var(--gb-accent)",
-                          borderColor: "var(--gb-accent-border)",
-                          background: "var(--gb-accent-soft)",
-                        }}
+                        className="gb-reminder-chip"
+                        style={{ color: style.color, borderColor: style.border, background: style.bg }}
                       >
-                        Suggested
+                        {style.label}
                       </span>
-                    )}
-                    <span className="gb-badge" style={{ color: style.color, borderColor: style.border }}>
-                      {style.label}
-                    </span>
-                    <span className="gb-record-row__title">{r.contactName}</span>
-                  </div>
-                  <div style={{ fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5 }}>{reason}</div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontFamily: font.mono,
-                      color: style.color,
-                      marginTop: 8,
-                    }}
-                  >
-                    {reminderDueLabel(r)}
+                    </div>
+                    <p className="gb-reminder-row__reason">{reason}</p>
+                    <p
+                      className="gb-reminder-row__due"
+                      style={{ color: style.color, borderColor: style.border, background: style.bg }}
+                    >
+                      {reminderDueLabel(r)}
+                    </p>
                   </div>
                 </div>
-                <div className="gb-record-row__actions">
+                <div className="gb-record-row__actions gb-reminder-row__actions">
                   <button type="button" onClick={() => markDone(r.id)} {...primaryBtn({ sm: true })}>
                     {auto ? "Dismiss" : "Mark done"}
                   </button>

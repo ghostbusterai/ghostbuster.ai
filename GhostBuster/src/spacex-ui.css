@@ -343,31 +343,38 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 28px;
+  padding: 14px 26px;
   font-family: var(--gb-font-sans);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #000;
   background: #fff;
   border: none;
+  border-radius: 999px;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
 }
 
 .gb-spacex-hero__cta:hover {
-  opacity: 0.88;
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px -12px rgba(255, 255, 255, 0.35);
 }
 
 .gb-spacex-hero__cta--ghost {
   color: #fff;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: color-mix(in srgb, #fff 6%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.38);
 }
 
 .gb-spacex-hero__cta--ghost:hover {
   border-color: rgba(255, 255, 255, 0.65);
+  background: color-mix(in srgb, #fff 10%, transparent);
   opacity: 1;
 }
 

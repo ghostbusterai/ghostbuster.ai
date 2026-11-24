@@ -148,7 +148,7 @@ export default function Login({ error, onDemoLogin }) {
               <div className="gb-login-glass__label">Beta privacy notice</div>
               <p className="gb-login-glass__body">
                 GhostBuster stores account info from Google sign-in (name, email, profile photo) plus the data you add:
-                contacts, notes, reminders, outreach logs, résumés, applications, and Ghostwriter transcripts/summaries. If you connect
+                contacts, notes, reminders, outreach logs, résumés, and applications. If you connect
                 Gmail or Calendar, we store tokens so we can save drafts, schedule sends, and sync reminders. AI features
                 may send relevant text you provide to our AI provider to generate drafts and summaries. Your data stays in
                 your account and is intended only for beta testing.

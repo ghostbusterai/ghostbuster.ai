@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { inputStyle, primaryBtn, secondaryBtn } from "../uiStyles"
+import { chipBtn, inputStyle, primaryBtn, secondaryBtn } from "../uiStyles"
 import AiDisclaimer from "./AiDisclaimer"
 import GhostBusterLogo from "./GhostBusterLogo"
 
@@ -17,7 +17,7 @@ const TYPE_LABEL = {
   outreach: "Outreach",
   reminder: "Reminder",
   application: "Application",
-  note: "Ghostwriter",
+  note: "Meeting note",
   resume: "Résumé",
 }
 
@@ -36,18 +36,7 @@ function renderInline(text, sourceIndex, onSource, keyBase) {
           type="button"
           onClick={() => onSource(cite[1])}
           title="Open source"
-          style={{
-            margin: "0 2px",
-            padding: "0 6px",
-            fontSize: 11,
-            lineHeight: "16px",
-            borderRadius: 999,
-            border: "1px solid var(--gb-border)",
-            background: "var(--gb-surface-muted)",
-            color: "var(--gb-text-strong)",
-            cursor: "pointer",
-            verticalAlign: "1px",
-          }}
+          {...chipBtn({ sm: true, className: "gb-cite-chip" })}
         >
           {n}
         </button>
@@ -192,7 +181,7 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
   function openSource(id) {
     const msg = [...messages].reverse().find((m) => m.sources?.some((s) => s.id === id))
     const src = msg?.sources.find((s) => s.id === id)
-    if (src?.page) setPage(src.page)
+    if (src?.page && src.page !== "ghostwriter") setPage(src.page)
   }
 
   // Default spot: bottom right, above the page's own corner button (56px tall at bottom 20) on pages
@@ -343,7 +332,7 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
                 setError("")
               }}
               disabled={loading}
-              style={{ ...secondaryBtn(), padding: "6px 10px", fontSize: 12 }}
+              {...secondaryBtn({ sm: true })}
             >
               New chat
             </button>
@@ -362,7 +351,7 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
                   key={ex}
                   type="button"
                   onClick={() => ask(ex)}
-                  style={{ ...secondaryBtn(), fontWeight: 500, textAlign: "left", fontSize: 13 }}
+                  {...secondaryBtn({ className: "gb-ask-example" })}
                 >
                   {ex}
                 </button>
@@ -399,17 +388,8 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
                       <button
                         key={s.id}
                         type="button"
-                        onClick={() => setPage(s.page)}
-                        style={{
-                          fontSize: 12,
-                          padding: "4px 10px",
-                          borderRadius: 999,
-                          border: "1px solid var(--gb-border)",
-                          background: "transparent",
-                          color: "var(--gb-text)",
-                          cursor: "pointer",
-                          fontFamily: font.body,
-                        }}
+                        onClick={() => openSource(s.id)}
+                        {...chipBtn({ sm: true })}
                       >
                         {j + 1}. {TYPE_LABEL[s.type] || "Record"}: {s.label}
                       </button>
@@ -456,7 +436,7 @@ export default function AskGhostBuster({ setPage, raised = false, hidden = false
           aria-label="Ask GhostBuster a question"
           style={{ ...inputStyle(), resize: "none", minHeight: 42, maxHeight: 120 }}
         />
-        <button type="submit" disabled={loading || !input.trim()} style={{ ...primaryBtn(), padding: "10px 16px", opacity: loading || !input.trim() ? 0.6 : 1 }}>
+        <button type="submit" disabled={loading || !input.trim()} {...primaryBtn({ sm: true })}>
           Ask
         </button>
       </form>

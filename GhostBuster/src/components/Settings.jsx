@@ -3,7 +3,15 @@ import { api, BASE } from "../api"
 import { font } from "../theme"
 import { useTheme } from "../ThemeContext"
 import { CardTitle, PageHero, PageShell } from "../layout"
-import { inputStyle, sectionCard, secondaryBtn } from "../uiStyles"
+import {
+  inputStyle,
+  sectionCard,
+  secondaryBtn,
+  dangerBtn,
+  dangerSolidBtn,
+  accentSoftBtn,
+  ghostBtn,
+} from "../uiStyles"
 import {
   LS_PROFILE,
   normalizeProfile,
@@ -201,17 +209,9 @@ export default function Settings({
             <button
               key={id}
               type="button"
+              className="gb-appearance-tile"
               onClick={() => setColorScheme(id)}
               aria-pressed={active}
-              style={{
-                textAlign: "left",
-                padding: 12,
-                borderRadius: 10,
-                cursor: "pointer",
-                background: active ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
-                border: active ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border)",
-                boxShadow: "none",
-              }}
             >
               <div
                 style={{
@@ -269,38 +269,12 @@ export default function Settings({
           type="button"
           onClick={showGettingStartedAgain}
           disabled={loading || !tutorialHidden || restoringTutorial}
-          style={{
-            background: loading || !tutorialHidden || restoringTutorial ? "var(--gb-surface-hover)" : "var(--gb-surface-active)",
-            color: loading || !tutorialHidden || restoringTutorial ? "var(--gb-text-faint)" : "var(--gb-text-strong)",
-            border: "1px solid var(--gb-border)",
-            padding: "10px 16px",
-            borderRadius: 9,
-            fontFamily: font.body,
-            fontWeight: 600,
-            fontSize: 13,
-            cursor: loading || !tutorialHidden || restoringTutorial ? "not-allowed" : "pointer",
-            boxShadow: "none",
-          }}
+          {...secondaryBtn()}
         >
           {restoringTutorial ? "Opening…" : "Show getting started on Home"}
         </button>
         {!loading && !tutorialHidden && (
-          <button
-            type="button"
-            onClick={hideGettingStartedPermanently}
-            disabled={hidingTutorial}
-            style={{
-              background: "transparent",
-              color: "var(--gb-text-subtle)",
-              border: "1px solid var(--gb-border)",
-              padding: "10px 16px",
-              borderRadius: 9,
-              fontFamily: font.body,
-              fontSize: 13,
-              cursor: hidingTutorial ? "not-allowed" : "pointer",
-              boxShadow: "none",
-            }}
-          >
+          <button type="button" onClick={hideGettingStartedPermanently} disabled={hidingTutorial} {...ghostBtn()}>
             {hidingTutorial ? "Saving…" : "Don't show again"}
           </button>
         )}
@@ -338,38 +312,11 @@ export default function Settings({
               {googleStatus.connected ? "Connected" : "Not connected"}
             </span>
             {googleStatus.connected ? (
-              <button
-                type="button"
-                onClick={disconnectGoogle}
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--gb-border)",
-                  color: "var(--gb-text-subtle)",
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  boxShadow: "none",
-                }}
-              >
+              <button type="button" onClick={disconnectGoogle} {...secondaryBtn()}>
                 Disconnect
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={connectGoogle}
-                style={{
-                  background: "var(--gb-accent-soft)",
-                  border: "1px solid var(--gb-border-subtle)",
-                  color: "var(--gb-accent)",
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  boxShadow: "none",
-                }}
-              >
+              <button type="button" onClick={connectGoogle} {...accentSoftBtn()}>
                 Connect Google
               </button>
             )}
@@ -569,27 +516,12 @@ export default function Settings({
         Privacy
       </CardTitle>
       <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
-        This deletes your Google login, contacts, notes, reminders, outreach logs, résumés, applications, Ghostwriter
-        transcripts and summaries, and any stored Gmail or Calendar tokens. Copies already sent to email,
+        This deletes your Google login, contacts, notes, reminders, outreach logs, résumés, applications, and any
+        stored Gmail or Calendar tokens. Copies already sent to email,
         Calendar, or our AI provider are outside this app.
       </p>
       {!confirmDelete ? (
-        <button
-          type="button"
-          onClick={() => setConfirmDelete(true)}
-          style={{
-            background: "transparent",
-            border: "1px solid var(--gb-danger)",
-            color: "var(--gb-danger)",
-            padding: "10px 16px",
-            borderRadius: 9,
-            fontFamily: font.body,
-            fontWeight: 600,
-            fontSize: 13,
-            cursor: "pointer",
-            boxShadow: "none",
-          }}
-        >
+        <button type="button" onClick={() => setConfirmDelete(true)} {...dangerBtn()}>
           Delete my account and all my data
         </button>
       ) : (
@@ -606,42 +538,10 @@ export default function Settings({
             This signs you out and permanently deletes your account. Other people’s accounts are not affected.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={deleteAccountAndData}
-              disabled={deletingAccount}
-              style={{
-                background: "var(--gb-danger)",
-                border: "1px solid var(--gb-danger)",
-                color: "#fff",
-                padding: "10px 16px",
-                borderRadius: 9,
-                fontFamily: font.body,
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: deletingAccount ? "not-allowed" : "pointer",
-                boxShadow: "none",
-                opacity: deletingAccount ? 0.7 : 1,
-              }}
-            >
+            <button type="button" onClick={deleteAccountAndData} disabled={deletingAccount} {...dangerSolidBtn()}>
               {deletingAccount ? "Deleting…" : "Permanently delete everything"}
             </button>
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(false)}
-              disabled={deletingAccount}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--gb-border)",
-                color: "var(--gb-text-subtle)",
-                padding: "10px 16px",
-                borderRadius: 9,
-                fontFamily: font.body,
-                fontSize: 13,
-                cursor: deletingAccount ? "not-allowed" : "pointer",
-                boxShadow: "none",
-              }}
-            >
+            <button type="button" onClick={() => setConfirmDelete(false)} disabled={deletingAccount} {...secondaryBtn()}>
               Cancel
             </button>
           </div>

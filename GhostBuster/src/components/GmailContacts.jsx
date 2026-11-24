@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
-import { secondaryBtn, primaryBtn } from "../uiStyles"
+import { linkBtn, primaryBtn, secondaryBtn } from "../uiStyles"
 import { ContentCard } from "../layout"
 
 /** sessionStorage key App sets when returning from Google's consent screen for this feature. */
@@ -163,7 +163,7 @@ export default function GmailContacts({ onContactsChanged }) {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {enabled && (
-            <button type="button" onClick={scan} disabled={Boolean(busy)} style={secondaryBtn()}>
+            <button type="button" onClick={scan} disabled={Boolean(busy)} {...secondaryBtn()}>
               {busy === "scan" ? "Checking Gmail…" : "Scan now"}
             </button>
           )}
@@ -171,7 +171,7 @@ export default function GmailContacts({ onContactsChanged }) {
             type="button"
             onClick={toggle}
             disabled={Boolean(busy)}
-            style={enabled ? secondaryBtn() : primaryBtn()}
+            {...(enabled ? secondaryBtn() : primaryBtn())}
           >
             {enabled ? "Turn off" : "Turn on"}
           </button>
@@ -196,7 +196,7 @@ export default function GmailContacts({ onContactsChanged }) {
                 type="button"
                 onClick={undo}
                 disabled={Boolean(busy)}
-                style={{ background: "none", border: "none", padding: 0, color: "var(--gb-accent)", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}
+                {...linkBtn({ sm: true })}
               >
                 Undo
               </button>
@@ -212,7 +212,7 @@ export default function GmailContacts({ onContactsChanged }) {
             <div style={{ fontSize: 12, color: "var(--gb-text-faint)", flex: 1, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: font.mono }}>
               Found in your Gmail
             </div>
-            <button type="button" onClick={addAll} disabled={Boolean(busy)} style={{ ...secondaryBtn(), padding: "4px 10px", fontSize: 12 }}>
+            <button type="button" onClick={addAll} disabled={Boolean(busy)} {...secondaryBtn({ sm: true })}>
               Add all
             </button>
           </div>
@@ -231,10 +231,10 @@ export default function GmailContacts({ onContactsChanged }) {
                   </div>
                   <div style={{ fontSize: 12, color: "var(--gb-text-muted)" }}>{s.reason || s.email}</div>
                 </div>
-                <button type="button" onClick={() => add(s.email)} disabled={Boolean(busy)} style={{ ...secondaryBtn(), padding: "4px 10px", fontSize: 12 }}>
+                <button type="button" onClick={() => add(s.email)} disabled={Boolean(busy)} {...primaryBtn({ sm: true })}>
                   Add
                 </button>
-                <button type="button" onClick={() => dismiss(s.email)} disabled={Boolean(busy)} style={{ ...secondaryBtn(), padding: "4px 10px", fontSize: 12, opacity: 0.75 }}>
+                <button type="button" onClick={() => dismiss(s.email)} disabled={Boolean(busy)} {...secondaryBtn({ sm: true })}>
                   Dismiss
                 </button>
               </div>

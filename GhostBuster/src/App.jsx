@@ -8,7 +8,6 @@ import ProfileMenu from "./components/ProfileMenu"
 import NotificationBell from "./components/NotificationBell"
 import Notifications from "./components/Notifications"
 import About from "./components/About"
-import Ghostwriter from "./components/Ghostwriter"
 import AskGhostBuster from "./components/AskGhostBuster"
 import Applications from "./components/Applications"
 import Login from "./components/Login"
@@ -20,7 +19,7 @@ import BrandName from "./components/BrandName"
 import { PAGE_PADDING_X } from "./layout"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 import { api } from "./api"
-import { requestPendingFillReports, GHOSTWRITER_START_EVENT } from "./autofillBridge"
+import { requestPendingFillReports } from "./autofillBridge"
 import { GMAIL_CONTACTS_RETURN_KEY } from "./components/GmailContacts"
 import { GMAIL_FOLLOWUPS_EVENT } from "./components/Reminders"
 
@@ -37,7 +36,6 @@ const NAV = [
   { id: "updates", label: "Resume" },
   { id: "applications", label: "Job applications" },
   { id: "reminders", label: "Reminders" },
-  { id: "ghostwriter", label: "Writer" },
   { id: "about", label: "About us" },
 ]
 
@@ -130,19 +128,9 @@ export default function App() {
         text: params.get("message") || "Could not connect Google account.",
       })
     }
-    if (!auth && !google && returnTo === "ghostwriter") {
-      setPageState("ghostwriter")
-      window.history.replaceState({}, "", window.location.pathname || "/")
-    }
     if (auth || google) {
       window.history.replaceState({}, "", window.location.pathname || "/")
     }
-  }, [])
-
-  useEffect(() => {
-    const onStart = () => setPageState("ghostwriter")
-    window.addEventListener(GHOSTWRITER_START_EVENT, onStart)
-    return () => window.removeEventListener(GHOSTWRITER_START_EVENT, onStart)
   }, [])
 
   useEffect(() => {
@@ -376,7 +364,6 @@ export default function App() {
           {page === "tracker" && <Tracker />}
           {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
           {page === "applications" && <Applications />}
-          {page === "ghostwriter" && <Ghostwriter />}
           {page === "about" && <About />}
         </main>
       </div>

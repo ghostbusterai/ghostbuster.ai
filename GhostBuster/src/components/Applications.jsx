@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { inputStyle, primaryBtn, secondaryBtn, uiClass } from "../uiStyles"
+import { dangerBtn, inputStyle, primaryBtn, secondaryBtn, uiClass } from "../uiStyles"
 import {
   PageShell,
   PageHero,
@@ -74,6 +74,42 @@ export default function Applications() {
   const [notice, setNotice] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const newAppRoleRef = useRef(null)
+  const pipelineListRef = useRef(null)
+  const addFormRef = useRef(null)
+
+  function scrollToPipelineList() {
+    pipelineListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  function scrollToAddForm() {
+    addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  function openForm() {
+    setForm(emptyForm())
+    setShowForm(true)
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        scrollToAddForm()
+        newAppRoleRef.current?.focus()
+      }, 80)
+    })
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setForm(emptyForm())
+  }
+
+  useEffect(() => {
+    if (!showForm) return undefined
+    const onKey = (e) => {
+      if (e.key === "Escape") closeForm()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [showForm])
   const [filter, setFilter] = useState("in_progress")
   const [showAll, setShowAll] = useState(false)
   const [suggestions, setSuggestions] = useState([])
@@ -184,14 +220,15 @@ export default function Applications() {
     try {
       await api.createApplication(payload)
       await refresh()
-      setForm(emptyForm())
-      setShowForm(false)
-      setNotice({ type: "success", text: form.status === "completed" ? "Saved as completed." : "Saved to complete." })
+      setFilter(submitted ? "in_progress" : "saved")
+      setShowAll(false)
+      closeForm()
+      setNotice({ type: "success", text: submitted ? "Saved as completed." : "Saved to tracker." })
+      window.setTimeout(scrollToPipelineList, 120)
     } catch (e) {
       if (loadError) {
         persist([{ id: Date.now(), ...payload, createdAt: new Date().toISOString(), completedAt: payload.status === "completed" ? new Date().toISOString() : "" }, ...applications])
-        setForm(emptyForm())
-        setShowForm(false)
+        closeForm()
       } else {
         setActionError(e.message)
       }
@@ -501,22 +538,7 @@ export default function Applications() {
             : `${todoCount} to apply · ${inProgressCount} in progress · ${interviewingCount} interviewing · ${pipelineCounts.offer} offers${needsInputCount ? ` · ${needsInputCount} need your answers` : ""}`
         }
         action={
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            style={{
-              background: "var(--gb-accent-bright)",
-              color: "var(--gb-accent-text-on)",
-              border: "1px solid rgba(10,15,9,0.22)",
-              boxShadow: "none",
-              padding: "11px 22px",
-              borderRadius: 10,
-              fontFamily: font.h1,
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
+          <button type="button" onClick={openForm} {...primaryBtn()}>
             + Add application
           </button>
         }
@@ -692,6 +714,7 @@ export default function Applications() {
         )}
       </ContentCard>
 
+      <div ref={pipelineListRef} style={{ scrollMarginTop: 96 }}>
       <ContentCard padding="14px 14px 12px" marginBottom={24}>
         <CardTitle helper="Filter by where you are in the process — not which website hosts the job.">
           Pipeline
@@ -707,79 +730,75 @@ export default function Applications() {
       </ContentCard>
 
       {showForm && (
-        <ContentCard padding="28px" marginBottom={28} style={{ border: "1px solid var(--gb-border-subtle)" }}>
-          <CardTitle>New application</CardTitle>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div ref={addFormRef} id="new-application-form" style={{ scrollMarginTop: 96 }}>
+          <ContentCard padding="22px 24px" marginBottom={24} style={{ border: "1px solid var(--gb-border-strong)" }}>
+            <CardTitle helper="Add a role to your pipeline — save apply and portal links now, fill details later if you want.">
+              New application
+            </CardTitle>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 14 }}>
+              <input
+                ref={newAppRoleRef}
+                placeholder="Role (e.g. Software engineering intern)"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                style={inputStyle()}
+              />
+              <input
+                placeholder="Company"
+                value={form.company}
+                onChange={(e) => setForm({ ...form, company: e.target.value })}
+                style={inputStyle()}
+              />
+            </div>
             <input
-              placeholder="Role (e.g. Software engineering intern)"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-              style={inputStyle()}
+              placeholder="Application link (Handshake, LinkedIn, company site…)"
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value, portalUrl: e.target.value || form.portalUrl })}
+              style={{ ...inputStyle(), marginTop: 14 }}
             />
             <input
-              placeholder="Company"
-              value={form.company}
-              onChange={(e) => setForm({ ...form, company: e.target.value })}
-              style={inputStyle()}
+              placeholder="Status portal link (Workday, Greenhouse status page — optional if same as above)"
+              value={form.portalUrl}
+              onChange={(e) => setForm({ ...form, portalUrl: e.target.value })}
+              style={{ ...inputStyle(), marginTop: 14 }}
             />
-          </div>
-          <input
-            placeholder="Application link (Handshake, LinkedIn, company site…)"
-            value={form.url}
-            onChange={(e) => setForm({ ...form, url: e.target.value, portalUrl: e.target.value || form.portalUrl })}
-            style={{ ...inputStyle(), marginTop: 14 }}
-          />
-          <input
-            placeholder="Status portal link (Workday, Greenhouse status page — optional if same as above)"
-            value={form.portalUrl}
-            onChange={(e) => setForm({ ...form, portalUrl: e.target.value })}
-            style={{ ...inputStyle(), marginTop: 14 }}
-          />
-          <input
-            placeholder="Notes (optional)"
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            style={{ ...inputStyle(), marginTop: 14 }}
-          />
-          <input
-            placeholder="Latest status from portal (e.g. Under review, OA sent)"
-            value={form.statusNote}
-            onChange={(e) => setForm({ ...form, statusNote: e.target.value })}
-            style={{ ...inputStyle(), marginTop: 14 }}
-          />
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 14,
-              fontSize: 13,
-              color: "var(--gb-text-subtle)",
-              cursor: "pointer",
-              fontFamily: font.body,
-            }}
-          >
             <input
-              type="checkbox"
-              checked={form.status === "completed"}
-              onChange={(e) => setForm({ ...form, status: e.target.checked ? "completed" : "todo" })}
+              placeholder="Notes (optional)"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              style={{ ...inputStyle(), marginTop: 14 }}
             />
-            I already submitted this application
-          </label>
-          <FormActions
-            primary={<FormPrimaryButton onClick={save}>Save</FormPrimaryButton>}
-            secondary={
-              <FormSecondaryButton
-                onClick={() => {
-                  setShowForm(false)
-                  setForm(emptyForm())
-                }}
-              >
-                Cancel
-              </FormSecondaryButton>
-            }
-          />
-        </ContentCard>
+            <input
+              placeholder="Latest status from portal (e.g. Under review, OA sent)"
+              value={form.statusNote}
+              onChange={(e) => setForm({ ...form, statusNote: e.target.value })}
+              style={{ ...inputStyle(), marginTop: 14 }}
+            />
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginTop: 14,
+                fontSize: 13,
+                color: "var(--gb-text-subtle)",
+                cursor: "pointer",
+                fontFamily: font.body,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.status === "completed"}
+                onChange={(e) => setForm({ ...form, status: e.target.checked ? "completed" : "todo" })}
+              />
+              I already submitted this application
+            </label>
+            <FormActions
+              primary={<FormPrimaryButton onClick={save}>Save</FormPrimaryButton>}
+              secondary={<FormSecondaryButton onClick={closeForm}>Cancel</FormSecondaryButton>}
+            />
+          </ContentCard>
+        </div>
       )}
 
       <ContentCard padding="8px 0 4px" className="gb-applications-list-card">
@@ -823,6 +842,7 @@ export default function Applications() {
           />
         </div>
       </ContentCard>
+      </div>
     </PageShell>
   )
 }
@@ -891,7 +911,8 @@ function ApplicationRow({
             id={`pipeline-${a.id}`}
             value={pipeline}
             onChange={(e) => onPipelineChange(e.target.value)}
-            style={{ ...inputStyle(), width: "auto", minWidth: 148, padding: "8px 10px", margin: 0, fontSize: 13 }}
+            className={uiClass.input}
+            style={{ ...inputStyle(), width: "auto", minWidth: 148, padding: "8px 14px", margin: 0, fontSize: 13 }}
           >
             {PIPELINE_STATUSES.map((s) => (
               <option key={s.id} value={s.id}>
@@ -1065,7 +1086,7 @@ function ApplicationRow({
                 Mark submitted
               </button>
             )}
-            <button type="button" onClick={onDelete} {...rowBtn(false, { className: "gb-btn--danger-soft" })}>
+            <button type="button" onClick={onDelete} {...dangerBtn({ sm: true })}>
               Delete
             </button>
           </div>
@@ -1086,10 +1107,5 @@ function rowBtn(accent = false, extra = {}) {
 }
 
 function actionLink(extra = {}) {
-  const { className: extraClass, ...rest } = extra
-  return {
-    ...rest,
-    className: [uiClass.btnSecondary, uiClass.btnSm, extraClass].filter(Boolean).join(" "),
-    style: { textDecoration: "none", ...extra.style },
-  }
+  return secondaryBtn({ sm: true, ...extra, style: { textDecoration: "none", ...extra.style } })
 }

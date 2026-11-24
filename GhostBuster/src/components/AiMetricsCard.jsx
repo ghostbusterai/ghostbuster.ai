@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { sectionCard, secondaryBtn } from "../uiStyles"
+import { sectionCard } from "../uiStyles"
 
 const fmtMs = (n) => (n == null ? "–" : n >= 1000 ? `${(n / 1000).toFixed(1)}s` : `${n}ms`)
 const fmtUsd = (n) => (n == null ? "–" : n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`)
@@ -49,13 +49,13 @@ export default function AiMetricsCard({ embedded }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <strong style={{ color: "var(--gb-text-strong)", fontFamily: font.h1 }}>AI metrics</strong>
         <span style={{ fontSize: 12, color: "var(--gb-text-faint)" }}>Admin only · excludes demo accounts</span>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+        <div className="gb-segmented" style={{ marginLeft: "auto" }}>
           {[1, 7, 30].map((d) => (
             <button
               key={d}
               type="button"
               onClick={() => setDays(d)}
-              style={{ ...secondaryBtn(), padding: "4px 10px", fontSize: 12, opacity: d === days ? 1 : 0.6 }}
+              className={`gb-segmented__btn${d === days ? " gb-segmented__btn--active" : ""}`}
             >
               {d}d
             </button>

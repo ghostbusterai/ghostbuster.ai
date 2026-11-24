@@ -15,7 +15,7 @@ export default function ViewMoreButton({
   const btn = secondaryBtn({ sm: true, style })
 
   return (
-    <button type="button" onClick={onToggle} className={btn.className} style={btn.style}>
+    <button type="button" onClick={onToggle} {...btn}>
       {showAll
         ? "Show less"
         : hiddenCount > 0

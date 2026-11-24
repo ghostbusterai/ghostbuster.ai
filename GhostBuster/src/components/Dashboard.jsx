@@ -3,7 +3,7 @@ import { api } from "../api"
 import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, getReminderUrgencyStyle, getReminderUrgency } from "../reminderUtils"
 import { font } from "../theme"
 import { CardTitle, ContentCard, PageShell, responsiveGrid, PAGE_SPLIT_GRID, type } from "../layout"
-import { primaryBtn, secondaryBtn } from "../uiStyles"
+import { ghostBtn, primaryBtn } from "../uiStyles"
 import { formatContactName, formatLastTouch, formatActivityTime } from "../formatters"
 import { useMotivationalGreeting } from "../greeting"
 import ViewMoreButton from "./ViewMoreButton"
@@ -502,7 +502,7 @@ export default function Dashboard({ setPage }) {
                 <Icon name="chevron-right" size={14} color="var(--gb-accent-text-on)" />
               </button>
             )}
-            <button type="button" onClick={dismissTutorialPermanently} {...secondaryBtn({ style: { background: "transparent", border: "none" } })}>
+            <button type="button" onClick={dismissTutorialPermanently} {...ghostBtn()}>
               Don&apos;t show again
             </button>
           </div>

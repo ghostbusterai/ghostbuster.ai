@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
-import { inputStyle } from "../uiStyles"
+import {
+  accentSoftBtn,
+  chipBtn,
+  ghostBtn,
+  inputStyle,
+  primaryBtn,
+  secondaryBtn,
+  uiClass,
+} from "../uiStyles"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import { COMPOSE_TONES, readPreferences } from "../preferences"
 import { readLocalProfile } from "../profile"
@@ -338,19 +346,7 @@ export default function MessageComposer({
                 title={s}
                 disabled={loading}
                 onClick={() => selectScenario(s)}
-                style={{
-                  background: active ? "var(--gb-accent-soft)" : "var(--gb-surface-hover)",
-                  border: active ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-strong)",
-                  color: active ? "var(--gb-accent)" : "var(--gb-text-secondary)",
-                  padding: "8px 14px",
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontFamily: font.body,
-                  fontWeight: active ? 600 : 500,
-                  cursor: loading ? "wait" : "pointer",
-                  boxShadow: "none",
-                  transition: "border-color 0.15s, background 0.15s, color 0.15s",
-                }}
+                {...(active ? accentSoftBtn({ sm: true }) : chipBtn({ sm: true }))}
               >
                 {loading && active ? "Generating…" : config?.shortLabel || s}
               </button>
@@ -441,23 +437,7 @@ export default function MessageComposer({
                   {scenarioConfig.extraContextExample}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={applyExampleFields}
-                    disabled={loading}
-                    style={{
-                      background: "var(--gb-surface-active)",
-                      border: "1px solid var(--gb-border)",
-                      color: "var(--gb-text-strong)",
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontFamily: font.body,
-                      fontWeight: 600,
-                      cursor: loading ? "not-allowed" : "pointer",
-                      boxShadow: "none",
-                    }}
-                  >
+                  <button type="button" onClick={applyExampleFields} disabled={loading} {...secondaryBtn({ sm: true })}>
                     Use example fields
                   </button>
                   <button
@@ -471,18 +451,7 @@ export default function MessageComposer({
                       })
                     }}
                     disabled={loading}
-                    style={{
-                      background: loading ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
-                      border: "1px solid var(--gb-border-subtle)",
-                      color: loading ? "rgba(184,255,87,0.45)" : "var(--gb-accent)",
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontFamily: font.body,
-                      fontWeight: 600,
-                      cursor: loading ? "wait" : "pointer",
-                      boxShadow: "none",
-                    }}
+                    {...accentSoftBtn({ sm: true })}
                   >
                     {loading ? "Generating…" : "Generate message from scenario"}
                   </button>
@@ -545,23 +514,7 @@ export default function MessageComposer({
             />
           </div>
 
-          <button
-            onClick={compose}
-            disabled={!situation || loading}
-            style={{
-              background: situation && !loading ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
-              color: situation && !loading ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
-              border: situation && !loading ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-border-subtle)",
-              boxShadow: "none",
-              padding: "13px 28px",
-              borderRadius: 10,
-              fontFamily: font.h1,
-              fontWeight: 700,
-              fontSize: 15,
-              cursor: situation && !loading ? "pointer" : "not-allowed",
-              transition: "background 0.15s, border-color 0.15s, color 0.15s",
-            }}
-          >
+          <button type="button" onClick={compose} disabled={!situation || loading} {...primaryBtn({ fullWidth: true })}>
             {loading ? "Composing..." : "✨ Generate Message"}
           </button>
         </div>
@@ -615,22 +568,16 @@ export default function MessageComposer({
                   }}
                 />
                 <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                  <button onClick={copy} style={{
-                    background: copied ? "var(--gb-accent-soft)" : "var(--gb-surface-muted)",
-                    border: "1px solid", borderColor: copied ? "var(--gb-border-strong)" : "var(--gb-border-strong)",
-                    color: copied ? "var(--gb-accent)" : "var(--gb-text-subtle)",
-                    padding: "8px 18px", borderRadius: 8, fontSize: 13,
-                    cursor: "pointer", fontFamily: font.mono, transition: "all 0.15s",
-                    boxShadow: "none",
-                  }}>
+                  <button
+                    type="button"
+                    onClick={copy}
+                    {...(copied ? accentSoftBtn() : secondaryBtn())}
+                  >
                     {copied ? "✓ Copied!" : "Copy"}
                   </button>
-                  <button onClick={compose} style={{
-                    background: "transparent", border: "1px solid var(--gb-border-subtle)",
-                    color: "var(--gb-text-faint)", padding: "8px 18px", borderRadius: 8,
-                    fontSize: 13, cursor: "pointer", fontFamily: font.mono,
-                    boxShadow: "none",
-                  }}>Regenerate</button>
+                  <button type="button" onClick={compose} {...ghostBtn()}>
+                    Regenerate
+                  </button>
                 </div>
 
                 <div style={{
@@ -663,11 +610,7 @@ export default function MessageComposer({
                       ⚠ {gmailError}
                       {!googleStatus.connected && googleStatus.configured && (
                         <div style={{ marginTop: 10 }}>
-                          <button type="button" onClick={connectGoogle} style={{
-                            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-                            color: "rgba(240,240,245,0.75)", padding: "8px 16px", borderRadius: 8,
-                            fontSize: 13, cursor: "pointer", fontFamily: font.mono, boxShadow: "none",
-                          }}>
+                          <button type="button" onClick={connectGoogle} {...secondaryBtn()}>
                             Connect Google
                           </button>
                         </div>
@@ -686,11 +629,7 @@ export default function MessageComposer({
                       <p style={{ fontSize: 13, color: "var(--gb-text-muted)", margin: "0 0 10px 0", lineHeight: 1.5, fontFamily: font.body }}>
                         Connect Google to use the same account as Calendar reminders.
                       </p>
-                      <button type="button" onClick={connectGoogle} style={{
-                        background: "var(--gb-surface-active)", border: "1px solid var(--gb-border)",
-                        color: "var(--gb-text-secondary)", padding: "8px 16px", borderRadius: 8,
-                        fontSize: 13, cursor: "pointer", fontFamily: font.mono, boxShadow: "none",
-                      }}>
+                      <button type="button" onClick={connectGoogle} {...accentSoftBtn()}>
                         Connect Google
                       </button>
                     </div>
@@ -717,14 +656,7 @@ export default function MessageComposer({
                           type="button"
                           onClick={saveGmailDraft}
                           disabled={gmailBusy != null}
-                          style={{
-                            background: gmailBusy === "draft" ? "var(--gb-accent-soft)" : "var(--gb-accent-soft)",
-                            border: "1px solid var(--gb-border-subtle)",
-                            color: gmailBusy != null ? "rgba(184,255,87,0.45)" : "var(--gb-accent)",
-                            padding: "8px 16px", borderRadius: 8, fontSize: 13,
-                            cursor: gmailBusy != null ? "not-allowed" : "pointer",
-                            fontFamily: font.mono, boxShadow: "none",
-                          }}
+                          {...accentSoftBtn()}
                         >
                           {gmailBusy === "draft" ? "Saving…" : "Save to Gmail drafts"}
                         </button>
@@ -746,14 +678,7 @@ export default function MessageComposer({
                             type="button"
                             onClick={scheduleGmailSend}
                             disabled={gmailBusy != null}
-                            style={{
-                              background: gmailBusy === "schedule" ? "var(--gb-surface-hover)" : "var(--gb-surface-active)",
-                              border: "1px solid var(--gb-border)",
-                              color: gmailBusy != null ? "var(--gb-text-faint)" : "var(--gb-text-secondary)",
-                              padding: "8px 16px", borderRadius: 8, fontSize: 13,
-                              cursor: gmailBusy != null ? "not-allowed" : "pointer",
-                              fontFamily: font.mono, boxShadow: "none",
-                            }}
+                            {...secondaryBtn()}
                           >
                             {gmailBusy === "schedule" ? "Scheduling…" : "Schedule send"}
                           </button>
@@ -827,19 +752,7 @@ export default function MessageComposer({
               type="button"
               onClick={onClose}
               aria-label="Close compose"
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                border: "1px solid var(--gb-border)",
-                background: "var(--gb-surface-muted)",
-                color: "var(--gb-text-muted)",
-                cursor: "pointer",
-                fontSize: 18,
-                lineHeight: 1,
-                flexShrink: 0,
-                boxShadow: "none",
-              }}
+              className={`${uiClass.iconBtn} gb-icon-btn--round`}
             >
               ×
             </button>

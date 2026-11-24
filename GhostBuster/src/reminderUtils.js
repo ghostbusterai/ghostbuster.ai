@@ -148,6 +148,14 @@ export function summarizePendingReminders(reminders) {
   return summary
 }
 
+export function reminderContactInitial(name) {
+  const t = String(name || "").trim()
+  if (!t) return "?"
+  const parts = t.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  return t.slice(0, 2).toUpperCase()
+}
+
 export function reminderDueLabel(reminder) {
   const urgency = getReminderUrgency(reminder)
   const due = parseDueDay(reminder?.dueDate)

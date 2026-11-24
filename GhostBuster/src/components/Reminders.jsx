@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api, BASE } from "../api"
-import { inputStyle, primaryBtn, secondaryBtn } from "../uiStyles"
+import { dangerBtn, inputStyle, linkBtn, primaryBtn, secondaryBtn } from "../uiStyles"
 import {
   PageShell,
   PageHero,
@@ -20,6 +20,7 @@ import {
   formatDayIso,
   parseDueDay,
   reminderDueLabel,
+  reminderContactInitial,
   summarizePendingReminders,
 } from "../reminderUtils"
 import { readPreferences } from "../preferences"
@@ -344,27 +345,43 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
         className={[
           "gb-record-row",
           "gb-reminder-row",
+          "gb-reminder-row--in-feed",
           "gb-reveal-block",
-          r.done ? "gb-record-row--done" : "",
+          r.done ? "gb-record-row--done gb-reminder-row--done" : "",
           auto ? "gb-record-row--suggested gb-reminder-row--suggested" : "",
         ]
           .filter(Boolean)
           .join(" ")}
-        style={!r.done ? { borderLeft: `3px solid ${auto ? "var(--gb-accent)" : style.border}` } : undefined}
+        data-urgency={!r.done && !auto ? urgency : undefined}
       >
-        <div className="gb-reminder-row__main">
-          <div className="gb-record-row__title-row">
-            <h3 className={`gb-record-row__title${r.done ? " gb-reminder-row__title--done" : ""}`}>{r.contactName}</h3>
-            {!r.done && auto && <span className="gb-pill gb-pill--accent">Suggested</span>}
-            {!r.done && !auto && <span className="gb-pill" style={{ color: style.color, borderColor: style.border, background: style.bg }}>{style.label}</span>}
+        <div className="gb-reminder-row__body">
+          <span className="gb-reminder-avatar" aria-hidden="true" title={r.contactName}>
+            {reminderContactInitial(r.contactName)}
+          </span>
+          <div className="gb-reminder-row__main">
+            <div className="gb-reminder-row__title-line">
+              <h3 className={`gb-reminder-row__name${r.done ? " gb-reminder-row__name--done" : ""}`}>{r.contactName}</h3>
+              {!r.done && auto && <span className="gb-reminder-chip gb-reminder-chip--suggested">Suggested</span>}
+              {!r.done && !auto && (
+                <span className={`gb-reminder-chip gb-reminder-chip--${urgency}`}>{style.label}</span>
+              )}
+            </div>
+            <p className="gb-reminder-row__reason">{r.reason || "General check-in"}</p>
+            {r.dueDate && (
+              <p className={`gb-reminder-row__meta${r.done ? " gb-reminder-row__meta--done" : ""}`}>
+                {r.done ? (
+                  parseDueDay(r.dueDate)?.toLocaleDateString() ?? r.dueDate
+                ) : (
+                  <>
+                    <span className={`gb-reminder-row__when gb-reminder-row__when--${urgency}`}>
+                      {reminderDueLabel(r)}
+                    </span>
+                    {r.googleEventId ? <span className="gb-reminder-row__meta-note">On calendar</span> : null}
+                  </>
+                )}
+              </p>
+            )}
           </div>
-          <p className="gb-record-row__meta">{r.reason || "General check-in"}</p>
-          {r.dueDate && (
-            <p className="gb-reminder-row__due" style={{ color: r.done ? "var(--gb-text-dim)" : style.color }}>
-              {r.done ? parseDueDay(r.dueDate)?.toLocaleDateString() ?? r.dueDate : reminderDueLabel(r)}
-              {r.googleEventId ? " · On calendar" : ""}
-            </p>
-          )}
         </div>
         <div className="gb-record-row__actions gb-reminder-row__actions">
           {auto && !r.done ? (
@@ -393,7 +410,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
                   Calendar
                 </button>
               )}
-              <button type="button" onClick={() => remove(r.id)} {...secondaryBtn({ sm: true, style: { color: "var(--gb-danger)" } })}>
+              <button type="button" onClick={() => remove(r.id)} {...dangerBtn({ sm: true })}>
                 Delete
               </button>
             </>
@@ -434,38 +451,30 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
         )}
       </PageHero>
 
-      {summaryPills.length > 0 && (
-        <ContentCard padding="14px 16px" marginBottom={20} className="gb-reminders-summary-card">
-          <div className="gb-summary-chips">
+      <ContentCard padding="18px 20px" marginBottom={20} className="gb-reminders-controls">
+        {summaryPills.length > 0 && (
+          <div className="gb-reminders-stat-strip" aria-label="Reminder summary">
             {summaryPills.map((pill) => {
               const pillStyle = pill.key === "suggested" ? null : getReminderUrgencyStyle(pill.key)
+              const tone =
+                pill.key === "suggested"
+                  ? "suggested"
+                  : pill.key === "overdue"
+                    ? "overdue"
+                    : pill.key === "today"
+                      ? "today"
+                      : "neutral"
               return (
-                <span
-                  key={pill.key}
-                  className="gb-summary-chip"
-                  style={
-                    pill.key === "suggested"
-                      ? {
-                          color: "var(--gb-accent)",
-                          background: "var(--gb-accent-soft)",
-                          borderColor: "var(--gb-accent-border)",
-                        }
-                      : {
-                          color: pillStyle.color,
-                          background: pillStyle.bg,
-                          borderColor: pillStyle.border,
-                        }
-                  }
-                >
-                  {pill.count} {pill.label.toLowerCase()}
-                </span>
+                <div key={pill.key} className={`gb-reminders-stat gb-reminders-stat--${tone}`}>
+                  <span className="gb-reminders-stat__n" style={pillStyle ? { color: pillStyle.color } : undefined}>
+                    {pill.count}
+                  </span>
+                  <span className="gb-reminders-stat__l">{pill.label}</span>
+                </div>
               )
             })}
           </div>
-        </ContentCard>
-      )}
-
-      <ContentCard padding="16px 18px" marginBottom={20} className="gb-reminders-toolbar-card">
+        )}
         <div className="gb-reminders-toolbar">
           <SegmentedFilter
             value={filter}
@@ -498,20 +507,28 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
             {googleStatus.connected ? (
               <>
                 <span className="gb-reminders-calendar-line__ok">Connected</span>
-                <button type="button" className="gb-reminders-calendar-line__link" onClick={disconnectGoogleCalendar}>
+                <button
+                  type="button"
+                  onClick={disconnectGoogleCalendar}
+                  {...linkBtn({ sm: true, className: "gb-reminders-calendar-line__link" })}
+                >
                   Disconnect
                 </button>
               </>
             ) : (
-              <button type="button" className="gb-reminders-calendar-line__link" onClick={connectGoogleCalendar}>
+              <button
+                type="button"
+                onClick={connectGoogleCalendar}
+                {...linkBtn({ sm: true, className: "gb-reminders-calendar-line__link" })}
+              >
                 Connect for due-date sync
               </button>
             )}
             <button
               type="button"
-              className="gb-reminders-calendar-line__link"
               onClick={() => setShowCalendarHelp((v) => !v)}
               aria-expanded={showCalendarHelp}
+              {...linkBtn({ sm: true, className: "gb-reminders-calendar-line__link" })}
             >
               {showCalendarHelp ? "Hide" : "How it works"}
             </button>
@@ -649,24 +666,32 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
           }
         />
       ) : (
-        <div className="gb-record-list gb-reminders-list">
-          {showGrouped ? (
-            <>
-              <p className="gb-reminders-section-label">Suggested for you</p>
-              {suggestedInView.map(renderReminderRow)}
-              <p className="gb-reminders-section-label">Your reminders</p>
-              {yoursInView.map(renderReminderRow)}
-            </>
-          ) : (
-            visibleReminders.map(renderReminderRow)
-          )}
+        <ContentCard className="gb-reminders-feed-card" padding="8px 10px 12px" marginBottom={20}>
+          <div className="gb-record-list gb-reminders-list">
+            {showGrouped ? (
+              <>
+                <div className="gb-reminders-section">
+                  <p className="gb-reminders-section__title">Suggested for you</p>
+                  <p className="gb-reminders-section__hint">From Tracker warmth and your résumé — add or dismiss.</p>
+                  {suggestedInView.map(renderReminderRow)}
+                </div>
+                <div className="gb-reminders-section">
+                  <p className="gb-reminders-section__title">Your reminders</p>
+                  {yoursInView.map(renderReminderRow)}
+                </div>
+              </>
+            ) : (
+              visibleReminders.map(renderReminderRow)
+            )}
+          </div>
           <ViewMoreButton
             hiddenCount={hiddenReminderCount}
             showAll={showAllReminders}
             onToggle={() => setShowAllReminders((v) => !v)}
             singular="item"
+            style={{ margin: "8px 8px 4px" }}
           />
-        </div>
+        </ContentCard>
       )}
 
       {filter === "pending" && kindFilter === "all" && suggestedCount > 0 && (
