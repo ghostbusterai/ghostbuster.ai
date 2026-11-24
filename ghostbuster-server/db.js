@@ -28,6 +28,8 @@ async function ensureIndexes(database) {
   await database.collection("ghostIts").createIndex({ userId: 1, updatedAt: -1 })
   await database.collection("applications").createIndex({ userId: 1, status: 1 })
   await database.collection("recordEmbeddings").createIndex({ userId: 1, recordId: 1 }, { unique: true })
+  await database.collection("gmailContactState").createIndex({ userId: 1, email: 1 }, { unique: true })
+  await database.collection("gmailContactSuggestions").createIndex({ userId: 1, email: 1 }, { unique: true })
   // LLM call logs (aiLog.js): kept 30 days.
   await database.collection("aiCalls").createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 })
 }

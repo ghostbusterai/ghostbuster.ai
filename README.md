@@ -61,6 +61,10 @@ Push to `main` on GitHub. Render redeploys automatically when the repo is connec
 | `GCP_LOCATION` | No | Vertex AI region (default `us-central1`) |
 | `ATLAS_VECTOR_INDEX` | No | Name of the Atlas Vector Search index on `recordEmbeddings` (see `ghostbuster-server/atlas-vector-index.json`). Unset: similarity is computed in memory |
 
+### Add contacts from Gmail
+
+On the Contacts page, **Add contacts from Gmail** (opt-in, needs Gmail read access) finds people the user has emailed back and forth with in the last 90 days. Only headers and Gmail's short preview snippets are read; full messages are never fetched or stored. Free rules pick two-way, non-automated conversations; Claude Haiku (`CONTACT_CLASSIFIER_MODEL`, default `claude-haiku-5-5`) labels each person professional, academic, personal, or service and pulls company and role from signature lines. Confident work and school contacts are added (tagged "From Gmail", undoable); borderline ones are shown as suggestions. Deleted or dismissed people aren't re-added. It runs with the daily Gmail scan and costs well under a cent per scan.
+
 ### Ask GhostBuster evals
 
 `cd ghostbuster-server && npm run eval` scores retrieval (recall@5, recall@10, MRR) on a fixed synthetic dataset in `evals/dataset.js`. `npm run eval:llm` also asks Claude (a few cents) and scores citations and "not found" answers. Results go to `evals/results/`. The eval never touches a real database.

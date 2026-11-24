@@ -19,6 +19,7 @@ import { PAGE_PADDING_X } from "./layout"
 import { GETTING_STARTED_RESTORED_EVENT } from "./profile"
 import { api } from "./api"
 import { requestPendingFillReports, GHOSTWRITER_START_EVENT } from "./autofillBridge"
+import { GMAIL_CONTACTS_RETURN_KEY } from "./components/GmailContacts"
 import { GMAIL_FOLLOWUPS_EVENT } from "./components/Reminders"
 
 function localDateString() {
@@ -74,6 +75,20 @@ export default function App() {
       setAuthError(params.get("message") || "Could not sign in with Google.")
     }
 
+    // Back from granting Gmail access for "Add contacts from Gmail": the Contacts page runs the first scan.
+    if (returnTo === "gmailcontacts" && (google === "connected" || google === "error")) {
+      try {
+        sessionStorage.setItem(
+          GMAIL_CONTACTS_RETURN_KEY,
+          JSON.stringify(google === "connected" ? { ok: true } : { ok: false, message: params.get("message") || "" })
+        )
+      } catch {
+        /* the card just won't auto-run */
+      }
+      setPageState("contacts")
+      window.history.replaceState({}, "", window.location.pathname || "/")
+      return
+    }
     if (google === "connected") {
       if (returnTo === "settings") {
         setAccountMenuView("settings")

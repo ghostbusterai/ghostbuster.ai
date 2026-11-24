@@ -53,6 +53,7 @@ async function request(path, options = {}) {
   if (!r.ok) {
     const err = new Error(data.error || r.statusText || `Request failed (${r.status})`)
     err.status = r.status
+    err.data = data
     throw err
   }
   return data
@@ -170,6 +171,14 @@ export const api = {
   scanGmailFollowups: (body) =>
     request("/api/gmail/scan-followups", { method: "POST", body: JSON.stringify(body || {}) }),
   disableGmailFollowups: () => request("/api/gmail/scan-followups", { method: "DELETE" }),
+  setGmailContactImport: (enabled) =>
+    request("/api/gmail/contact-import", { method: "PATCH", body: JSON.stringify({ enabled }) }),
+  getGmailContactSuggestions: () => request("/api/gmail/contact-suggestions"),
+  addGmailContactSuggestion: (email) =>
+    request(`/api/gmail/contact-suggestions/${encodeURIComponent(email)}/add`, { method: "POST", body: "{}" }),
+  dismissGmailContactSuggestion: (email) =>
+    request(`/api/gmail/contact-suggestions/${encodeURIComponent(email)}/dismiss`, { method: "POST", body: "{}" }),
+  undoGmailContactImport: () => request("/api/gmail/contact-import/undo", { method: "POST", body: "{}" }),
   syncReminderToCalendar: (id) =>
     request(`/api/reminders/${id}/sync-calendar`, { method: "POST", body: JSON.stringify({}) }),
   getGhostwriters: () => request("/api/ghostwriter"),

@@ -128,4 +128,14 @@ function isPermissionError(e) {
   return status === 403 && /insufficient|forbidden|scope/i.test(`${reason} ${e?.message || ""}`)
 }
 
-module.exports = { findFollowUps, isPermissionError, parseAddress, FOLLOW_UP_DAYS, REPLY_DAYS }
+module.exports = {
+  findFollowUps,
+  isPermissionError,
+  parseAddress,
+  firstAddress,
+  headerMap,
+  displayName,
+  AUTOMATED,
+  FOLLOW_UP_DAYS,
+  REPLY_DAYS,
+}

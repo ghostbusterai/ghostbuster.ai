@@ -9,6 +9,7 @@ require("dotenv").config()
 const Anthropic = require("@anthropic-ai/sdk")
 const { askGhostBuster, markUserDataChanged } = require("./ask")
 const { findPeople } = require("./peopleFinder")
+const gmailContacts = require("./gmailContacts")
 
 const { connectDb, getDb } = require("./db")
 const aiLog = require("./aiLog")
@@ -804,7 +805,11 @@ async function start() {
       const scan = status.connected ? await store.getGmailScan(userId(req)) : null
       res.json({
         ...status,
-        gmailScan: { enabled: Boolean(scan?.enabled), lastScanAt: scan?.lastScanAt || "" },
+        gmailScan: {
+          enabled: Boolean(scan?.enabled),
+          importContacts: Boolean(scan?.importContacts),
+          lastScanAt: scan?.lastScanAt || "",
+        },
         configured: googleCal.isConfigured(),
         redirectUri: process.env.GOOGLE_REDIRECT_URI || null,
       })
@@ -819,7 +824,7 @@ async function start() {
       return res.status(503).json({ error: "Google is not configured on the server" })
     }
     try {
-      const returnTo = ["compose", "settings", "gmailscan"].includes(req.query.returnTo)
+      const returnTo = ["compose", "settings", "gmailscan", "gmailcontacts"].includes(req.query.returnTo)
         ? req.query.returnTo
         : "reminders"
       res.redirect(googleCal.getAuthUrl(returnTo))
@@ -831,7 +836,7 @@ async function start() {
 
   app.get("/api/google/callback", async (req, res) => {
     const origin = appOrigin(req)
-    const returnPage = ["compose", "settings"].includes(req.query.state)
+    const returnPage = ["compose", "settings", "gmailcontacts"].includes(req.query.state)
       ? req.query.state
       : "reminders"
     const fail = (msg) =>
@@ -850,8 +855,15 @@ async function start() {
         if (!String(tokens.scope || "").includes("gmail.readonly")) {
           return fail("Gmail read access wasn't granted, so follow-up reminders stay off")
         }
-        await store.setGmailScan(req.session.userId, { enabled: true, lastScanAt: "" })
+        await store.setGmailScan(req.session.userId, { enabled: true, readGranted: true, lastScanAt: "" })
         return res.redirect(`${origin}/?google=connected&page=gmailscan`)
+      }
+      if (req.query.state === "gmailcontacts") {
+        if (!String(tokens.scope || "").includes("gmail.readonly")) {
+          return fail("Gmail read access wasn't granted, so contacts can't be added from Gmail")
+        }
+        await store.setGmailScan(req.session.userId, { importContacts: true, readGranted: true, lastScanAt: "" })
+        return res.redirect(`${origin}/?google=connected&page=gmailcontacts`)
       }
       res.redirect(`${origin}/?google=connected&page=${returnPage}`)
     } catch (e) {
@@ -875,13 +887,14 @@ async function start() {
   // Scans recent mail for recruiter threads waiting on a reply or a follow-up and adds reminders.
   // auto: true is the background scan on app load; it runs at most every GMAIL_AUTO_SCAN_HOURS.
   const GMAIL_AUTO_SCAN_HOURS = 12
-  const gmailScansRunning = new Set()
+  const gmailScansRunning = new Map() // userId -> promise of the running scan's { status, body }
 
   app.post("/api/gmail/scan-followups", async (req, res) => {
     const id = userId(req)
     const scan = await store.getGmailScan(id)
-    if (!scan?.enabled && req.body?.auto) return res.json({ skipped: true, created: 0 })
-    if (!scan?.enabled) return res.status(400).json({ error: "Turn on Gmail follow-up reminders first", needsPermission: true })
+    const anyOn = Boolean(scan?.enabled || scan?.importContacts)
+    if (!anyOn && req.body?.auto) return res.json({ skipped: true, created: 0 })
+    if (!anyOn) return res.status(400).json({ error: "Turn on Gmail follow-up reminders first", needsPermission: true })
     const refreshToken = await store.getGoogleRefreshToken(id)
     if (!refreshToken) return res.status(400).json({ error: "Connect Google first", needsPermission: true })
 
@@ -891,47 +904,80 @@ async function start() {
       return res.json({ skipped: true, created: 0, lastScanAt: scan.lastScanAt })
     }
 
-    if (gmailScansRunning.has(id)) return res.json({ skipped: true, created: 0, running: true })
-    gmailScansRunning.add(id)
+    // A scan is already running for this user (e.g. the background scan right after granting access):
+    // the background caller skips; a manual "Scan now" waits for it and gets its result.
+    if (gmailScansRunning.has(id)) {
+      if (auto) return res.json({ skipped: true, created: 0, running: true })
+      const out = await gmailScansRunning.get(id)
+      return res.status(out.status).json(out.body)
+    }
+    const ok = (body) => ({ status: 200, body })
+    const fail = (status, body) => ({ status, body })
+    const run = (async () => {
+      const localDate = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.localDate || "")
+        ? req.body.localDate
+        : new Date().toISOString().slice(0, 10)
 
-    const localDate = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.localDate || "")
-      ? req.body.localDate
-      : new Date().toISOString().slice(0, 10)
+      try {
+        // Contacts first, so new follow-up reminders can use their names.
+        let contactsAdded = []
+        let contactSuggestions = 0
+        if (scan.importContacts && anthropic) {
+          const out = await gmailContacts.importContacts({ refreshToken, store, uid: id, anthropic })
+          contactsAdded = out.added
+          contactSuggestions = out.suggested
+          if (contactsAdded.length) {
+            await store.setGmailScan(id, {
+              lastImport: { at: new Date().toISOString(), contactIds: contactsAdded.map((c) => c.id) },
+            })
+          }
+        }
+        if (!scan.enabled) {
+          if (contactsAdded.length) markUserDataChanged(id)
+          const lastScanAt = new Date().toISOString()
+          await store.setGmailScan(id, { lastScanAt })
+          return ok({ created: 0, contactsAdded: contactsAdded.length, contactSuggestions, lastScanAt })
+        }
 
+        const { contacts } = await store.getContacts(id)
+        const found = await gmailFollowups.findFollowUps(refreshToken, { contacts })
+        const existing = await store.gmailReminderKeys(id)
+        const seenKeys = new Set(existing.map((r) => r.gmailKey))
+        // One open reminder per thread; new activity after it's done can create a fresh one.
+        const openThreads = new Set(existing.filter((r) => !r.done).map((r) => r.gmailThreadId))
+
+        let created = 0
+        for (const f of found) {
+          if (seenKeys.has(f.key) || openThreads.has(f.threadId)) continue
+          await store.createReminder(id, {
+            contactName: f.name,
+            reason: f.kind === "reply" ? `Reply to "${f.subject}"` : `Follow up on "${f.subject}"`,
+            dueDate: localDate,
+            done: false,
+            customReason: "",
+            gmailThreadId: f.threadId,
+            gmailKey: f.key,
+          })
+          openThreads.add(f.threadId)
+          created++
+        }
+        if (created || contactsAdded.length) markUserDataChanged(id)
+        const lastScanAt = new Date().toISOString()
+        await store.setGmailScan(id, { lastScanAt })
+        return ok({ created, found: found.length, contactsAdded: contactsAdded.length, contactSuggestions, lastScanAt })
+      } catch (e) {
+        if (gmailFollowups.isPermissionError(e) || /invalid_grant/i.test(e?.message || "")) {
+          await store.setGmailScan(id, { enabled: false, importContacts: false, readGranted: false })
+          return fail(403, { error: "GhostBuster no longer has Gmail read access. Turn Gmail features on again in Settings.", needsPermission: true })
+        }
+        console.error(e)
+        return fail(500, { error: "Couldn't scan Gmail" })
+      }
+    })()
+    gmailScansRunning.set(id, run)
     try {
-      const { contacts } = await store.getContacts(id)
-      const found = await gmailFollowups.findFollowUps(refreshToken, { contacts })
-      const existing = await store.gmailReminderKeys(id)
-      const seenKeys = new Set(existing.map((r) => r.gmailKey))
-      // One open reminder per thread; new activity after it's done can create a fresh one.
-      const openThreads = new Set(existing.filter((r) => !r.done).map((r) => r.gmailThreadId))
-
-      let created = 0
-      for (const f of found) {
-        if (seenKeys.has(f.key) || openThreads.has(f.threadId)) continue
-        await store.createReminder(id, {
-          contactName: f.name,
-          reason: f.kind === "reply" ? `Reply to "${f.subject}"` : `Follow up on "${f.subject}"`,
-          dueDate: localDate,
-          done: false,
-          customReason: "",
-          gmailThreadId: f.threadId,
-          gmailKey: f.key,
-        })
-        openThreads.add(f.threadId)
-        created++
-      }
-      if (created) markUserDataChanged(id)
-      const lastScanAt = new Date().toISOString()
-      await store.setGmailScan(id, { lastScanAt })
-      res.json({ created, found: found.length, lastScanAt })
-    } catch (e) {
-      if (gmailFollowups.isPermissionError(e) || /invalid_grant/i.test(e?.message || "")) {
-        await store.setGmailScan(id, { enabled: false })
-        return res.status(403).json({ error: "GhostBuster no longer has Gmail read access. Turn follow-up reminders on again.", needsPermission: true })
-      }
-      console.error(e)
-      res.status(500).json({ error: "Couldn't scan Gmail" })
+      const out = await run
+      res.status(out.status).json(out.body)
     } finally {
       gmailScansRunning.delete(id)
     }
@@ -940,6 +986,96 @@ async function start() {
   app.delete("/api/gmail/scan-followups", async (req, res) => {
     await store.setGmailScan(userId(req), { enabled: false })
     res.status(204).end()
+  })
+
+  // —— Contacts from Gmail (gmailContacts.js) ——
+  // Adds people you have two-way work/school conversations with. Turning it on needs Gmail read access;
+  // without it the client sends the user to /api/google/auth?returnTo=gmailcontacts.
+  app.patch("/api/gmail/contact-import", async (req, res) => {
+    try {
+      const id = userId(req)
+      const enabled = Boolean(req.body?.enabled)
+      if (!enabled) {
+        await store.setGmailScan(id, { importContacts: false })
+        return res.json({ importContacts: false })
+      }
+      if (!anthropic) return res.status(503).json({ error: "Adding contacts from Gmail requires ANTHROPIC_API_KEY on the server" })
+      const scan = await store.getGmailScan(id)
+      const refreshToken = await store.getGoogleRefreshToken(id)
+      if (!refreshToken || !(scan?.enabled || scan?.readGranted)) {
+        return res.status(400).json({ needsPermission: true, authUrl: "/api/google/auth?returnTo=gmailcontacts" })
+      }
+      await store.setGmailScan(id, { importContacts: true, lastScanAt: "" })
+      res.json({ importContacts: true })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Couldn't update the setting" })
+    }
+  })
+
+  app.get("/api/gmail/contact-suggestions", async (req, res) => {
+    try {
+      const scan = await store.getGmailScan(userId(req))
+      const suggestions = await store.getGmailContactSuggestions(userId(req))
+      res.json({ suggestions, lastImport: scan?.lastImport || null })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Couldn't load suggestions" })
+    }
+  })
+
+  app.post("/api/gmail/contact-suggestions/:email/add", async (req, res) => {
+    try {
+      const id = userId(req)
+      const s = await store.takeGmailContactSuggestion(id, req.params.email)
+      if (!s) return res.status(404).json({ error: "Suggestion not found" })
+      const { contact } = await store.createContact(id, {
+        name: s.name || s.email,
+        email: s.email,
+        company: s.company,
+        role: s.role,
+        lastContacted: String(s.lastAt || "").slice(0, 10),
+        notes: s.reason ? `Added from Gmail: ${s.reason}` : "Added from Gmail",
+        source: "gmail",
+      })
+      await store.setGmailContactState(id, [{ email: s.email, status: "added", updatedAt: new Date().toISOString() }])
+      markUserDataChanged(id)
+      res.status(201).json({ contact })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Couldn't add contact" })
+    }
+  })
+
+  app.post("/api/gmail/contact-suggestions/:email/dismiss", async (req, res) => {
+    try {
+      const id = userId(req)
+      await store.takeGmailContactSuggestion(id, req.params.email)
+      await store.setGmailContactState(id, [
+        { email: String(req.params.email).toLowerCase(), status: "dismissed", updatedAt: new Date().toISOString() },
+      ])
+      res.status(204).end()
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Couldn't dismiss" })
+    }
+  })
+
+  // Removes the contacts the last scan added. They're marked removed so later scans skip them.
+  app.post("/api/gmail/contact-import/undo", async (req, res) => {
+    try {
+      const id = userId(req)
+      const scan = await store.getGmailScan(id)
+      const ids = scan?.lastImport?.contactIds || []
+      let removed = 0
+      for (const cid of ids) if (await store.deleteContact(id, cid)) removed++
+      await store.setGmailScan(id, { lastImport: null })
+      if (removed) markUserDataChanged(id)
+      res.json({ removed })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Couldn't undo" })
+    }
   })
 
   // —— Gmail ——

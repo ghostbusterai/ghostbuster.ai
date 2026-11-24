@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { api } from "../api"
 import PeopleFinder from "./PeopleFinder"
+import GmailContacts from "./GmailContacts"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
 import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
@@ -440,7 +441,27 @@ export default function ContactHub({
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15 }}>{c.name}</div>
+                <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15 }}>
+                  {c.name}
+                  {c.source === "gmail" && (
+                    <span
+                      title="Added from your Gmail conversations"
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        fontFamily: font.mono,
+                        padding: "1px 6px",
+                        borderRadius: 999,
+                        border: "1px solid var(--gb-border)",
+                        color: "var(--gb-text-muted)",
+                        verticalAlign: "2px",
+                      }}
+                    >
+                      From Gmail
+                    </span>
+                  )}
+                </div>
                 {c.pinned && (
                   <span
                     style={{
@@ -676,6 +697,14 @@ export default function ContactHub({
           </ContentCard>
           <PeopleFinder
             onContactAdded={() =>
+              api
+                .getContacts()
+                .then(({ contacts: list }) => setContacts(list))
+                .catch(() => {})
+            }
+          />
+          <GmailContacts
+            onContactsChanged={() =>
               api
                 .getContacts()
                 .then(({ contacts: list }) => setContacts(list))

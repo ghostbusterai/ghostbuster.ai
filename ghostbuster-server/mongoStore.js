@@ -162,7 +162,7 @@ exports.getContacts = async (userId) => {
 }
 
 exports.createContact = async (userId, body) => {
-  const { name, email, phone, company, role, notes, lastContacted, linkedin, website } = body || {}
+  const { name, email, phone, company, role, notes, lastContacted, linkedin, website, source } = body || {}
   const resumeBucketId = await resolveResumeBucketId(userId, body)
   const contact = {
     userId: uid(userId),
@@ -177,6 +177,7 @@ exports.createContact = async (userId, body) => {
     linkedin: linkedin ?? "",
     website: website ?? "",
     resumeBucketId,
+    ...(source === "gmail" ? { source: "gmail" } : {}),
   }
   await getDb().collection("contacts").insertOne(contact)
   return { contact: stripMongo(contact) }
@@ -205,8 +206,14 @@ exports.updateContact = async (userId, id, body) => {
 }
 
 exports.deleteContact = async (userId, id) => {
-  const result = await getDb().collection("contacts").deleteOne({ userId: uid(userId), id })
-  if (result.deletedCount === 0) return false
+  const contact = await getDb().collection("contacts").findOneAndDelete({ userId: uid(userId), id })
+  if (!contact) return false
+  // Someone added from Gmail and then deleted shouldn't come back on the next scan.
+  if (contact.source === "gmail" && contact.email) {
+    await exports.setGmailContactState(userId, [
+      { email: String(contact.email).toLowerCase(), status: "removed", updatedAt: new Date().toISOString() },
+    ])
+  }
   await getDb().collection("outreachLogs").deleteMany({ userId: uid(userId), contactId: id })
   return true
 }
@@ -957,6 +964,8 @@ exports.deleteAccount = async (userId) => {
     "resumeFiles",
     "aiCalls",
     "recordEmbeddings",
+    "gmailContactState",
+    "gmailContactSuggestions",
   ]
   for (const name of collections) {
     await db.collection(name).deleteMany({ userId: id })
@@ -1142,3 +1151,56 @@ exports.hasLegacyMigrated = async () => {
   const doc = await getDb().collection("meta").findOne({ key: "legacyMigrated" })
   return Boolean(doc)
 }
+
+// —— Contacts found in Gmail (gmailContacts.js) ——
+
+/** [{ email, status: added|suggested|seen|dismissed|removed, convoAt }] */
+exports.getGmailContactState = async (userId) =>
+  getDb()
+    .collection("gmailContactState")
+    .find({ userId: uid(userId) }, { projection: { _id: 0, userId: 0 } })
+    .toArray()
+
+exports.setGmailContactState = async (userId, entries) => {
+  if (!entries?.length) return
+  await getDb()
+    .collection("gmailContactState")
+    .bulkWrite(
+      entries.map(({ email, ...rest }) => ({
+        updateOne: {
+          filter: { userId: uid(userId), email: String(email).toLowerCase() },
+          update: { $set: rest },
+          upsert: true,
+        },
+      })),
+      { ordered: false }
+    )
+}
+
+exports.getGmailContactSuggestions = async (userId) =>
+  getDb()
+    .collection("gmailContactSuggestions")
+    .find({ userId: uid(userId) }, { projection: { _id: 0, userId: 0 } })
+    .sort({ lastAt: -1 })
+    .toArray()
+
+exports.saveGmailContactSuggestions = async (userId, list) => {
+  if (!list?.length) return
+  await getDb()
+    .collection("gmailContactSuggestions")
+    .bulkWrite(
+      list.map(({ email, ...rest }) => ({
+        updateOne: {
+          filter: { userId: uid(userId), email: String(email).toLowerCase() },
+          update: { $set: rest },
+          upsert: true,
+        },
+      })),
+      { ordered: false }
+    )
+}
+
+exports.takeGmailContactSuggestion = async (userId, email) =>
+  getDb()
+    .collection("gmailContactSuggestions")
+    .findOneAndDelete({ userId: uid(userId), email: String(email).toLowerCase() }, { projection: { _id: 0, userId: 0 } })

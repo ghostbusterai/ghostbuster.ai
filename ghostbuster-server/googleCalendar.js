@@ -29,11 +29,12 @@ function getOAuthClient() {
 function getAuthUrl(returnTo) {
   const client = getOAuthClient()
   if (!client) throw new Error("Google Calendar is not configured on the server")
-  const state = ["compose", "settings", "gmailscan"].includes(returnTo) ? returnTo : "reminders"
+  const state = ["compose", "settings", "gmailscan", "gmailcontacts"].includes(returnTo) ? returnTo : "reminders"
+  const needsGmailRead = state === "gmailscan" || state === "gmailcontacts"
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    scope: state === "gmailscan" ? [...SCOPES, GMAIL_READ_SCOPE] : SCOPES,
+    scope: needsGmailRead ? [...SCOPES, GMAIL_READ_SCOPE] : SCOPES,
     include_granted_scopes: true,
     state,
   })

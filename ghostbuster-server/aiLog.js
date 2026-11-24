@@ -13,15 +13,18 @@ const als = new AsyncLocalStorage()
 
 // USD per million tokens. Estimates for reporting only; check current pricing before quoting costs.
 const PRICES = [
+  { match: /haiku-5/i, input: 0.1, output: 0.5 },
   { match: /haiku/i, input: 1, output: 5 },
+  { match: /opus-5-5/i, input: 4, output: 20 },
   { match: /opus/i, input: 5, output: 25 },
+  { match: /sonnet-5/i, input: 2, output: 10 },
   { match: /sonnet/i, input: 3, output: 15 },
 ]
 const CACHE_WRITE_MULT = 1.25
 const CACHE_READ_MULT = 0.1
 
 function estimateCost(model, usage) {
-  const p = PRICES.find((x) => x.match.test(model || "")) || PRICES[2]
+  const p = PRICES.find((x) => x.match.test(model || "")) || PRICES[PRICES.length - 1]
   const u = usage || {}
   const usd =
     ((u.input_tokens || 0) * p.input +

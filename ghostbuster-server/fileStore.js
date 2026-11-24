@@ -867,3 +867,10 @@ exports.numId = (param) => {
 exports.saveResumeFile = async () => {}
 exports.deleteResumeFile = async () => {}
 exports.getResumeFiles = async () => []
+
+// Gmail contact import needs MongoDB (multi-user mode); single-user file mode keeps no state.
+exports.getGmailContactState = async () => []
+exports.setGmailContactState = async () => {}
+exports.getGmailContactSuggestions = async () => []
+exports.saveGmailContactSuggestions = async () => {}
+exports.takeGmailContactSuggestion = async () => null
