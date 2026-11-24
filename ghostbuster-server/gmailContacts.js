@@ -56,12 +56,20 @@ async function findCandidates(gmail, { skip = new Set() } = {}) {
 
   const people = new Map() // email -> candidate
   for (const t of threads.slice(0, MAX_THREADS)) {
-    const { data: thread } = await gmail.users.threads.get({
-      userId: "me",
-      id: t.id,
-      format: "metadata",
-      metadataHeaders: ["From", "To", "Cc", "Subject", "List-Unsubscribe", "List-Id", "Precedence"],
-    })
+    let thread
+    try {
+      ;({ data: thread } = await gmail.users.threads.get({
+        userId: "me",
+        id: t.id,
+        format: "metadata",
+        metadataHeaders: ["From", "To", "Cc", "Subject", "List-Unsubscribe", "List-Id", "Precedence"],
+      }))
+    } catch (e) {
+      // Permission problems should stop the scan; one unreadable thread shouldn't.
+      if ((e?.code || e?.response?.status) === 403 || /invalid_grant/i.test(e?.message || "")) throw e
+      console.warn("Gmail contacts: skipping thread", t.id, e.message)
+      continue
+    }
     const messages = (thread.messages || []).filter((m) => !(m.labelIds || []).includes("DRAFT"))
     if (messages.length < 2) continue
     const parsed = messages.map((m) => ({ m, h: headerMap(m) }))
@@ -166,9 +174,13 @@ function candidateText(c) {
 /** Classify candidates with Claude; returns Map(email -> classification). */
 async function classify(anthropic, candidates) {
   const out = new Map()
+  let lastError = null
+  let failed = 0
   for (let i = 0; i < candidates.length; i += BATCH) {
     const batch = candidates.slice(i, i + BATCH)
-    const message = await anthropic.messages.create(
+    let message
+    try {
+      message = await anthropic.messages.create(
       {
         model: MODEL(),
         max_tokens: 6000,
@@ -182,7 +194,13 @@ async function classify(anthropic, candidates) {
         ],
       },
       { timeout: 120_000 }
-    )
+      )
+    } catch (e) {
+      lastError = e
+      failed++
+      console.warn("Gmail contacts: classification batch failed:", e.status || "", e.message)
+      continue
+    }
     if (message.stop_reason === "refusal") continue
     const text = (message.content || []).filter((b) => b.type === "text").map((b) => b.text).join("")
     let parsed
@@ -205,6 +223,9 @@ async function classify(anthropic, candidates) {
       })
     }
   }
+  // Every batch failed (e.g. the model isn't available to this API key): report it instead of
+  // quietly adding nobody.
+  if (failed && failed === Math.ceil(candidates.length / BATCH)) throw lastError
   return out
 }
 

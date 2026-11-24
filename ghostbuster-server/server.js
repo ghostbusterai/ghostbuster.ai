@@ -1331,8 +1331,10 @@ async function start() {
           await store.setGmailScan(id, { enabled: false, importContacts: false, readGranted: false })
           return fail(403, { error: "GhostBuster no longer has Gmail read access. Turn Gmail features on again in Settings.", needsPermission: true })
         }
-        console.error(e)
-        return fail(500, { error: "Couldn't scan Gmail" })
+        console.error("Gmail scan failed:", e)
+        // Say why, so a failing scan can be diagnosed without server logs.
+        const detail = formatAnthropicError(e) || e?.message || ""
+        return fail(500, { error: `Couldn't scan Gmail${detail ? `: ${String(detail).slice(0, 200)}` : ""}` })
       }
     })()
     gmailScansRunning.set(id, run)
