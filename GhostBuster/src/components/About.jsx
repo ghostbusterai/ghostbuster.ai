@@ -129,11 +129,11 @@ export default function About() {
         </div>
       </PageHero>
 
-      <section className="gb-stat-showcase gb-stat-showcase--about" aria-labelledby="about-proof-title">
-        <h2 id="about-proof-title" className="gb-stat-showcase__title">
-          Built to scale with your network
+      <section className="gb-stat-showcase gb-stat-showcase--about gb-scroll-reveal" aria-labelledby="about-proof-title">
+        <h2 id="about-proof-title" className="gb-stat-showcase__title gb-reveal-line">
+          <span>Built to scale with your network</span>
         </h2>
-        <div className="gb-snapshot-grid gb-stat-showcase__grid">
+        <div className="gb-snapshot-grid gb-stat-showcase__grid gb-reveal-stagger">
           {PRODUCT_PROOF_STATS.map((item) => (
             <article key={item.value} className="gb-snapshot-stat">
               <div className="gb-snapshot-stat__value">{item.value}</div>
@@ -181,6 +181,7 @@ export default function About() {
           Product
         </CardTitle>
         <div
+          className="gb-reveal-stagger"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
@@ -217,6 +218,7 @@ export default function About() {
           The team
         </CardTitle>
         <div
+          className="gb-reveal-stagger"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",

@@ -39,6 +39,7 @@ export function inputProps(extraStyle) {
 export function sectionCard(borderColor = "var(--gb-border-subtle)", embedded = false) {
   const className = [
     uiClass.sectionCard,
+    "gb-reveal-block",
     embedded ? "gb-section-card--embedded" : "",
   ]
     .filter(Boolean)

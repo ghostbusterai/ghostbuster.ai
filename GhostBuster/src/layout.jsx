@@ -1,6 +1,7 @@
-import React from "react"
+import React, { useEffect, useRef } from "react"
 import { font } from "./theme"
 import { primaryBtn, secondaryBtn } from "./uiStyles"
+import { initScrollReveal } from "./scrollReveal"
 
 /** Shared page width — wider column to use horizontal space on desktop */
 export const PAGE_CONTENT_MAX_WIDTH = 1240
@@ -79,10 +80,26 @@ export const type = {
 }
 
 /** Centered column — uses most of the viewport width on large screens */
-export function PageShell({ children, className = "" }) {
-  const shellClass = ["gb-page-shell", "gb-stagger-in", className].filter(Boolean).join(" ")
+export function PageShell({ children, className = "", revealKey }) {
+  const shellRef = useRef(null)
+  const shellClass = ["gb-page-shell", className].filter(Boolean).join(" ")
+
+  useEffect(() => {
+    const root = shellRef.current
+    if (!root) return () => {}
+    let teardown = () => {}
+    const raf = requestAnimationFrame(() => {
+      teardown = initScrollReveal(root)
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      teardown()
+    }
+  }, [children, revealKey])
+
   return (
     <div
+      ref={shellRef}
       className={shellClass}
       style={{ width: "100%", maxWidth: PAGE_CONTENT_MAX_WIDTH, margin: "0 auto", minWidth: 0 }}
     >
@@ -95,6 +112,7 @@ export function PageShell({ children, className = "" }) {
 export function PageHero({ eyebrow, title, subtitle, action, children, className = "", variant = "mission" }) {
   const heroClass = [
     "gb-page-hero",
+    "gb-scroll-reveal",
     variant === "mission" ? "gb-page-hero--mission" : "gb-page-hero--card",
     className,
   ]
@@ -109,8 +127,8 @@ export function PageHero({ eyebrow, title, subtitle, action, children, className
         <div className="gb-page-hero__copy">
           {eyebrow && <div className="gb-eyebrow">{eyebrow}</div>}
           {title && (
-            <h1 className="gb-hero-title" style={titleStyle}>
-              {title}
+            <h1 className="gb-hero-title gb-reveal-line" style={titleStyle}>
+              <span>{title}</span>
             </h1>
           )}
           {subtitle && <p className="gb-page-hero__subtitle">{subtitle}</p>}
@@ -124,8 +142,9 @@ export function PageHero({ eyebrow, title, subtitle, action, children, className
 
 export function SectionLabel({ children, style }) {
   return (
-    <div className="gb-section-label" style={{ marginBottom: 12, ...style }}>
+    <div className="gb-section-label gb-reveal-block" style={{ marginBottom: 12, ...style }}>
       {children}
+      <span className="gb-reveal-rule" aria-hidden="true" />
     </div>
   )
 }
@@ -139,7 +158,9 @@ export function ContentCard({
   marginBottom = 28,
   bento = false,
 }) {
-  const cardClass = ["gb-content-card", bento ? "gb-bento" : "", className].filter(Boolean).join(" ")
+  const cardClass = ["gb-content-card", "gb-scroll-reveal", bento ? "gb-bento" : "", className]
+    .filter(Boolean)
+    .join(" ")
   return (
     <section
       className={cardClass}
@@ -160,7 +181,9 @@ export function ContentCard({
 export function CardTitle({ children, helper, style }) {
   return (
     <div className="gb-card-title-block" style={style}>
-      <h2 className="gb-card-title">{children}</h2>
+      <h2 className="gb-card-title gb-reveal-line">
+        <span>{children}</span>
+      </h2>
       {helper && <p className="gb-card-helper">{helper}</p>}
     </div>
   )
@@ -233,7 +256,11 @@ export function FormSecondaryButton({ children, onClick, type = "button", disabl
 
 export function ListDivider({ children, tone }) {
   return (
-    <div className={["gb-list-divider", tone === "warn" ? "gb-list-divider--warn" : ""].filter(Boolean).join(" ")}>
+    <div
+      className={["gb-list-divider", "gb-reveal-block", tone === "warn" ? "gb-list-divider--warn" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {children}
     </div>
   )

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react"
 import { api, BASE } from "../api"
 import { font } from "../theme"
 import { useTheme } from "../ThemeContext"
-import { CardTitle, PageShell } from "../layout"
+import { CardTitle, PageHero, PageShell } from "../layout"
 import { inputStyle, sectionCard, secondaryBtn } from "../uiStyles"
 import {
   LS_PROFILE,
@@ -653,34 +653,11 @@ export default function Settings({
   const inner = (
     <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
       {!embedded && (
-        <div style={{ marginBottom: 32 }}>
-          <div
-            style={{
-              fontSize: 11,
-              fontFamily: font.mono,
-              letterSpacing: "0.14em",
-              color: "var(--gb-text-dim)",
-              textTransform: "uppercase",
-              marginBottom: 8,
-            }}
-          >
-            Preferences
-          </div>
-          <h1
-            style={{
-              fontFamily: font.h1,
-              fontWeight: 800,
-              fontSize: 36,
-              letterSpacing: "-1px",
-              marginBottom: 8,
-            }}
-          >
-            Settings
-          </h1>
-          <p style={{ color: "var(--gb-text-muted)", fontSize: 15, maxWidth: 680, lineHeight: 1.55, fontFamily: font.body }}>
-            Tutorial, reminders, compose defaults, integrations, and how urgency works across the app.
-          </p>
-        </div>
+        <PageHero
+          eyebrow="Preferences"
+          title="Settings"
+          subtitle="Tutorial, reminders, compose defaults, integrations, and how urgency works across the app."
+        />
       )}
       {error && (
         <p style={{ color: "var(--gb-danger)", fontSize: 13, marginBottom: embedded ? 12 : 10, fontFamily: font.body }}>{error}</p>

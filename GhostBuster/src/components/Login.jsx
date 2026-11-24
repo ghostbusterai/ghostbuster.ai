@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
+import { initScrollReveal } from "../scrollReveal"
 import GhostBusterLogo from "./GhostBusterLogo"
 import BrandName from "./BrandName"
 import CinematicBackground from "./CinematicBackground"
@@ -11,6 +12,7 @@ import { Icon } from "../icons"
 const REVIEWER_DEMO_CODE = "app-reviewer"
 
 export default function Login({ error, onDemoLogin }) {
+  const loginScrollRef = useRef(null)
   const loginHref = `${BASE}/api/auth/google`
   const apiDown =
     typeof error === "string" &&
@@ -26,6 +28,19 @@ export default function Login({ error, onDemoLogin }) {
       .getDemoStatus()
       .then((d) => setDemoEnabled(Boolean(d.enabled)))
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const root = loginScrollRef.current
+    if (!root) return () => {}
+    let teardown = () => {}
+    const raf = requestAnimationFrame(() => {
+      teardown = initScrollReveal(root)
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      teardown()
+    }
   }, [])
 
   async function startDemo(e) {
@@ -46,16 +61,18 @@ export default function Login({ error, onDemoLogin }) {
   return (
     <div className="gb-app gb-app--fullscreen gb-app--cinema" style={{ color: "var(--gb-text)", fontFamily: font.body }}>
       <CinematicBackground />
-      <div className="gb-app-content gb-login-scroll">
-        <section className="gb-login-hero gb-login-hero--mission" aria-label="Sign in to GhostBuster">
-          <div className="gb-login-mission">
+      <div ref={loginScrollRef} className="gb-app-content gb-login-scroll">
+        <section className="gb-login-hero gb-login-hero--mission gb-scroll-reveal" aria-label="Sign in to GhostBuster">
+          <div className="gb-login-mission gb-reveal-stagger">
             <div className="gb-login-mission__brand">
               <GhostBusterLogo size={32} />
               <BrandName variant="login" />
             </div>
 
             <p className="gb-mission-eyebrow">Networking assistant · Beta</p>
-            <h1 className="gb-mission-title">Turn intros into offers</h1>
+            <h1 className="gb-mission-title gb-reveal-line">
+              <span>Turn intros into offers</span>
+            </h1>
             <p className="gb-mission-lede">
               Save contacts, draft outreach, and keep follow-ups on track — private to your account.
             </p>
@@ -149,7 +166,9 @@ export default function Login({ error, onDemoLogin }) {
           </a>
         </section>
 
-        <NetworkingSuccessReel id="networking-wins" variant="scroll" videoSrc={SUCCESS_REEL_VIDEO} />
+        <div className="gb-scroll-reveal">
+          <NetworkingSuccessReel id="networking-wins" variant="scroll" videoSrc={SUCCESS_REEL_VIDEO} />
+        </div>
       </div>
     </div>
   )

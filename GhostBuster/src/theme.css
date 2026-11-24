@@ -1140,6 +1140,117 @@ button:focus-visible {
   }
 }
 
+/* Scroll-triggered sections (Limma-style blocks — see scrollReveal.js) */
+.gb-scroll-reveal,
+.gb-reveal-block {
+  --gb-reveal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.75s var(--gb-reveal-ease),
+    transform 0.75s var(--gb-reveal-ease);
+  will-change: opacity, transform;
+}
+
+.gb-scroll-reveal.gb-scroll-reveal--in,
+.gb-reveal-block.gb-scroll-reveal--in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Headline lines slide up inside a clipped row (like limma.ai .rd-line) */
+.gb-reveal-line {
+  overflow: hidden;
+  display: block;
+}
+
+.gb-reveal-line > span {
+  display: block;
+  transform: translateY(110%);
+  transition: transform 0.85s var(--gb-reveal-ease);
+  will-change: transform;
+}
+
+.gb-scroll-reveal--in .gb-reveal-line > span,
+.gb-reveal-block.gb-scroll-reveal--in.gb-reveal-line > span {
+  transform: none;
+}
+
+/* Section rule draws in from the left */
+.gb-reveal-rule {
+  display: block;
+  height: 1px;
+  width: min(100%, 7.5rem);
+  margin-top: 10px;
+  background: color-mix(in srgb, var(--gb-border) 85%, transparent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 1s var(--gb-reveal-ease);
+  will-change: transform;
+}
+
+.gb-reveal-block.gb-scroll-reveal--in .gb-reveal-rule {
+  transform: scaleX(1);
+}
+
+/* Stagger children when the parent block enters view */
+.gb-reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.65s var(--gb-reveal-ease),
+    transform 0.65s var(--gb-reveal-ease);
+}
+
+.gb-scroll-reveal--in .gb-reveal-stagger > *,
+.gb-reveal-block.gb-scroll-reveal--in .gb-reveal-stagger > *,
+.gb-scroll-reveal--in.gb-reveal-stagger > *,
+.gb-reveal-block.gb-scroll-reveal--in.gb-reveal-stagger > * {
+  opacity: 1;
+  transform: none;
+}
+
+.gb-reveal-stagger > *:nth-child(1) {
+  transition-delay: 0.04s;
+}
+.gb-reveal-stagger > *:nth-child(2) {
+  transition-delay: 0.1s;
+}
+.gb-reveal-stagger > *:nth-child(3) {
+  transition-delay: 0.16s;
+}
+.gb-reveal-stagger > *:nth-child(4) {
+  transition-delay: 0.22s;
+}
+.gb-reveal-stagger > *:nth-child(5) {
+  transition-delay: 0.28s;
+}
+.gb-reveal-stagger > *:nth-child(6) {
+  transition-delay: 0.34s;
+}
+.gb-reveal-stagger > *:nth-child(7) {
+  transition-delay: 0.4s;
+}
+.gb-reveal-stagger > *:nth-child(8) {
+  transition-delay: 0.46s;
+}
+
+.gb-page-shell > .gb-scroll-reveal:nth-child(2) {
+  transition-delay: 0.06s;
+}
+.gb-page-shell > .gb-scroll-reveal:nth-child(3) {
+  transition-delay: 0.12s;
+}
+.gb-page-shell > .gb-scroll-reveal:nth-child(4) {
+  transition-delay: 0.18s;
+}
+.gb-page-shell > .gb-scroll-reveal:nth-child(5) {
+  transition-delay: 0.24s;
+}
+.gb-page-shell > .gb-scroll-reveal:nth-child(6) {
+  transition-delay: 0.3s;
+}
+
 .gb-stagger-in > * {
   opacity: 1;
   animation: gb-bento-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -1316,21 +1427,8 @@ button:focus-visible {
   }
 }
 
-.gb-snapshot-grid > * {
-  animation: gb-bento-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.gb-snapshot-grid > *:nth-child(1) {
-  animation-delay: 0.04s;
-}
-.gb-snapshot-grid > *:nth-child(2) {
-  animation-delay: 0.1s;
-}
-.gb-snapshot-grid > *:nth-child(3) {
-  animation-delay: 0.16s;
-}
-.gb-snapshot-grid > *:nth-child(4) {
-  animation-delay: 0.22s;
+.gb-snapshot-grid.gb-reveal-stagger > * {
+  animation: none;
 }
 
 .gb-snapshot-stat {
@@ -2351,6 +2449,9 @@ select:focus {
   .gb-login-scroll-hint__arrow,
   .gb-success-reel__slide,
   .gb-stagger-in > *,
+  .gb-scroll-reveal,
+  .gb-reveal-block,
+  .gb-reveal-stagger > *,
   .gb-page-enter,
   .gb-bento:hover,
   .gb-step-tile:hover {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { initScrollReveal } from "../scrollReveal"
 import { api } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
@@ -19,6 +20,38 @@ function IconUser() {
       <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.75" />
       <path d="M5 20c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
     </svg>
+  )
+}
+
+function SettingsScrollPanel({ children }) {
+  const scrollRef = useRef(null)
+
+  useEffect(() => {
+    const root = scrollRef.current
+    if (!root) return () => {}
+    let teardown = () => {}
+    const raf = requestAnimationFrame(() => {
+      teardown = initScrollReveal(root)
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      teardown()
+    }
+  }, [children])
+
+  return (
+    <div
+      ref={scrollRef}
+      style={{
+        overflowY: "auto",
+        padding: "4px 14px 14px",
+        flex: 1,
+        minHeight: 0,
+        maxHeight: "min(70vh, 620px)",
+      }}
+    >
+      {children}
+    </div>
   )
 }
 
@@ -575,15 +608,7 @@ export default function ProfileMenu({
               <div style={{ padding: "0 4px", flexShrink: 0 }}>
                 <DropdownRow icon={<IconChevronLeft />} label="Back to menu" onClick={() => setView("menu")} />
               </div>
-              <div
-                style={{
-                  overflowY: "auto",
-                  padding: "4px 14px 14px",
-                  flex: 1,
-                  minHeight: 0,
-                  maxHeight: "min(70vh, 620px)",
-                }}
-              >
+              <SettingsScrollPanel>
                 <Settings
                   embedded
                   setPage={(page) => {
@@ -597,7 +622,7 @@ export default function ProfileMenu({
                     if (typeof onAccountDeleted === "function") onAccountDeleted()
                   }}
                 />
-              </div>
+              </SettingsScrollPanel>
             </>
           )}
         </div>

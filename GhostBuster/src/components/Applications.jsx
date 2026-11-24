@@ -867,20 +867,16 @@ function ApplicationRow({
   }, [a.url, a.portalUrl, a.statusNote])
 
   return (
-    <div className="gb-application-row">
+    <div className="gb-application-row gb-reveal-block">
       <div className="gb-record-row__main">
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
           <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15 }}>{title}</div>
           <span
+            className="gb-application-row__stage"
             style={{
-              fontSize: 10,
-              fontFamily: font.mono,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              padding: "4px 8px",
-              border: `1px solid color-mix(in srgb, ${meta.tone} 45%, var(--gb-border))`,
+              borderColor: `color-mix(in srgb, ${meta.tone} 45%, var(--gb-border))`,
               color: meta.tone,
-              borderRadius: "var(--gb-radius-sm)",
+              background: `color-mix(in srgb, ${meta.tone} 10%, transparent)`,
             }}
           >
             {meta.short}
@@ -950,13 +946,13 @@ function ApplicationRow({
             </div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div className="gb-application-row__links">
             {a.url ? (
               <a
                 href={a.url}
                 target="_blank"
                 rel="noreferrer"
-                style={{ color: "var(--gb-accent)", fontSize: 13, fontFamily: font.body, wordBreak: "break-all" }}
+                className="gb-application-row__link gb-application-row__link--apply"
               >
                 Apply · {host || a.url}
               </a>
@@ -964,12 +960,7 @@ function ApplicationRow({
               <div style={{ fontSize: 13, color: "var(--gb-text-faint)" }}>No apply link</div>
             )}
             {portal && portal !== a.url ? (
-              <a
-                href={portal}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: "var(--gb-text-secondary)", fontSize: 13, fontFamily: font.body, wordBreak: "break-all" }}
-              >
+              <a href={portal} target="_blank" rel="noreferrer" className="gb-application-row__link">
                 Status portal · {portalHost || portal}
               </a>
             ) : null}
@@ -1074,7 +1065,7 @@ function ApplicationRow({
                 Mark submitted
               </button>
             )}
-            <button type="button" onClick={onDelete} {...rowBtn(false, { style: { color: "var(--gb-danger)" } })}>
+            <button type="button" onClick={onDelete} {...rowBtn(false, { className: "gb-btn--danger-soft" })}>
               Delete
             </button>
           </div>
@@ -1085,12 +1076,20 @@ function ApplicationRow({
 }
 
 function rowBtn(accent = false, extra = {}) {
-  return accent ? primaryBtn({ sm: true, ...extra }) : secondaryBtn({ sm: true, ...extra })
+  const base = accent ? primaryBtn({ sm: true, ...extra }) : secondaryBtn({ sm: true, ...extra })
+  const { className: extraClass, style: extraStyle, ...rest } = extra
+  return {
+    ...rest,
+    className: [base.className, extraClass].filter(Boolean).join(" "),
+    style: { ...base.style, ...extraStyle },
+  }
 }
 
 function actionLink(extra = {}) {
+  const { className: extraClass, ...rest } = extra
   return {
-    className: [uiClass.btnSecondary, uiClass.btnSm].join(" "),
+    ...rest,
+    className: [uiClass.btnSecondary, uiClass.btnSm, extraClass].filter(Boolean).join(" "),
     style: { textDecoration: "none", ...extra.style },
   }
 }
