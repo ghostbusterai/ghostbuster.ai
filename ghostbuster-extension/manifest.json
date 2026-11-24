@@ -45,7 +45,8 @@
       ],
       "js": [
         "resume-picker.js",
-        "filler.js"
+        "filler.js",
+        "portal-reader.js"
       ],
       "run_at": "document_idle",
       "all_frames": true

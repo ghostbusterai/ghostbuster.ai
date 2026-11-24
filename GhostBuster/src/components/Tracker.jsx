@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react"
 import { api } from "../api"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
-import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
+import { PageShell, PageHero, ContentCard, CardTitle, EmptyState } from "../layout"
 import ViewMoreButton from "./ViewMoreButton"
 import { LIST_PREVIEW_LIMIT, previewHiddenCount, previewSlice } from "../listPreview"
 
@@ -10,11 +10,11 @@ const CHANNELS = ["Email", "LinkedIn", "In-person", "Call", "Other"]
 
 /** Visual encoding for the graphical timeline */
 const CHANNEL_TIMELINE = {
-  Email: { stroke: "var(--gb-accent)", glow: "rgba(184,255,87,0.5)", fill: "var(--gb-accent-soft)", mark: "✉" },
-  LinkedIn: { stroke: "#6eb5ff", glow: "rgba(110,181,255,0.45)", fill: "rgba(110,181,255,0.12)", mark: "in" },
-  "In-person": { stroke: "#c4a5ff", glow: "rgba(196,165,255,0.4)", fill: "rgba(196,165,255,0.1)", mark: "◎" },
-  Call: { stroke: "#5be4d8", glow: "rgba(91,228,216,0.45)", fill: "rgba(91,228,216,0.12)", mark: "📞" },
-  Other: { stroke: "#94a3b8", glow: "rgba(148,163,184,0.35)", fill: "rgba(148,163,184,0.1)", mark: "·" },
+  Email: { stroke: "var(--gb-accent)", glow: "rgba(157,206,92,0.35)", fill: "var(--gb-accent-soft)" },
+  LinkedIn: { stroke: "#6eb5ff", glow: "rgba(110,181,255,0.35)", fill: "rgba(110,181,255,0.1)" },
+  "In-person": { stroke: "#c4a5ff", glow: "rgba(196,165,255,0.3)", fill: "rgba(196,165,255,0.08)" },
+  Call: { stroke: "#5be4d8", glow: "rgba(91,228,216,0.32)", fill: "rgba(91,228,216,0.1)" },
+  Other: { stroke: "#94a3b8", glow: "rgba(148,163,184,0.28)", fill: "rgba(148,163,184,0.08)" },
 }
 
 function timelineChannelMeta(ch) {
@@ -476,18 +476,8 @@ export default function Tracker() {
       </ContentCard>
 
       {filteredSingle && sortedFilteredContacts[0] && (
-        <div
-          style={{
-            marginBottom: 18,
-            padding: "14px 18px",
-            borderRadius: 12,
-            background: "var(--gb-accent-soft)",
-            border: "1px solid var(--gb-border-subtle)",
-            fontSize: 14,
-            color: "var(--gb-text-secondary)",
-          }}
-        >
-          <strong style={{ color: "var(--gb-text)" }}>{sortedFilteredContacts[0].name}</strong> only
+        <div className="gb-filter-banner">
+          <strong>{sortedFilteredContacts[0].name}</strong> only
         </div>
       )}
 
@@ -495,51 +485,18 @@ export default function Tracker() {
       <CardTitle helper="Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each week for the past 12 weeks.">
         Connection warmth
       </CardTitle>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 8,
-          marginTop: -6,
-          marginBottom: 16,
-        }}
-      >
+      <div className="gb-legend-grid">
         {[
           { c: "var(--gb-accent)", label: "Warm", detail: "Last touch within 21 days" },
           { c: "#ffc96b", label: "Check in soon", detail: "22–45 days since last touch" },
           { c: "var(--gb-danger)", label: "Overdue", detail: "More than 45 days since last touch" },
           { c: "#6b7280", label: "No touch logged", detail: "No outreach recorded yet" },
         ].map((x) => (
-          <span
-            key={x.label}
-            style={{
-              display: "inline-flex",
-              alignItems: "flex-start",
-              gap: 8,
-              fontSize: 12,
-              color: "var(--gb-text-secondary)",
-              padding: "8px 12px",
-              borderRadius: 8,
-              background: "var(--gb-surface-hover)",
-              border: "1px solid var(--gb-border-subtle)",
-              maxWidth: 220,
-            }}
-          >
-            <span
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                background: x.c,
-                marginTop: 3,
-                flexShrink: 0,
-              }}
-            />
+          <span key={x.label} className="gb-legend-chip">
+            <span className="gb-legend-chip__dot" style={{ background: x.c }} />
             <span>
-              <strong style={{ color: "var(--gb-text)" }}>{x.label}</strong>
-              <span style={{ display: "block", color: "var(--gb-text-faint)", marginTop: 2, lineHeight: 1.35 }}>
-                {x.detail}
-              </span>
+              <strong>{x.label}</strong>
+              <span className="gb-legend-chip__detail">{x.detail}</span>
             </span>
           </span>
         ))}
@@ -547,18 +504,14 @@ export default function Tracker() {
       {loading ? (
         <div style={{ color: "var(--gb-text-faint)" }}>Loading…</div>
       ) : sortedFilteredContacts.length === 0 ? (
-        <div
-          style={{
-            background: "var(--gb-bg-elevated)",
-            border: "1px solid var(--gb-surface-active)",
-            borderRadius: 14,
-            padding: 40,
-            textAlign: "center",
-            color: "var(--gb-text-faint)",
-          }}
-        >
-          {contacts.length === 0 ? "Add contacts first, then log outreach from the corner button." : "No contacts match this filter."}
-        </div>
+        <EmptyState
+          title="Nothing to track yet"
+          lede={
+            contacts.length === 0
+              ? "Add contacts first, then log outreach from the corner compose button."
+              : "No contacts match this filter."
+          }
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {sortedFilteredContacts.map((c) => {

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GhostBuster AI — Brand Logo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@700&family=Syne:wght@700&family=DM+Mono:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --panel: #111118;
+      --text: #f0f0f5;
+      --muted: rgba(240,240,245,0.6);
+      --accent: #b8ff57;
+      --border: rgba(255,255,255,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 40px 24px 64px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 {
+      font-family: Lexend, sans-serif;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+    .lead {
+      color: var(--muted);
+      line-height: 1.55;
+      margin-bottom: 32px;
+      font-size: 15px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-family: Syne, sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+    .preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 220px;
+      background: var(--bg);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      padding: 24px;
+    }
+    .preview img {
+      max-width: 100%;
+      height: auto;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .preview.mark img { width: 200px; height: 200px; }
+    .preview.full img { width: min(100%, 520px); }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    button, a.btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: rgba(184,255,87,0.14);
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover, a.btn:hover { background: rgba(184,255,87,0.24); }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    .status {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--accent);
+      min-height: 20px;
+    }
+    .steps {
+      margin-top: 28px;
+      padding: 20px 24px;
+      background: rgba(184,255,87,0.06);
+      border: 1px solid rgba(184,255,87,0.2);
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .steps strong { color: var(--text); }
+    .steps ol { margin: 10px 0 0 20px; }
+    .steps li { margin-bottom: 6px; }
+    code {
+      font-family: "DM Mono", monospace;
+      font-size: 12px;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>GhostBuster AI logo</h1>
+    <p class="lead">
+      Copy these logos into PowerPoint, Google Slides, Canva, or Keynote.
+      Use the icon for slide corners; use the full lockup on title slides.
+    </p>
+
+    <div class="card">
+      <h2>Icon mark — recommended for slides</h2>
+      <div class="preview mark">
+        <img id="img-mark" src="logo-mark.png" alt="GhostBuster AI logo mark" width="200" height="200" />
+      </div>
+      <div class="actions">
+        <button type="button" id="copy-mark">Copy logo to clipboard</button>
+        <a class="btn" href="logo-mark.png" download="ghostbuster-logo.png">Download PNG</a>
+        <a class="btn" href="logo-mark.svg" download="ghostbuster-logo.svg">Download SVG</a>
+      </div>
+      <p class="status" id="status-mark" aria-live="polite"></p>
+    </div>
+
+    <div class="card">
+      <h2>Full lockup — icon + GhostBuster AI</h2>
+      <div class="preview full">
+        <img id="img-full" src="logo-full.png" alt="GhostBuster AI full logo" />
+      </div>
+      <div class="actions">
+        <button type="button" id="copy-full">Copy full logo to clipboard</button>
+        <a class="btn" href="logo-full.png" download="ghostbuster-logo-full.png">Download PNG</a>
+        <a class="btn" href="logo-full.svg" download="ghostbuster-logo-full.svg">Download SVG</a>
+      </div>
+      <p class="status" id="status-full" aria-live="polite"></p>
+    </div>
+
+    <div class="steps">
+      <strong>How to paste into your pitch deck</strong>
+      <ol>
+        <li>Click <strong>Copy logo to clipboard</strong> above.</li>
+        <li>Open PowerPoint or Google Slides.</li>
+        <li>Click a slide and press <strong>Ctrl+V</strong> (Mac: <strong>Cmd+V</strong>).</li>
+        <li>Or: <strong>Insert → Pictures</strong> and choose the downloaded PNG.</li>
+        <li>For every slide: <strong>View → Slide Master</strong>, paste once in the corner, close master.</li>
+      </ol>
+      <p style="margin-top:12px;">Direct file links: <code>/brand/logo-mark.png</code> · <code>/brand/logo-full.png</code></p>
+    </div>
+  </div>
+
+  <script>
+    async function copyImage(url, statusEl, label) {
+      statusEl.textContent = "Copying…";
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const pngBlob = blob.type === "image/png"
+          ? blob
+          : await (async () => {
+              const bmp = await createImageBitmap(blob);
+              const canvas = document.createElement("canvas");
+              canvas.width = bmp.width;
+              canvas.height = bmp.height;
+              canvas.getContext("2d").drawImage(bmp, 0, 0);
+              return await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+            })();
+
+        if (!navigator.clipboard?.write || !window.ClipboardItem) {
+          throw new Error("Clipboard API not supported — use Download PNG instead.");
+        }
+
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": pngBlob }),
+        ]);
+        statusEl.textContent = `Copied! Paste with Ctrl+V into your deck (${label}).`;
+      } catch (err) {
+        statusEl.textContent =
+          "Could not copy automatically. Right-click the logo → Copy image, or use Download PNG.";
+        console.error(err);
+      }
+    }
+
+    document.getElementById("copy-mark").addEventListener("click", () =>
+      copyImage("logo-mark.png", document.getElementById("status-mark"), "512×512 icon")
+    );
+    document.getElementById("copy-full").addEventListener("click", () =>
+      copyImage("logo-full.png", document.getElementById("status-full"), "full lockup")
+    );
+  </script>
+</body>
+</html>

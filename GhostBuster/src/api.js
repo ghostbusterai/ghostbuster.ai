@@ -54,6 +54,8 @@ async function request(path, options = {}) {
     const err = new Error(data.error || r.statusText || `Request failed (${r.status})`)
     err.status = r.status
     err.data = data
+    if (data.needsReconnect) err.needsReconnect = true
+    if (data.needsGoogle) err.needsGoogle = true
     throw err
   }
   return data
@@ -81,6 +83,7 @@ async function uploadRequest(path, formData) {
 }
 
 export const api = {
+  health: () => request("/api/health"),
   getMe: () => request("/api/auth/me"),
   getAiMetrics: (days = 7) => request(`/api/admin/ai-metrics?days=${days}`),
   logout: () => request("/api/auth/logout", { method: "POST" }),
@@ -90,6 +93,10 @@ export const api = {
   getContacts: () => request("/api/contacts"),
   createContact: (body) => request("/api/contacts", { method: "POST", body: JSON.stringify(body) }),
   findPeople: (body) => request("/api/people/find", { method: "POST", body: JSON.stringify(body || {}) }),
+  discoverConnections: (body) =>
+    request("/api/contacts/discover", { method: "POST", body: JSON.stringify(body || {}) }),
+  discoverConnectionsFromProfile: () =>
+    request("/api/contacts/discover/profile", { method: "POST", body: JSON.stringify({}) }),
   updateContact: (id, body) => request(`/api/contacts/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteContact: (id) => request(`/api/contacts/${id}`, { method: "DELETE" }),
   getReminders: () => request("/api/reminders"),
@@ -102,6 +109,10 @@ export const api = {
   patchApplication: (id, body) =>
     request(`/api/applications/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteApplication: (id) => request(`/api/applications/${id}`, { method: "DELETE" }),
+  suggestApplications: () => request("/api/applications/suggest", { method: "POST", body: JSON.stringify({}) }),
+  syncApplicationsFromEmail: () => request("/api/applications/sync/email", { method: "POST", body: JSON.stringify({}) }),
+  syncApplicationPortal: (body) =>
+    request("/api/applications/sync/portal", { method: "POST", body: JSON.stringify(body || {}) }),
   reportApplicationFill: (id, body) =>
     request(`/api/applications/${id}/fill-report`, { method: "POST", body: JSON.stringify(body || {}) }),
   searchJobs: ({ company, q, workdayUrl }) => {
@@ -126,6 +137,8 @@ export const api = {
   createResumeUpdate: (body) =>
     request("/api/resume-updates", { method: "POST", body: JSON.stringify(body) }),
   deleteResumeUpdate: (id) => request(`/api/resume-updates/${id}`, { method: "DELETE" }),
+  suggestJobsFromResumeUpdate: (body) =>
+    request("/api/resume-updates/jobs/suggest", { method: "POST", body: JSON.stringify(body || {}) }),
   getFullResume: () => request("/api/resume"),
   saveFullResume: (body) => request("/api/resume", { method: "POST", body: JSON.stringify(body) }),
   uploadFullResume: (file, bucketId) => {
@@ -165,6 +178,7 @@ export const api = {
   formatResumeForAts: (body) =>
     request("/api/resume/ats-text", { method: "POST", body: JSON.stringify(body || {}) }),
   getGoogleCalendarStatus: () => request("/api/google/status"),
+  getGoogleStatus: () => request("/api/google/status"),
   disconnectGoogleCalendar: () => request("/api/google/disconnect", { method: "DELETE" }),
   saveGmailDraft: (body) => request("/api/gmail/draft", { method: "POST", body: JSON.stringify(body) }),
   scheduleGmailSend: (body) => request("/api/gmail/schedule", { method: "POST", body: JSON.stringify(body) }),

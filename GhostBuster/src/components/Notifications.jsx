@@ -1,46 +1,78 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
+import { readLocalProfile } from "../profile"
+import { buildSortedReminderFeed, dismissAutoSuggestion, isAutoReminder } from "../autoReminders"
+import { PageShell, PageHero, ContentCard, CardTitle, EmptyState } from "../layout"
+import { primaryBtn, secondaryBtn } from "../uiStyles"
 import {
   getReminderUrgency,
   getReminderUrgencyStyle,
   reminderDueLabel,
-  sortRemindersForDisplay,
   summarizePendingReminders,
 } from "../reminderUtils"
 
 export default function Notifications({ setPage }) {
   const [reminders, setReminders] = useState([])
+  const [contacts, setContacts] = useState([])
+  const [outreachLogs, setOutreachLogs] = useState([])
+  const [lastResumeUpdate, setLastResumeUpdate] = useState("")
   const [loadError, setLoadError] = useState(null)
   const [loading, setLoading] = useState(true)
   const [actionError, setActionError] = useState(null)
+  const [dismissalRevision, setDismissalRevision] = useState(0)
 
-  async function loadReminders() {
+  async function loadFeed() {
     setLoadError(null)
     try {
-      const { reminders: list } = await api.getReminders()
-      setReminders(list || [])
-      localStorage.setItem("gb_reminders", JSON.stringify(list || []))
+      const [rRes, cRes, logRes, profileRes] = await Promise.all([
+        api.getReminders(),
+        api.getContacts(),
+        api.getOutreachLogs(),
+        api.getProfile(),
+      ])
+      setReminders(rRes.reminders || [])
+      setContacts(cRes.contacts || [])
+      setOutreachLogs(logRes.logs || [])
+      setLastResumeUpdate(profileRes?.profile?.lastResumeUpdate || "")
+      localStorage.setItem("gb_reminders", JSON.stringify(rRes.reminders || []))
     } catch (e) {
       setLoadError(e.message)
       setReminders(JSON.parse(localStorage.getItem("gb_reminders") || "[]"))
+      setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
+      setOutreachLogs(JSON.parse(localStorage.getItem("gb_outreach_logs") || "[]"))
+      setLastResumeUpdate(readLocalProfile().lastResumeUpdate || "")
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadReminders()
+    loadFeed()
   }, [])
 
-  const pending = useMemo(
-    () => sortRemindersForDisplay(reminders.filter((r) => !r.done)),
-    [reminders]
+  const feed = useMemo(
+    () =>
+      buildSortedReminderFeed({
+        savedReminders: reminders,
+        contacts,
+        outreachLogs,
+        lastResumeUpdate,
+      }),
+    [reminders, contacts, outreachLogs, lastResumeUpdate, dismissalRevision]
   )
-  const summary = useMemo(() => summarizePendingReminders(reminders), [reminders])
+
+  const pending = useMemo(() => feed.filter((r) => !r.done), [feed])
+  const summary = useMemo(() => summarizePendingReminders(feed), [feed])
 
   async function markDone(id) {
+    const row = feed.find((r) => r.id === id)
+    if (!row) return
+  if (isAutoReminder(row)) {
+    dismissAutoSuggestion(row.suggestionKey)
+    setDismissalRevision((n) => n + 1)
+    return
+  }
     setActionError(null)
     try {
       await api.patchReminder(id, { done: true })
@@ -74,13 +106,13 @@ export default function Notifications({ setPage }) {
           loading
             ? "Loading…"
             : summary.pending === 0
-              ? "You're all caught up. No pending reminders."
-              : `${summary.pending} pending reminder${summary.pending !== 1 ? "s" : ""} need your attention.`
+              ? "You're all caught up — no pending reminders."
+              : `${summary.pending} item${summary.pending !== 1 ? "s" : ""} in your feed need attention (saved + suggested).`
         }
       >
         {loadError && (
           <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0, fontFamily: font.body }}>
-            API offline. Showing local copy.
+            API offline — showing local copy.
           </p>
         )}
         {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0, fontFamily: font.body }}>{actionError}</p>}
@@ -90,39 +122,20 @@ export default function Notifications({ setPage }) {
         <>
           <ContentCard padding="14px 14px 12px" marginBottom={24}>
           <CardTitle style={{ marginBottom: 12 }}>Summary</CardTitle>
-          <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-          }}
-        >
+          <div className="gb-summary-chips">
           {summaryPills.map((pill) => {
             const style = getReminderUrgencyStyle(pill.key)
             return (
               <span
                 key={pill.key}
+                className="gb-summary-chip"
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "6px 12px",
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontFamily: font.mono,
                   color: style.color,
                   background: style.bg,
-                  border: `1px solid ${style.border}`,
+                  borderColor: style.border,
                 }}
               >
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: style.color,
-                  }}
-                />
+                <span className="gb-summary-chip__dot" style={{ background: style.color }} />
                 {pill.count} {pill.label.toLowerCase()}
               </span>
             )
@@ -132,63 +145,51 @@ export default function Notifications({ setPage }) {
         </>
       )}
 
-      <CardTitle>Pending reminders</CardTitle>
+      <CardTitle helper="Includes auto-suggested follow-ups from Tracker warmth and your résumé date.">
+        Pending feed
+      </CardTitle>
       {loading ? (
         <div style={{ color: "var(--gb-text-faint)" }}>Loading notifications…</div>
       ) : pending.length === 0 ? (
-        <div
-          style={{
-            background: "var(--gb-bg-elevated)",
-            border: "1px solid var(--gb-surface-active)",
-            borderRadius: 14,
-            padding: 48,
-            textAlign: "center",
-            color: "var(--gb-text-faint)",
-            fontSize: 14,
-          }}
-        >
-          No pending reminders. Set one from Reminders when you want a follow-up nudge.
-        </div>
+        <EmptyState
+          title="No pending nudges"
+          lede="Add contacts and log outreach — we'll suggest follow-ups here. You can still add your own on Reminders."
+        />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="gb-record-list">
           {pending.map((r) => {
             const urgency = getReminderUrgency(r)
             const style = getReminderUrgencyStyle(urgency)
+            const auto = isAutoReminder(r)
             const reason = r.customReason || r.reason || "General check-in"
             return (
               <div
                 key={r.id}
+                className="gb-record-row"
                 style={{
-                  background: style.cardBg,
-                  border: `2px solid ${style.border}`,
-                  boxShadow: style.shadow,
-                  borderRadius: 14,
-                  padding: "16px 18px",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                  gap: 16,
-                  flexWrap: "wrap",
+                  borderLeft: `2px solid ${style.border}`,
+                  paddingLeft: 10,
+                  marginLeft: -4,
                 }}
               >
-                <div style={{ flex: 1, minWidth: 200 }}>
+                <div className="gb-record-row__main">
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontFamily: font.mono,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: style.color,
-                        background: style.bg,
-                        border: `1px solid ${style.border}`,
-                        padding: "3px 8px",
-                        borderRadius: 6,
-                      }}
-                    >
+                    {auto && (
+                      <span
+                        className="gb-badge"
+                        style={{
+                          color: "var(--gb-accent)",
+                          borderColor: "var(--gb-accent-border)",
+                          background: "var(--gb-accent-soft)",
+                        }}
+                      >
+                        Suggested
+                      </span>
+                    )}
+                    <span className="gb-badge" style={{ color: style.color, borderColor: style.border }}>
                       {style.label}
                     </span>
-                    <span style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 16 }}>{r.contactName}</span>
+                    <span className="gb-record-row__title">{r.contactName}</span>
                   </div>
                   <div style={{ fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5 }}>{reason}</div>
                   <div
@@ -202,39 +203,11 @@ export default function Notifications({ setPage }) {
                     {reminderDueLabel(r)}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => markDone(r.id)}
-                    style={{
-                      background: "var(--gb-accent-soft)",
-                      border: "1px solid var(--gb-border-subtle)",
-                      color: "var(--gb-accent)",
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      boxShadow: "none",
-                      fontFamily: font.body,
-                    }}
-                  >
-                    Mark done
+                <div className="gb-record-row__actions">
+                  <button type="button" onClick={() => markDone(r.id)} {...primaryBtn({ sm: true })}>
+                    {auto ? "Dismiss" : "Mark done"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage("reminders")}
-                    style={{
-                      background: "transparent",
-                      border: "1px solid var(--gb-border-strong)",
-                      color: "var(--gb-text-subtle)",
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      boxShadow: "none",
-                      fontFamily: font.body,
-                    }}
-                  >
+                  <button type="button" onClick={() => setPage("reminders")} {...secondaryBtn({ sm: true })}>
                     Open Reminders
                   </button>
                 </div>
@@ -245,21 +218,7 @@ export default function Notifications({ setPage }) {
       )}
 
       <div style={{ marginTop: 28 }}>
-        <button
-          type="button"
-          onClick={() => setPage("reminders")}
-          style={{
-            background: "transparent",
-            border: "1px solid var(--gb-border-strong)",
-            color: "var(--gb-text-subtle)",
-            padding: "10px 18px",
-            borderRadius: 9,
-            fontSize: 13,
-            cursor: "pointer",
-            boxShadow: "none",
-            fontFamily: font.body,
-          }}
-        >
+        <button type="button" onClick={() => setPage("reminders")} {...secondaryBtn()}>
           Manage all reminders →
         </button>
       </div>

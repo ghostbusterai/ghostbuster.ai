@@ -887,6 +887,7 @@
 
   chrome.runtime.sendMessage({ type: "GET_JOB" }, (resp) => {
     if (chrome.runtime.lastError || !resp) return
+    if (resp.job?.mode === "portal") return
     state.job = resp.job
     state.profile = resp.profile
     state.resumeFile = resp.resumeFile

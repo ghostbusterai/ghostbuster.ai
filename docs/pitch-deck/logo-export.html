@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GhostBuster AI — Logo Export</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #f0f0f5;
+      --muted: rgba(240,240,245,0.6);
+      --accent: #b8ff57;
+      --border: rgba(255,255,255,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 40px 48px 64px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    h1 { font-family: Syne, sans-serif; font-size: 32px; margin-bottom: 8px; }
+    .lead { color: var(--muted); margin-bottom: 32px; line-height: 1.5; max-width: 720px; }
+    h2 {
+      font-family: Syne, sans-serif;
+      font-size: 18px;
+      color: var(--accent);
+      margin: 32px 0 16px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card {
+      background: #111118;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .card.light { background: #ffffff; }
+    .preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 160px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      background: repeating-conic-gradient(#1a1a22 0% 25%, #14141c 0% 50%) 50% / 20px 20px;
+    }
+    .card.light .preview {
+      background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+    }
+    .preview.dark-solid { background: var(--bg); }
+    .preview img, .preview canvas { max-width: 100%; height: auto; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    button, a.dl {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: rgba(184,255,87,0.12);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    button:hover, a.dl:hover { background: rgba(184,255,87,0.2); }
+    .note { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.45; }
+    code { color: var(--accent); font-size: 12px; }
+    .lockup {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .lockup .name {
+      font-family: Syne, sans-serif;
+      font-weight: 700;
+      font-size: 42px;
+      letter-spacing: -0.02em;
+      color: #f0f0f5;
+    }
+    .lockup .ai {
+      font-family: "DM Mono", monospace;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      background: rgba(184,255,87,0.14);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 6px 10px;
+    }
+    .lockup.light .name { color: #181b22; }
+    .lockup.light .ai { color: #4d8c18; background: rgba(109,184,50,0.14); border-color: rgba(24,27,34,0.08); }
+  </style>
+</head>
+<body>
+  <h1>GhostBuster AI — Logo assets</h1>
+  <p class="lead">
+    Use these files on every pitch deck slide. For PowerPoint: <strong>Insert → Pictures</strong> and choose a PNG (easiest) or SVG.
+    Transparent PNGs work on dark slides; pin the logo top-left on the slide master so it appears everywhere.
+  </p>
+
+  <h2>Icon only (mark)</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="preview dark-solid" id="mark-dark-preview"></div>
+      <div class="actions">
+        <a class="dl" href="assets/logo-mark.svg" download>Download SVG</a>
+        <button type="button" data-export="mark-dark">Download PNG (512px)</button>
+        <button type="button" data-export="mark-dark-256">Download PNG (256px)</button>
+      </div>
+      <p class="note">Neon lime on dark decks · transparent background</p>
+    </div>
+    <div class="card light">
+      <div class="preview" id="mark-light-preview"></div>
+      <div class="actions">
+        <a class="dl" href="assets/logo-mark-light-bg.svg" download>Download SVG</a>
+        <button type="button" data-export="mark-light">Download PNG (512px)</button>
+      </div>
+      <p class="note">Green variant for white/light slides · transparent background</p>
+    </div>
+  </div>
+
+  <h2>Full lockup (icon + GhostBuster AI)</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="preview dark-solid" id="lockup-dark-preview"></div>
+      <div class="actions">
+        <a class="dl" href="assets/logo-full-horizontal.svg" download>Download SVG</a>
+        <button type="button" data-export="lockup-dark">Download PNG (1200px wide)</button>
+      </div>
+      <p class="note">Best for title slides and footers on dark backgrounds</p>
+    </div>
+    <div class="card light">
+      <div class="preview" id="lockup-light-preview"></div>
+      <div class="actions">
+        <button type="button" data-export="lockup-light">Download PNG (1200px wide)</button>
+      </div>
+      <p class="note">Light-background version (green mark + dark text)</p>
+    </div>
+  </div>
+
+  <h2>PowerPoint tip</h2>
+  <p class="note">
+    View → Slide Master → insert <code>logo-full-horizontal.png</code> (or the mark) on the master layout.
+    All slides inherit it. Keep it small in the corner (~0.8–1.2" wide) so it doesn’t compete with content.
+  </p>
+
+  <script>
+    const MARK_DARK = `assets/logo-mark.svg`;
+    const MARK_LIGHT = `assets/logo-mark-light-bg.svg`;
+
+    function loadSvg(url) {
+      return fetch(url).then((r) => r.text());
+    }
+
+    function svgToCanvas(svgText, width, height) {
+      return new Promise((resolve, reject) => {
+        const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          URL.revokeObjectURL(url);
+          resolve(canvas);
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    function downloadCanvas(canvas, filename) {
+      canvas.toBlob((blob) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, "image/png");
+    }
+
+    async function renderLockupCanvas(variant, width) {
+      const height = Math.round(width * 0.19);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      const markSize = height * 0.85;
+      const markSvg = variant === "light" ? await loadSvg(MARK_LIGHT) : await loadSvg(MARK_DARK);
+      const markCanvas = await svgToCanvas(markSvg, markSize, markSize);
+      ctx.drawImage(markCanvas, 8, (height - markSize) / 2);
+
+      const name = "GhostBuster";
+      const fontSize = height * 0.38;
+      ctx.font = `700 ${fontSize}px Syne, Arial, sans-serif`;
+      ctx.fillStyle = variant === "light" ? "#181b22" : "#f0f0f5";
+      const nameX = markSize + 24;
+      const nameY = height * 0.62;
+      ctx.fillText(name, nameX, nameY);
+
+      const aiText = "AI";
+      const aiFontSize = height * 0.18;
+      ctx.font = `700 ${aiFontSize}px "DM Mono", monospace`;
+      const nameWidth = ctx.measureText(name).width;
+      const aiPadX = 10;
+      const aiPadY = 6;
+      const aiW = ctx.measureText(aiText).width + aiPadX * 2;
+      const aiH = aiFontSize + aiPadY * 2;
+      const aiX = nameX + nameWidth + 14;
+      const aiY = height * 0.38;
+      ctx.fillStyle = variant === "light" ? "rgba(109,184,50,0.14)" : "rgba(184,255,87,0.14)";
+      ctx.strokeStyle = variant === "light" ? "rgba(24,27,34,0.08)" : "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      roundRect(ctx, aiX, aiY, aiW, aiH, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = variant === "light" ? "#4d8c18" : "#b8ff57";
+      ctx.fillText(aiText, aiX + aiPadX, aiY + aiH - aiPadY - 2);
+      return canvas;
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    async function showPreviews() {
+      const markDark = await loadSvg(MARK_DARK);
+      document.getElementById("mark-dark-preview").innerHTML =
+        `<img src="assets/logo-mark.svg" alt="Mark dark" width="120" />`;
+      document.getElementById("mark-light-preview").innerHTML =
+        `<img src="assets/logo-mark-light-bg.svg" alt="Mark light" width="120" />`;
+
+      const lockupDark = await renderLockupCanvas("dark", 480);
+      document.getElementById("lockup-dark-preview").appendChild(lockupDark);
+      lockupDark.style.maxHeight = "100px";
+
+      const lockupLight = await renderLockupCanvas("light", 480);
+      document.getElementById("lockup-light-preview").appendChild(lockupLight);
+      lockupLight.style.maxHeight = "100px";
+    }
+
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-export]");
+      if (!btn) return;
+      const kind = btn.dataset.export;
+      btn.disabled = true;
+      try {
+        if (kind === "mark-dark") {
+          const svg = await loadSvg(MARK_DARK);
+          downloadCanvas(await svgToCanvas(svg, 512, 512), "ghostbuster-logo-mark.png");
+        } else if (kind === "mark-dark-256") {
+          const svg = await loadSvg(MARK_DARK);
+          downloadCanvas(await svgToCanvas(svg, 256, 256), "ghostbuster-logo-mark-256.png");
+        } else if (kind === "mark-light") {
+          const svg = await loadSvg(MARK_LIGHT);
+          downloadCanvas(await svgToCanvas(svg, 512, 512), "ghostbuster-logo-mark-light.png");
+        } else if (kind === "lockup-dark") {
+          downloadCanvas(await renderLockupCanvas("dark", 1200), "ghostbuster-logo-full-dark.png");
+        } else if (kind === "lockup-light") {
+          downloadCanvas(await renderLockupCanvas("light", 1200), "ghostbuster-logo-full-light.png");
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    showPreviews();
+  </script>
+</body>
+</html>

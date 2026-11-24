@@ -12,6 +12,8 @@ import Ghostwriter from "./components/Ghostwriter"
 import AskGhostBuster from "./components/AskGhostBuster"
 import Applications from "./components/Applications"
 import Login from "./components/Login"
+import CinematicBackground from "./components/CinematicBackground"
+import AppLoading from "./components/AppLoading"
 import { font } from "./theme"
 import GhostBusterLogo from "./components/GhostBusterLogo"
 import BrandName from "./components/BrandName"
@@ -33,15 +35,12 @@ const NAV = [
   { id: "contacts", label: "Contacts" },
   { id: "tracker", label: "Tracker" },
   { id: "updates", label: "Resume" },
-  { id: "applications", label: "Applications" },
+  { id: "applications", label: "Job applications" },
   { id: "reminders", label: "Reminders" },
-  { id: "ghostwriter", label: "Ghostwriter" },
-  { id: "about", label: "About" },
+  { id: "ghostwriter", label: "Writer" },
+  { id: "about", label: "About us" },
 ]
 
-/** Header brand + nav scale (tabs 11→13, brand + logo scaled ~18%) */
-const HEADER_TAB_FONT_SIZE = 13
-const HEADER_BRAND_FONT_SIZE = 19
 const HEADER_LOGO_SIZE = 35
 
 export default function App() {
@@ -108,10 +107,10 @@ export default function App() {
           returnTo === "gmailscan"
             ? "Gmail follow-up reminders are on. GhostBuster checks your recruiter emails a couple of times a day."
             : returnTo === "compose" || returnTo === "contacts"
-            ? "Google connected. You can save drafts and schedule emails."
-            : returnTo === "settings"
-              ? "Google account connected."
-              : "Google Calendar connected.",
+              ? "Google connected. You can save drafts and schedule emails."
+              : returnTo === "settings"
+                ? "Google account connected."
+                : "Google Calendar connected.",
       })
     } else if (google === "error") {
       if (returnTo === "settings") {
@@ -132,7 +131,6 @@ export default function App() {
       })
     }
     if (!auth && !google && returnTo === "ghostwriter") {
-      // Opened by the extension from a Meet/Zoom/Teams call.
       setPageState("ghostwriter")
       window.history.replaceState({}, "", window.location.pathname || "/")
     }
@@ -141,7 +139,6 @@ export default function App() {
     }
   }, [])
 
-  // The extension asked for Ghostwriter notes on a meeting: go to the Ghostwriter page.
   useEffect(() => {
     const onStart = () => setPageState("ghostwriter")
     window.addEventListener(GHOSTWRITER_START_EVENT, onStart)
@@ -150,25 +147,63 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      // Demo links (?demo=CODE) sign reviewers into their own sandbox account without Google.
+    const AUTH_TIMEOUT_MS = 8000
+
+    async function loadSession() {
       const demoCode = new URLSearchParams(window.location.search).get("demo")
       if (demoCode) {
         window.history.replaceState({}, "", window.location.pathname || "/")
         try {
-          await api.demoLogin(demoCode)
+          const { user } = await api.demoLogin(demoCode)
+          if (!cancelled) {
+            setAuthUser(user)
+            setAuthError(null)
+            requestPendingFillReports()
+          }
+          return
         } catch (e) {
           if (!cancelled) setAuthError(e.message)
         }
       }
+
+      const retryUntil = Date.now() + 18000
+
+      function authTimeout(ms = AUTH_TIMEOUT_MS) {
+        return new Promise((_, reject) => {
+          window.setTimeout(() => reject(new Error("Can't reach API (timed out).")), ms)
+        })
+      }
+
+      async function tryGetMe() {
+        return Promise.race([api.getMe(), authTimeout()])
+      }
+
       try {
-        const { user } = await api.getMe()
-        if (!cancelled) {
+        let user = null
+        let lastErr = null
+        while (!cancelled && Date.now() < retryUntil) {
+          try {
+            const data = await tryGetMe()
+            user = data?.user
+            lastErr = null
+            break
+          } catch (e) {
+            lastErr = e
+            const msg = e?.message || ""
+            const transient = /Can't reach API|timed out|Failed to fetch|NetworkError|Load failed/i.test(msg)
+            if (!transient) break
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => window.setTimeout(r, 700))
+          }
+        }
+
+        if (cancelled) return
+
+        if (user) {
           setAuthUser(user)
           setAuthError(null)
           requestPendingFillReports()
           if (!user.demo) {
-            // Background check for recruiter emails needing a follow-up (server limits it to twice a day).
             api
               .scanGmailFollowups({ auto: true, localDate: localDateString() })
               .then((r) => {
@@ -176,21 +211,22 @@ export default function App() {
               })
               .catch(() => {})
           }
+          return
         }
-      } catch (e) {
-        if (!cancelled) {
-          setAuthUser(null)
-          const msg = e?.message || ""
-          if (/Can't reach API|returned HTML/i.test(msg)) {
-            setAuthError(
-              "The API isn't running, so the app can't load. In a second terminal: cd ghostbuster-server && npm start. Then refresh this page."
-            )
-          }
+
+        setAuthUser(null)
+        const msg = lastErr?.message || ""
+        if (/Can't reach API|returned HTML|timed out|Failed to fetch|NetworkError|connection failed|Load failed/i.test(msg)) {
+          setAuthError(
+            "Connection failed — the GhostBuster API is not reachable. From the GhostBuster folder run: npm run dev (starts API + UI), or in another terminal: cd ghostbuster-server && npm start. Then refresh this page."
+          )
         }
       } finally {
         if (!cancelled) setAuthLoading(false)
       }
-    })()
+    }
+
+    loadSession()
     return () => {
       cancelled = true
     }
@@ -222,22 +258,7 @@ export default function App() {
   }
 
   if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--gb-bg)",
-          color: "var(--gb-text-muted)",
-          fontFamily: font.body,
-          fontSize: 14,
-        }}
-      >
-        Loading…
-      </div>
-    )
+    return <AppLoading />
   }
 
   if (!authUser) {
@@ -246,16 +267,8 @@ export default function App() {
 
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "100vh",
-        width: "100%",
-        maxWidth: "100%",
-        background: "var(--gb-bg)",
-        color: "var(--gb-text)",
-        fontFamily: font.body,
-      }}
+      className="gb-app gb-app--cinema gb-ui-premium gb-ui-spacex"
+      style={{ color: "var(--gb-text)", fontFamily: font.body }}
     >
       {authUser.demo && (
         <div
@@ -269,185 +282,106 @@ export default function App() {
             fontFamily: font.body,
           }}
         >
-          You're in a demo account with sample data. It's deleted after a week, AI requests are limited, and Gmail
-          and Calendar aren't available.
+          You&apos;re in a demo account with sample data. It&apos;s deleted after a week, AI requests are limited, and
+          Gmail and Calendar aren&apos;t available.
         </div>
       )}
-      <header
-        style={{
-          flexShrink: 0,
-          position: "sticky",
-          top: 0,
-          background: "var(--gb-header-bg)",
-          borderBottom: "1px solid var(--gb-border)",
-          zIndex: 10,
-        }}
-      >
-        <div
+      <CinematicBackground enableVideo={false} />
+      <div className="gb-app-content">
+        <header className="gb-header gb-header--cinema">
+          <div className="gb-header-bar">
+            <div className="gb-brand-lockup" aria-label="GhostBuster home">
+              <span className="gb-brand-ring">
+                <GhostBusterLogo size={HEADER_LOGO_SIZE} />
+              </span>
+              <BrandName variant="header" />
+            </div>
+
+            <nav className="gb-nav-rail" role="tablist" aria-label="Main navigation">
+              {NAV.map((n) => {
+                const active = page === n.id
+                return (
+                  <button
+                    key={n.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    id={`tab-${n.id}`}
+                    onClick={() => setPage(n.id)}
+                    className={`gb-nav-tab${active ? " gb-nav-tab--active" : ""}`}
+                  >
+                    {n.label}
+                  </button>
+                )
+              })}
+            </nav>
+
+            <div className="gb-header-actions">
+              <NotificationBell setPage={setPage} currentPage={page} />
+              <ProfileMenu
+                authUser={authUser}
+                onLogout={handleLogout}
+                onAccountDeleted={handleAccountDeleted}
+                setPage={setPage}
+                open={accountMenuOpen}
+                onOpenChange={(v) => {
+                  setAccountMenuOpen(v)
+                  if (!v) setAccountMenuView("menu")
+                }}
+                openView={accountMenuView}
+                googleNotice={googleNoticeTarget === "settings" ? googleNotice : null}
+                onConsumeGoogleNotice={() => {
+                  setGoogleNotice(null)
+                  setGoogleNoticeTarget(null)
+                }}
+              />
+            </div>
+          </div>
+        </header>
+
+        <main
+          key={page}
+          className={`gb-main gb-page-enter${page === "dashboard" ? " gb-dashboard-layout" : ""}`}
           style={{
-            display: "flex",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "12px 28px",
-            padding: "14px clamp(16px, 3vw, 40px)",
-            width: "100%",
+            paddingLeft: PAGE_PADDING_X,
+            paddingRight: PAGE_PADDING_X,
+            paddingBottom: 80,
           }}
         >
-          <button
-            type="button"
-            onClick={() => {
-              setComposeOpen(false)
-              setPage("dashboard")
-            }}
-            aria-label="GhostBuster home"
-            title="Home"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              color: "var(--gb-text)",
-              fontFamily: font.h1,
-              fontWeight: 800,
-              fontSize: HEADER_BRAND_FONT_SIZE,
-              letterSpacing: "-0.3px",
-              flexShrink: 0,
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-            }}
-          >
-            <span
-              style={{
-                width: HEADER_LOGO_SIZE,
-                height: HEADER_LOGO_SIZE,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                boxShadow: "0 0 0 1px var(--gb-border-subtle)",
-              }}
-            >
-              <GhostBusterLogo size={HEADER_LOGO_SIZE} />
-            </span>
-            <BrandName variant="header" />
-          </button>
-
-          <nav
-            role="tablist"
-            aria-label="Main navigation"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 4,
-              flex: "1 1 auto",
-              justifyContent: "flex-start",
-              minWidth: 0,
-            }}
-          >
-            {NAV.map((n) => {
-              const active = page === n.id
-              return (
-                <button
-                  key={n.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  id={`tab-${n.id}`}
-                  onClick={() => setPage(n.id)}
-                  style={{
-                    padding: "13px 16px",
-                    margin: 0,
-                    border: "none",
-                    background: "transparent",
-                    color: active ? "var(--gb-text)" : "var(--gb-text-subtle)",
-                    fontSize: HEADER_TAB_FONT_SIZE,
-                    fontFamily: font.mono,
-                    fontWeight: active ? 600 : 500,
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    borderBottom: active ? "2px solid var(--gb-accent-bright)" : "2px solid transparent",
-                    boxSizing: "border-box",
-                    transition: "color 0.15s, border-color 0.15s",
-                  }}
-                >
-                  {n.label}
-                </button>
-              )
-            })}
-          </nav>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <NotificationBell setPage={setPage} currentPage={page} />
-            <ProfileMenu
-              authUser={authUser}
-              onLogout={handleLogout}
-              onAccountDeleted={handleAccountDeleted}
+          {page === "dashboard" && <Dashboard setPage={setPage} />}
+          {page === "notifications" && <Notifications setPage={setPage} />}
+          {page === "contacts" && (
+            <ContactHub
               setPage={setPage}
-              open={accountMenuOpen}
-              onOpenChange={(v) => {
-                setAccountMenuOpen(v)
-                if (!v) setAccountMenuView("menu")
-              }}
-              openView={accountMenuView}
-              googleNotice={googleNoticeTarget === "settings" ? googleNotice : null}
+              composeOpen={composeOpen}
+              onComposeOpenChange={setComposeOpen}
+              composePrefill={composePrefill}
+              onConsumePrefill={() => setComposePrefill(null)}
+              googleNotice={googleNoticeTarget === "compose" ? googleNotice : null}
               onConsumeGoogleNotice={() => {
                 setGoogleNotice(null)
                 setGoogleNoticeTarget(null)
               }}
             />
-          </div>
-        </div>
-      </header>
-
-      <main
-        style={{
-          flex: 1,
-          width: "100%",
-          maxWidth: "100%",
-          padding: `24px ${PAGE_PADDING_X} 40px`,
-          overflowY: "auto",
-          minWidth: 0,
-        }}
-      >
-        {page === "dashboard" && <Dashboard setPage={setPage} />}
-        {page === "notifications" && <Notifications setPage={setPage} />}
-        {page === "contacts" && (
-          <ContactHub
-            composeOpen={composeOpen}
-            onComposeOpenChange={setComposeOpen}
-            composePrefill={composePrefill}
-            onConsumePrefill={() => setComposePrefill(null)}
-            googleNotice={googleNoticeTarget === "compose" ? googleNotice : null}
-            onConsumeGoogleNotice={() => {
-              setGoogleNotice(null)
-              setGoogleNoticeTarget(null)
-            }}
-          />
-        )}
-        {page === "reminders" && (
-          <Reminders
-            googleNotice={googleNoticeTarget === "reminders" ? googleNotice : null}
-            onConsumeGoogleNotice={() => {
-              setGoogleNotice(null)
-              setGoogleNoticeTarget(null)
-            }}
-          />
-        )}
-        {page === "tracker" && <Tracker />}
-        {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
-        {page === "applications" && <Applications />}
-        {page === "ghostwriter" && <Ghostwriter />}
-        {page === "about" && <About />}
-      </main>
+          )}
+          {page === "reminders" && (
+            <Reminders
+              googleNotice={googleNoticeTarget === "reminders" ? googleNotice : null}
+              onConsumeGoogleNotice={() => {
+                setGoogleNotice(null)
+                setGoogleNoticeTarget(null)
+              }}
+            />
+          )}
+          {page === "tracker" && <Tracker />}
+          {page === "updates" && <Updates setPage={setPage} setComposePrefill={setComposePrefill} />}
+          {page === "applications" && <Applications />}
+          {page === "ghostwriter" && <Ghostwriter />}
+          {page === "about" && <About />}
+        </main>
+      </div>
       <AskGhostBuster
         setPage={setPage}
-        // Contacts and Tracker have their own button in the bottom right (Compose / Log touchpoint),
-        // so the chat button sits above it there, and steps aside while Compose is open.
         raised={page === "contacts" || page === "tracker"}
         hidden={page === "contacts" && composeOpen}
       />

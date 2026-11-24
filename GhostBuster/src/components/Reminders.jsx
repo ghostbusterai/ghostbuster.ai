@@ -1,53 +1,74 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { api, BASE } from "../api"
-import { font } from "../theme"
-import { inputStyle } from "../uiStyles"
-import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
+import { inputStyle, primaryBtn, secondaryBtn } from "../uiStyles"
+import {
+  PageShell,
+  PageHero,
+  ContentCard,
+  CardTitle,
+  SegmentedFilter,
+  EmptyState,
+  FormActions,
+  FormPrimaryButton,
+  FormSecondaryButton,
+} from "../layout"
 import ViewMoreButton from "./ViewMoreButton"
 import { previewHiddenCount, previewSlice } from "../listPreview"
 import {
   getReminderUrgency,
   getReminderUrgencyStyle,
+  formatDayIso,
   parseDueDay,
   reminderDueLabel,
-  sortRemindersForDisplay,
   summarizePendingReminders,
 } from "../reminderUtils"
 import { readPreferences } from "../preferences"
+import { readLocalProfile } from "../profile"
+import {
+  buildSortedReminderFeed,
+  dismissAutoSuggestion,
+  generateAutoReminders,
+  isAutoReminder,
+} from "../autoReminders"
+
+export const GMAIL_FOLLOWUPS_EVENT = "gb-gmail-followups"
+
+function defaultDueInDays(days = 7) {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return formatDayIso(d)
+}
 
 function emptyReminderForm() {
   return {
     contactName: "",
-    reason: "",
-    dueDate: "",
+    customContactName: "",
+    reason: "Follow up after meeting",
+    dueDate: defaultDueInDays(7),
     done: false,
+    customReason: "",
     syncToCalendar: readPreferences().defaultSyncToCalendar,
   }
-}
-
-/** Fired by App when the background Gmail scan adds reminders, so this page can refresh. */
-export const GMAIL_FOLLOWUPS_EVENT = "gb-gmail-followups"
-
-function localDateString() {
-  const d = new Date()
-  const pad = (n) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 export default function Reminders({ googleNotice = null, onConsumeGoogleNotice = () => {} }) {
   const [reminders, setReminders] = useState([])
   const [contacts, setContacts] = useState([])
+  const [outreachLogs, setOutreachLogs] = useState([])
+  const [lastResumeUpdate, setLastResumeUpdate] = useState("")
+  const [dismissalRevision, setDismissalRevision] = useState(0)
   const [loadError, setLoadError] = useState(null)
   const [listLoading, setListLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyReminderForm)
   const [filter, setFilter] = useState("pending")
+  const [kindFilter, setKindFilter] = useState("all")
+  const [showCalendarHelp, setShowCalendarHelp] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [notice, setNotice] = useState(null)
   const [googleStatus, setGoogleStatus] = useState({ connected: false, configured: false })
   const [googleLoading, setGoogleLoading] = useState(true)
   const [showAllReminders, setShowAllReminders] = useState(false)
-  const [gmailScanning, setGmailScanning] = useState(false)
 
   useEffect(() => {
     if (!googleNotice) return
@@ -60,21 +81,27 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
     ;(async () => {
       setLoadError(null)
       try {
-        const [{ contacts: c }, { reminders: r }, gStatus] = await Promise.all([
+        const [{ contacts: c }, { reminders: r }, gStatus, logRes, profileRes] = await Promise.all([
           api.getContacts(),
           api.getReminders(),
           api.getGoogleCalendarStatus(),
+          api.getOutreachLogs(),
+          api.getProfile(),
         ])
         if (!cancelled) {
           setContacts(c)
           setReminders(r)
           setGoogleStatus(gStatus)
+          setOutreachLogs(logRes.logs || [])
+          setLastResumeUpdate(profileRes?.profile?.lastResumeUpdate || "")
         }
       } catch (e) {
         if (!cancelled) {
           setLoadError(e.message)
           setContacts(JSON.parse(localStorage.getItem("gb_contacts") || "[]"))
           setReminders(JSON.parse(localStorage.getItem("gb_reminders") || "[]"))
+          setOutreachLogs(JSON.parse(localStorage.getItem("gb_outreach_logs") || "[]"))
+          setLastResumeUpdate(readLocalProfile().lastResumeUpdate || "")
         }
       } finally {
         if (!cancelled) {
@@ -86,11 +113,26 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    async function onFollowups() {
+      try {
+        const { reminders: list } = await api.getReminders()
+        setReminders(list)
+      } catch {
+        /* shown on next load */
+      }
+    }
+    window.addEventListener(GMAIL_FOLLOWUPS_EVENT, onFollowups)
+    return () => window.removeEventListener(GMAIL_FOLLOWUPS_EVENT, onFollowups)
+  }, [])
+
   async function save() {
-    if (!form.contactName.trim()) return
+    const resolvedName =
+      form.contactName === "__custom__" ? form.customContactName.trim() : form.contactName.trim()
+    if (!resolvedName) return
     setActionError(null)
     const payload = {
-      contactName: form.contactName.trim(),
+      contactName: resolvedName,
       reason: form.reason === "Custom..." ? (form.customReason || "Custom...") : form.reason,
       dueDate: form.dueDate,
       done: false,
@@ -117,9 +159,66 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
     }
   }
 
+  const autoSuggestions = useMemo(
+    () =>
+      generateAutoReminders({
+        contacts,
+        outreachLogs,
+        savedReminders: reminders,
+        lastResumeUpdate,
+      }),
+    [contacts, outreachLogs, reminders, lastResumeUpdate, dismissalRevision]
+  )
+
+  const feed = useMemo(
+    () => buildSortedReminderFeed({
+      savedReminders: reminders,
+      contacts,
+      outreachLogs,
+      lastResumeUpdate,
+    }),
+  [contacts, outreachLogs, reminders, lastResumeUpdate, dismissalRevision]
+  )
+
+  function dismissSuggestion(r) {
+    if (r?.suggestionKey) dismissAutoSuggestion(r.suggestionKey)
+    setDismissalRevision((n) => n + 1)
+  }
+
+  async function saveSuggestionAsReminder(r) {
+    setActionError(null)
+    const payload = {
+      contactName: r.contactName.trim(),
+      reason: r.reason === "Custom..." ? r.customReason || r.reason : r.reason,
+      dueDate: r.dueDate,
+      done: false,
+      syncToCalendar: readPreferences().defaultSyncToCalendar,
+    }
+    try {
+      await api.createReminder(payload)
+      const { reminders: list } = await api.getReminders()
+      setReminders(list)
+      localStorage.setItem("gb_reminders", JSON.stringify(list))
+      dismissSuggestion(r)
+    } catch (e) {
+      if (loadError) {
+        const next = [...reminders, { id: Date.now(), ...payload, done: false }]
+        setReminders(next)
+        localStorage.setItem("gb_reminders", JSON.stringify(next))
+        dismissSuggestion(r)
+      } else {
+        setActionError(e.message)
+      }
+    }
+  }
+
   async function toggle(id) {
-    const r = reminders.find(x => x.id === id)
+    const r = feed.find((x) => x.id === id)
     if (!r) return
+    if (isAutoReminder(r)) {
+      dismissSuggestion(r)
+      return
+    }
     setActionError(null)
     try {
       await api.patchReminder(id, { done: !r.done })
@@ -134,62 +233,6 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
       } else {
         setActionError(e.message)
       }
-    }
-  }
-
-  useEffect(() => {
-    async function onFollowups() {
-      try {
-        const { reminders: list } = await api.getReminders()
-        setReminders(list)
-        localStorage.setItem("gb_reminders", JSON.stringify(list))
-        const status = await api.getGoogleCalendarStatus()
-        setGoogleStatus(status)
-      } catch {
-        /* shown on next load */
-      }
-    }
-    window.addEventListener(GMAIL_FOLLOWUPS_EVENT, onFollowups)
-    return () => window.removeEventListener(GMAIL_FOLLOWUPS_EVENT, onFollowups)
-  }, [])
-
-  function enableGmailFollowups() {
-    window.location.href = `${BASE}/api/google/auth?returnTo=gmailscan`
-  }
-
-  async function scanGmailNow() {
-    setActionError(null)
-    setGmailScanning(true)
-    try {
-      const r = await api.scanGmailFollowups({ localDate: localDateString() })
-      const { reminders: list } = await api.getReminders()
-      setReminders(list)
-      localStorage.setItem("gb_reminders", JSON.stringify(list))
-      setGoogleStatus((g) => ({ ...g, gmailScan: { enabled: true, lastScanAt: r.lastScanAt || g.gmailScan?.lastScanAt } }))
-      setNotice({
-        type: "success",
-        text: r.running
-          ? "A scan is already running. Check back in a moment."
-          : r.created
-            ? `Added ${r.created} follow-up reminder${r.created === 1 ? "" : "s"} from Gmail.`
-            : "No recruiter emails need a follow-up right now.",
-      })
-    } catch (e) {
-      setActionError(e.message)
-      if (e.status === 403) setGoogleStatus((g) => ({ ...g, gmailScan: { enabled: false, lastScanAt: "" } }))
-    } finally {
-      setGmailScanning(false)
-    }
-  }
-
-  async function disableGmailFollowups() {
-    setActionError(null)
-    try {
-      await api.disableGmailFollowups()
-      setGoogleStatus((g) => ({ ...g, gmailScan: { enabled: false, lastScanAt: "" } }))
-      setNotice({ type: "success", text: "Gmail follow-up reminders turned off." })
-    } catch (e) {
-      setActionError(e.message)
     }
   }
 
@@ -224,6 +267,11 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
   }
 
   async function remove(id) {
+    const r = feed.find((x) => x.id === id)
+    if (r && isAutoReminder(r)) {
+      dismissSuggestion(r)
+      return
+    }
     setActionError(null)
     try {
       await api.deleteReminder(id)
@@ -241,13 +289,18 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
     }
   }
 
-  const filtered = sortRemindersForDisplay(
-    reminders.filter((r) => {
-      if (filter === "pending") return !r.done
-      if (filter === "done") return r.done
-      return true
-    })
-  )
+  const statusFiltered = feed.filter((r) => {
+    if (filter === "pending") return !r.done
+    if (filter === "done") return r.done && !isAutoReminder(r)
+    return true
+  })
+
+  const filtered = statusFiltered.filter((r) => {
+    if (filter !== "pending" || kindFilter === "all") return true
+    if (kindFilter === "suggested") return isAutoReminder(r)
+    if (kindFilter === "yours") return !isAutoReminder(r)
+    return true
+  })
 
   const visibleReminders = useMemo(
     () => previewSlice(filtered, showAllReminders),
@@ -257,13 +310,15 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
 
   useEffect(() => {
     setShowAllReminders(false)
-  }, [filter])
+  }, [filter, kindFilter])
 
-  const pendingCount = reminders.filter((r) => !r.done).length
-  const summary = summarizePendingReminders(reminders)
+  const pendingCount = feed.filter((r) => !r.done).length
+  const savedPendingCount = reminders.filter((r) => !r.done).length
+  const suggestedCount = autoSuggestions.length
+  const summary = summarizePendingReminders(feed)
 
   const REASONS = [
-    "Keep warm: check in",
+    "Keep warm — check in",
     "Resume update",
     "New accomplishment to share",
     "Follow up after meeting",
@@ -272,450 +327,352 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
     "Custom...",
   ]
 
+  const summaryPills = [
+    { key: "overdue", label: "Overdue", count: summary.overdue, show: summary.overdue > 0 },
+    { key: "today", label: "Due today", count: summary.today, show: summary.today > 0 },
+    { key: "suggested", label: "Suggested", count: suggestedCount, show: suggestedCount > 0 && filter === "pending" },
+    { key: "yours", label: "Yours", count: savedPendingCount, show: savedPendingCount > 0 && filter === "pending" },
+  ].filter((p) => p.show)
+
+  function renderReminderRow(r) {
+    const auto = isAutoReminder(r)
+    const urgency = getReminderUrgency(r)
+    const style = getReminderUrgencyStyle(urgency)
+    return (
+      <div
+        key={r.id}
+        className={[
+          "gb-record-row",
+          "gb-reminder-row",
+          r.done ? "gb-record-row--done" : "",
+          auto ? "gb-record-row--suggested gb-reminder-row--suggested" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={!r.done ? { borderLeft: `3px solid ${auto ? "var(--gb-accent)" : style.border}` } : undefined}
+      >
+        <div className="gb-reminder-row__main">
+          <div className="gb-record-row__title-row">
+            <h3 className={`gb-record-row__title${r.done ? " gb-reminder-row__title--done" : ""}`}>{r.contactName}</h3>
+            {!r.done && auto && <span className="gb-pill gb-pill--accent">Suggested</span>}
+            {!r.done && !auto && <span className="gb-pill" style={{ color: style.color, borderColor: style.border, background: style.bg }}>{style.label}</span>}
+          </div>
+          <p className="gb-record-row__meta">{r.reason || "General check-in"}</p>
+          {r.dueDate && (
+            <p className="gb-reminder-row__due" style={{ color: r.done ? "var(--gb-text-dim)" : style.color }}>
+              {r.done ? parseDueDay(r.dueDate)?.toLocaleDateString() ?? r.dueDate : reminderDueLabel(r)}
+              {r.googleEventId ? " · On calendar" : ""}
+            </p>
+          )}
+        </div>
+        <div className="gb-record-row__actions gb-reminder-row__actions">
+          {auto && !r.done ? (
+            <>
+              <button type="button" onClick={() => saveSuggestionAsReminder(r)} {...primaryBtn({ sm: true })}>
+                Add to my list
+              </button>
+              <button type="button" onClick={() => dismissSuggestion(r)} {...secondaryBtn({ sm: true })}>
+                Not now
+              </button>
+            </>
+          ) : (
+            <>
+              {!r.done && (
+                <button type="button" onClick={() => toggle(r.id)} {...primaryBtn({ sm: true })}>
+                  Done
+                </button>
+              )}
+              {r.done && (
+                <button type="button" onClick={() => toggle(r.id)} {...secondaryBtn({ sm: true })}>
+                  Undo
+                </button>
+              )}
+              {googleStatus.connected && r.dueDate && !r.googleEventId && !r.done && !auto && (
+                <button type="button" onClick={() => syncOne(r.id)} {...secondaryBtn({ sm: true })}>
+                  Calendar
+                </button>
+              )}
+              <button type="button" onClick={() => remove(r.id)} {...secondaryBtn({ sm: true, style: { color: "var(--gb-danger)" } })}>
+                Delete
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const suggestedInView = visibleReminders.filter(isAutoReminder)
+  const yoursInView = visibleReminders.filter((r) => !isAutoReminder(r))
+  const showGrouped = filter === "pending" && kindFilter === "all" && suggestedInView.length > 0 && yoursInView.length > 0
+
   return (
     <PageShell>
       <PageHero
-        eyebrow="Stay Warm"
+        eyebrow="Follow-ups"
         title="Reminders"
-        subtitle={listLoading ? "Loading…" : `${pendingCount} pending reminder${pendingCount !== 1 ? "s" : ""}`}
+        subtitle={
+          listLoading
+            ? "Loading…"
+            : pendingCount === 0
+              ? "Nothing due — we'll suggest follow-ups when contacts go quiet."
+              : `${pendingCount} to handle${summary.overdue > 0 ? ` · ${summary.overdue} overdue` : ""}`
+        }
         action={
-          <button onClick={() => setShowForm(true)} style={{
-            background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
-            padding: "11px 22px", borderRadius: 10, fontFamily: font.h1,
-            fontWeight: 700, fontSize: 14, cursor: "pointer",
-          }}>+ Add Reminder</button>
+          <button type="button" onClick={() => setShowForm(true)} {...primaryBtn()}>
+            + New reminder
+          </button>
         }
       >
-        {!listLoading && (
-          <p style={{ color: "var(--gb-text-muted)", fontSize: 14, fontFamily: font.body, marginTop: 8, marginBottom: 0 }}>
-            {summary.overdue > 0 && (
-              <span style={{ color: "var(--gb-danger)" }}>
-                {summary.overdue} overdue ·{" "}
-              </span>
-            )}
-            <span style={{ color: "var(--gb-text-faint)" }}>
-              Reminders stay pending until you check them off. Passing the due date only highlights them.
-            </span>
-            {loadError && (
-              <span style={{ display: "block", marginTop: 8, color: "var(--gb-warning)", fontSize: 13 }}>
-                API unavailable. Using local data. Start the server and refresh to sync.
-              </span>
-            )}
-          </p>
-        )}
-        {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0 }}>{actionError}</p>}
+        {actionError && <p className="gb-reminder-banner gb-reminder-banner--error">{actionError}</p>}
         {notice && (
-          <p
-            style={{
-              color: notice.type === "error" ? "var(--gb-danger)" : "var(--gb-accent)",
-              fontSize: 13,
-              marginTop: 8,
-              marginBottom: 0,
-            }}
-          >
-            {notice.text}
-          </p>
+          <p className={`gb-reminder-banner${notice.type === "error" ? " gb-reminder-banner--error" : ""}`}>{notice.text}</p>
+        )}
+        {loadError && (
+          <p className="gb-reminder-banner gb-reminder-banner--warn">Offline mode — showing saved data on this device.</p>
         )}
       </PageHero>
 
-      {!googleLoading && googleStatus.configured && (
-        <>
-          <ContentCard
-          style={{
-            background: googleStatus.connected ? "var(--gb-accent-soft)" : "var(--gb-bg-elevated)",
-            border: `1px solid var(--gb-border-subtle)`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-          padding="16px 20px"
-        >
-          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-            <CardTitle
-              helper={
-                googleStatus.connected
-                  ? "New reminders with a due date are added to your calendar automatically."
-                  : "Connect to sync reminders as calendar events."
-              }
-              style={{ marginBottom: 0 }}
-            >
-              Google Calendar {googleStatus.connected ? "connected" : "not connected"}
-            </CardTitle>
-          </div>
-          {googleStatus.connected ? (
-            <button
-              type="button"
-              onClick={disconnectGoogleCalendar}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--gb-border)",
-                color: "var(--gb-text-subtle)",
-                padding: "8px 14px",
-                borderRadius: 8,
-                fontSize: 12,
-                cursor: "pointer",
-                boxShadow: "none",
-              }}
-            >
-              Disconnect
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={connectGoogleCalendar}
-              style={{
-                background: "var(--gb-accent-soft)",
-                border: "1px solid var(--gb-border-subtle)",
-                color: "var(--gb-accent)",
-                padding: "8px 14px",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow: "none",
-              }}
-            >
-              Connect Google Calendar
-            </button>
-          )}
-          </ContentCard>
-
-          <ContentCard
-            style={{
-              background: "var(--gb-bg-elevated)",
-              border: `1px solid var(--gb-border-subtle)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 16,
-              flexWrap: "wrap",
-            }}
-            padding="16px 20px"
-          >
-            <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-              <CardTitle
-                helper={
-                  googleStatus.gmailScan?.enabled
-                    ? `Checks your inbox twice a day for recruiter emails waiting on you (reply after 2 days) or on them (follow up after 5 days).${
-                        googleStatus.gmailScan.lastScanAt
-                          ? ` Last checked ${new Date(googleStatus.gmailScan.lastScanAt).toLocaleString()}.`
-                          : ""
-                      }`
-                    : "Let GhostBuster read your recent email headers to remind you when a recruiter is waiting on a reply or it's time to follow up."
-                }
-                style={{ marginBottom: 0 }}
-              >
-                Recruiter follow-ups from Gmail {googleStatus.gmailScan?.enabled ? "on" : "off"}
-              </CardTitle>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {googleStatus.gmailScan?.enabled ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={scanGmailNow}
-                    disabled={gmailScanning}
-                    style={{
-                      background: "var(--gb-accent-soft)",
-                      border: "1px solid var(--gb-border-subtle)",
-                      color: "var(--gb-accent)",
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: gmailScanning ? "default" : "pointer",
-                      boxShadow: "none",
-                    }}
-                  >
-                    {gmailScanning ? "Checking…" : "Check now"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={disableGmailFollowups}
-                    style={{
-                      background: "transparent",
-                      border: "1px solid var(--gb-border)",
-                      color: "var(--gb-text-subtle)",
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      cursor: "pointer",
-                      boxShadow: "none",
-                    }}
-                  >
-                    Turn off
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={enableGmailFollowups}
-                  style={{
-                    background: "var(--gb-accent-soft)",
-                    border: "1px solid var(--gb-border-subtle)",
-                    color: "var(--gb-accent)",
-                    padding: "8px 14px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    boxShadow: "none",
-                  }}
+      {summaryPills.length > 0 && (
+        <ContentCard padding="14px 16px" marginBottom={20} className="gb-reminders-summary-card">
+          <div className="gb-summary-chips">
+            {summaryPills.map((pill) => {
+              const pillStyle = pill.key === "suggested" ? null : getReminderUrgencyStyle(pill.key)
+              return (
+                <span
+                  key={pill.key}
+                  className="gb-summary-chip"
+                  style={
+                    pill.key === "suggested"
+                      ? {
+                          color: "var(--gb-accent)",
+                          background: "var(--gb-accent-soft)",
+                          borderColor: "var(--gb-accent-border)",
+                        }
+                      : {
+                          color: pillStyle.color,
+                          background: pillStyle.bg,
+                          borderColor: pillStyle.border,
+                        }
+                  }
                 >
-                  Turn on
-                </button>
-              )}
-            </div>
-          </ContentCard>
-        </>
+                  {pill.count} {pill.label.toLowerCase()}
+                </span>
+              )
+            })}
+          </div>
+        </ContentCard>
       )}
 
-      {/* Filter tabs */}
-      <ContentCard padding="14px 14px 12px" marginBottom={24}>
-        <CardTitle style={{ marginBottom: 12 }}>View</CardTitle>
-      <div style={{ display: "flex", gap: 8 }}>
-        {["pending", "done", "all"].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{
-            padding: "7px 18px", borderRadius: 8, border: "1px solid",
-            borderColor: filter === f ? "var(--gb-border-strong)" : "var(--gb-border-subtle)",
-            background: filter === f ? "var(--gb-accent-soft)" : "transparent",
-            color: filter === f ? "var(--gb-accent)" : "var(--gb-text-faint)",
-            fontSize: 13, fontFamily: font.mono, cursor: "pointer",
-            textTransform: "capitalize",
-            boxShadow: "none",
-          }}>{f}</button>
-        ))}
-      </div>
+      <ContentCard padding="16px 18px" marginBottom={20} className="gb-reminders-toolbar-card">
+        <div className="gb-reminders-toolbar">
+          <SegmentedFilter
+            value={filter}
+            onChange={(v) => {
+              setFilter(v)
+              if (v !== "pending") setKindFilter("all")
+            }}
+            options={[
+              { id: "pending", label: "To do" },
+              { id: "done", label: "Completed" },
+              { id: "all", label: "All" },
+            ]}
+          />
+          {filter === "pending" && (
+            <SegmentedFilter
+              className="gb-reminders-kind-filter"
+              value={kindFilter}
+              onChange={setKindFilter}
+              options={[
+                { id: "all", label: "Everything" },
+                { id: "suggested", label: "Suggested" },
+                { id: "yours", label: "Yours" },
+              ]}
+            />
+          )}
+        </div>
+        {!googleLoading && googleStatus.configured && (
+          <p className="gb-reminders-calendar-line">
+            Google Calendar:{" "}
+            {googleStatus.connected ? (
+              <>
+                <span className="gb-reminders-calendar-line__ok">Connected</span>
+                <button type="button" className="gb-reminders-calendar-line__link" onClick={disconnectGoogleCalendar}>
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <button type="button" className="gb-reminders-calendar-line__link" onClick={connectGoogleCalendar}>
+                Connect for due-date sync
+              </button>
+            )}
+            <button
+              type="button"
+              className="gb-reminders-calendar-line__link"
+              onClick={() => setShowCalendarHelp((v) => !v)}
+              aria-expanded={showCalendarHelp}
+            >
+              {showCalendarHelp ? "Hide" : "How it works"}
+            </button>
+          </p>
+        )}
+        {showCalendarHelp && (
+          <p className="gb-reminders-calendar-help">
+            Reminders with a due date can become calendar events when Google is connected. Turn the default on in Settings.
+          </p>
+        )}
       </ContentCard>
 
       {/* Add Form */}
       {showForm && (
-        <>
-          <ContentCard style={{
-            border: "1px solid var(--gb-border-subtle)",
-          }} padding="28px" marginBottom={28}>
-          <CardTitle>New Reminder</CardTitle>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            {/* Contact picker */}
-            <select value={form.contactName} onChange={e => setForm({ ...form, contactName: e.target.value })} style={inputStyle()}>
-              <option value="">Select contact *</option>
-              {contacts.map(c => <option key={c.id} value={c.name}>{c.name} {c.company ? `(${c.company})` : ""}</option>)}
-              <option value="__custom__">Someone else...</option>
-            </select>
-
-            {/* If no contacts or custom */}
-            {(form.contactName === "__custom__" || contacts.length === 0) && (
-              <input placeholder="Contact name *" value={form.contactName === "__custom__" ? "" : form.contactName}
-                onChange={e => setForm({ ...form, contactName: e.target.value })}
+        <ContentCard className="gb-reminder-form-card" padding="22px 24px" marginBottom={24}>
+          <CardTitle helper="Pick someone, choose why you're reaching out, and set a due date. Defaults to one week out.">
+            New reminder
+          </CardTitle>
+          <div className="gb-reminder-form">
+            <label className="gb-reminder-form__field">
+              <span className="gb-field-label">Who</span>
+              {contacts.length > 0 ? (
+                <select
+                  value={form.contactName}
+                  onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+                  className={uiClass.input}
+                  style={inputStyle()}
+                >
+                  <option value="">Choose a contact</option>
+                  {contacts.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                      {c.company ? ` (${c.company})` : ""}
+                    </option>
+                  ))}
+                  <option value="__custom__">Type a different name…</option>
+                </select>
+              ) : null}
+              {(form.contactName === "__custom__" || contacts.length === 0) && (
+                <input
+                  placeholder="Contact name"
+                  value={form.contactName === "__custom__" ? form.customContactName : form.contactName}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      contactName: contacts.length === 0 ? e.target.value : "__custom__",
+                      customContactName: e.target.value,
+                    })
+                  }
+                  className={uiClass.input}
+                  style={inputStyle()}
+                />
+              )}
+            </label>
+            <label className="gb-reminder-form__field">
+              <span className="gb-field-label">Why</span>
+              <select
+                value={form.reason}
+                onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                className={uiClass.input}
+                style={inputStyle()}
+              >
+                {REASONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="gb-reminder-form__field">
+              <span className="gb-field-label">Due date</span>
+              <input
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                className={uiClass.input}
                 style={inputStyle()}
               />
-            )}
-
-            {/* Reason */}
-            <select value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} style={inputStyle()}>
-              <option value="">Reason for outreach</option>
-              {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-
-            {/* Due date */}
-            <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} style={inputStyle()} />
+            </label>
           </div>
 
           {form.reason === "Custom..." && (
-            <input placeholder="Describe your reason..." value={form.customReason || ""}
-              onChange={e => setForm({ ...form, customReason: e.target.value })}
-              style={{ ...inputStyle(), marginTop: 14 }}
+            <input
+              placeholder="Describe your reason…"
+              value={form.customReason || ""}
+              onChange={(e) => setForm({ ...form, customReason: e.target.value })}
+              className={uiClass.input}
+              style={{ ...inputStyle(), marginTop: 12 }}
             />
           )}
 
           {googleStatus.connected && (
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                marginTop: 14,
-                fontSize: 13,
-                color: "var(--gb-text-subtle)",
-                cursor: "pointer",
-              }}
-            >
+            <label className="gb-check gb-reminder-form__calendar">
               <input
                 type="checkbox"
                 checked={form.syncToCalendar !== false}
                 onChange={(e) => setForm({ ...form, syncToCalendar: e.target.checked })}
               />
-              Add to Google Calendar when a due date is set
+              <span>Also add to Google Calendar</span>
             </label>
           )}
 
-          <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-            <button onClick={save} style={{
-              background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
-              padding: "10px 24px", borderRadius: 9, fontFamily: font.h1,
-              fontWeight: 700, fontSize: 14, cursor: "pointer",
-            }}>Save</button>
-            <button onClick={() => { setShowForm(false); setForm(emptyReminderForm()) }} style={{
-              background: "transparent", color: "var(--gb-text-muted)", border: "1px solid var(--gb-border-subtle)", boxShadow: "none",
-              padding: "10px 24px", borderRadius: 9, fontFamily: font.body,
-              fontSize: 14, cursor: "pointer",
-            }}>Cancel</button>
-          </div>
-          </ContentCard>
-        </>
+          <FormActions
+            primary={<FormPrimaryButton onClick={save}>Save reminder</FormPrimaryButton>}
+            secondary={
+              <FormSecondaryButton
+                onClick={() => {
+                  setShowForm(false)
+                  setForm(emptyReminderForm())
+                }}
+              >
+                Cancel
+              </FormSecondaryButton>
+            }
+          />
+        </ContentCard>
       )}
 
-      {/* Reminder List */}
-      <CardTitle>Your reminders</CardTitle>
       {filtered.length === 0 ? (
-        <div style={{
-          background: "var(--gb-bg-elevated)", border: "1px solid var(--gb-surface-active)",
-          borderRadius: 14, padding: 48, textAlign: "center",
-          color: "var(--gb-text-dim)", fontSize: 14, fontFamily: font.body
-        }}>
-          {filter === "pending" ? "No pending reminders. You're on top of it! 🎉" : "Nothing here yet."}
-        </div>
+        <EmptyState
+          title={filter === "pending" ? "You're all caught up" : "Nothing here yet"}
+          lede={
+            filter === "pending"
+              ? kindFilter === "suggested"
+                ? "No suggestions right now. Add contacts or log outreach on Tracker."
+                : "Add a reminder when you want a nudge — we also suggest follow-ups when contacts go quiet."
+              : "Completed reminders show up here."
+          }
+          action={
+            filter === "pending" ? (
+              <button type="button" onClick={() => setShowForm(true)} {...primaryBtn()}>
+                + New reminder
+              </button>
+            ) : null
+          }
+        />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {visibleReminders.map((r) => {
-            const urgency = getReminderUrgency(r)
-            const style = getReminderUrgencyStyle(urgency)
-            const cardBorder = r.done
-              ? "1px solid var(--gb-surface-hover)"
-              : `2px solid ${style.border}`
-
-            return (
-            <div key={r.id} style={{
-              background: r.done ? "var(--gb-bg-elevated)" : style.cardBg,
-              border: cardBorder,
-              boxShadow: r.done ? "none" : style.shadow,
-              borderRadius: 14, padding: "18px 22px",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              opacity: r.done ? 0.55 : 1, transition: "all 0.15s",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <button
-                  type="button"
-                  onClick={() => toggle(r.id)}
-                  aria-label={r.done ? `Mark reminder for ${r.contactName} as pending` : `Mark reminder for ${r.contactName} as done`}
-                  title={r.done ? "Mark as not done" : "Mark as done"}
-                  style={{
-                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                  border: `2px solid ${r.done ? "var(--gb-border-strong)" : style.border}`,
-                  background: r.done ? "var(--gb-accent-bright)" : "transparent",
-                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 12, color: "var(--gb-accent-text-on)",
-                  boxShadow: "none",
-                }}>
-                  {r.done ? "✓" : ""}
-                </button>
-
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15, textDecoration: r.done ? "line-through" : "none" }}>
-                      {r.contactName}
-                    </div>
-                    {!r.done && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontFamily: font.mono,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.05em",
-                          color: style.color,
-                          background: style.bg,
-                          border: `1px solid ${style.border}`,
-                          padding: "2px 7px",
-                          borderRadius: 5,
-                        }}
-                      >
-                        {style.label}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 2, fontFamily: font.body }}>
-                    {r.reason || "General check-in"}
-                    {r.gmailThreadId && (
-                      <>
-                        {" · "}
-                        <a
-                          href={`https://mail.google.com/mail/u/0/#all/${encodeURIComponent(r.gmailThreadId)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: "var(--gb-accent)" }}
-                        >
-                          Open email
-                        </a>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                {r.dueDate && (
-                  <div style={{
-                    fontSize: 11, fontFamily: font.mono,
-                    color: r.done ? "var(--gb-text-dim)" : style.color,
-                    background: r.done ? "transparent" : style.bg,
-                    padding: r.done ? "0" : "4px 10px",
-                    borderRadius: 6,
-                    border: r.done ? "none" : `1px solid ${style.border}`,
-                  }}>
-                    {r.done ? parseDueDay(r.dueDate)?.toLocaleDateString() ?? r.dueDate : reminderDueLabel(r)}
-                  </div>
-                )}
-                {r.googleEventId && (
-                  <span
-                    title="Synced to Google Calendar"
-                    style={{
-                      fontSize: 10,
-                      fontFamily: font.mono,
-                      color: "var(--gb-accent)",
-                      background: "var(--gb-accent-soft)",
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                    }}
-                  >
-                    Calendar
-                  </span>
-                )}
-                {googleStatus.connected && r.dueDate && !r.googleEventId && !r.done && (
-                  <button
-                    type="button"
-                    onClick={() => syncOne(r.id)}
-                    style={{
-                      background: "rgba(91,228,216,0.1)",
-                      border: "1px solid rgba(91,228,216,0.3)",
-                      boxShadow: "none",
-                      color: "#5be4d8",
-                      padding: "6px 12px",
-                      borderRadius: 7,
-                      fontSize: 11,
-                      cursor: "pointer",
-                      fontFamily: font.mono,
-                    }}
-                  >
-                    Add to Calendar
-                  </button>
-                )}
-                <button onClick={() => remove(r.id)} style={{
-                  background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.15)", boxShadow: "none",
-                  color: "var(--gb-danger)", padding: "6px 14px", borderRadius: 7,
-                  fontSize: 12, cursor: "pointer", fontFamily: font.mono,
-                }}>Delete</button>
-              </div>
-            </div>
-          )})}
+        <div className="gb-record-list gb-reminders-list">
+          {showGrouped ? (
+            <>
+              <p className="gb-reminders-section-label">Suggested for you</p>
+              {suggestedInView.map(renderReminderRow)}
+              <p className="gb-reminders-section-label">Your reminders</p>
+              {yoursInView.map(renderReminderRow)}
+            </>
+          ) : (
+            visibleReminders.map(renderReminderRow)
+          )}
           <ViewMoreButton
             hiddenCount={hiddenReminderCount}
             showAll={showAllReminders}
             onToggle={() => setShowAllReminders((v) => !v)}
-            singular="reminder"
+            singular="item"
           />
         </div>
+      )}
+
+      {filter === "pending" && kindFilter === "all" && suggestedCount > 0 && (
+        <p className="gb-reminders-footnote">
+          Suggested items come from contact warmth and your résumé date. <strong>Add to my list</strong> keeps them;{" "}
+          <strong>Not now</strong> snoozes about 3 weeks.
+        </p>
       )}
     </PageShell>
   )

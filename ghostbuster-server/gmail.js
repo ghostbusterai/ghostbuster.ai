@@ -61,4 +61,50 @@ async function sendNow(refreshToken, { to, subject, body }) {
   return { messageId: res.data.id || "" }
 }
 
-module.exports = { parseComposedEmail, encodeRawEmail, createDraft, sendNow }
+function headerValue(headers, name) {
+  const h = (headers || []).find((x) => String(x.name).toLowerCase() === name.toLowerCase())
+  return h?.value || ""
+}
+
+/**
+ * Recent recruiting-related inbox messages (metadata only — no bodies stored server-side).
+ */
+async function listRecruitingMessages(refreshToken, { maxResults = 50, newerThanDays = 45 } = {}) {
+  const auth = getAuthedClient(refreshToken)
+  const gmail = google.gmail({ version: "v1", auth })
+  const q = [
+    `newer_than:${newerThanDays}d`,
+    "(",
+    "from:greenhouse.io OR from:workday.com OR from:myworkday.com OR from:lever.co OR from:ashbyhq.com",
+    " OR from:linkedin.com OR from:indeed.com OR from:handshake.com",
+    ' OR subject:(application OR interview OR assessment OR "thank you for applying" OR offer OR rejection)',
+    ")",
+  ].join(" ")
+
+  const list = await gmail.users.messages.list({ userId: "me", q, maxResults })
+  const ids = (list.data.messages || []).map((m) => m.id).filter(Boolean)
+  const messages = []
+
+  for (const id of ids) {
+    const res = await gmail.users.messages.get({
+      userId: "me",
+      id,
+      format: "metadata",
+      metadataHeaders: ["Subject", "From", "Date"],
+    })
+    const headers = res.data.payload?.headers || []
+    messages.push({
+      id,
+      threadId: res.data.threadId || "",
+      internalDate: res.data.internalDate || "",
+      subject: headerValue(headers, "Subject"),
+      from: headerValue(headers, "From"),
+      date: headerValue(headers, "Date"),
+      snippet: String(res.data.snippet || "").trim(),
+    })
+  }
+
+  return messages
+}
+
+module.exports = { parseComposedEmail, encodeRawEmail, createDraft, sendNow, listRecruitingMessages }

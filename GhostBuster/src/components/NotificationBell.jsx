@@ -4,12 +4,12 @@ import {
   getReminderUrgency,
   getReminderUrgencyStyle,
   reminderDueLabel,
-  sortRemindersForDisplay,
   summarizePendingReminders,
 } from "../reminderUtils"
 import { font } from "../theme"
+import { readLocalProfile } from "../profile"
+import { buildSortedReminderFeed } from "../autoReminders"
 
-const panelShadow = "0 12px 16px -4px rgba(0,0,0,0.45), 0 4px 6px -2px rgba(0,0,0,0.25)"
 const PREVIEW_LIMIT = 5
 
 export default function NotificationBell({ setPage, currentPage }) {
@@ -21,17 +21,37 @@ export default function NotificationBell({ setPage, currentPage }) {
 
   async function loadReminders() {
     try {
-      const { reminders: list } = await api.getReminders()
-      const summary = summarizePendingReminders(list || [])
+      const [rRes, cRes, logRes, profileRes] = await Promise.all([
+        api.getReminders(),
+        api.getContacts(),
+        api.getOutreachLogs(),
+        api.getProfile(),
+      ])
+      const list = rRes.reminders || []
+      const feed = buildSortedReminderFeed({
+        savedReminders: list,
+        contacts: cRes.contacts || [],
+        outreachLogs: logRes.logs || [],
+        lastResumeUpdate: profileRes?.profile?.lastResumeUpdate || "",
+      })
+      const summary = summarizePendingReminders(feed)
       setCount(summary.pending)
-      setReminders(list || [])
-      localStorage.setItem("gb_reminders", JSON.stringify(list || []))
+      setReminders(feed)
+      localStorage.setItem("gb_reminders", JSON.stringify(list))
     } catch {
       try {
         const list = JSON.parse(localStorage.getItem("gb_reminders") || "[]")
-        const summary = summarizePendingReminders(list)
+        const contacts = JSON.parse(localStorage.getItem("gb_contacts") || "[]")
+        const logs = JSON.parse(localStorage.getItem("gb_outreach_logs") || "[]")
+        const feed = buildSortedReminderFeed({
+          savedReminders: list,
+          contacts,
+          outreachLogs: logs,
+          lastResumeUpdate: readLocalProfile().lastResumeUpdate || "",
+        })
+        const summary = summarizePendingReminders(feed)
         setCount(summary.pending)
-        setReminders(list)
+        setReminders(feed)
       } catch {
         setCount(0)
         setReminders([])
@@ -64,10 +84,7 @@ export default function NotificationBell({ setPage, currentPage }) {
     }
   }, [open])
 
-  const pending = useMemo(
-    () => sortRemindersForDisplay(reminders.filter((r) => !r.done)).slice(0, PREVIEW_LIMIT),
-    [reminders]
-  )
+  const pending = useMemo(() => reminders.filter((r) => !r.done).slice(0, PREVIEW_LIMIT), [reminders])
 
   const summary = useMemo(() => summarizePendingReminders(reminders), [reminders])
 
@@ -80,26 +97,12 @@ export default function NotificationBell({ setPage, currentPage }) {
     <div ref={rootRef} style={{ position: "relative", flexShrink: 0 }}>
       <button
         type="button"
+        className="gb-icon-btn"
         onClick={() => setOpen((v) => !v)}
         aria-label={count > 0 ? `${count} pending notifications` : "Notifications"}
         aria-expanded={open}
         aria-haspopup="dialog"
         title="Notifications"
-        style={{
-          position: "relative",
-          width: 40,
-          height: 40,
-          borderRadius: 10,
-          border: "none",
-          background: open || currentPage === "notifications" ? "var(--gb-surface-hover)" : "transparent",
-          color: open || currentPage === "notifications" ? "var(--gb-text)" : "var(--gb-text-muted)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          boxShadow: "none",
-        }}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
@@ -110,36 +113,14 @@ export default function NotificationBell({ setPage, currentPage }) {
           />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
         </svg>
-        {count > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: 4,
-              right: 4,
-              minWidth: 16,
-              height: 16,
-              padding: "0 4px",
-              borderRadius: 999,
-              background: "#3b82f6",
-              color: "#fff",
-              fontSize: 10,
-              fontFamily: font.mono,
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: "2px solid var(--gb-header-bg)",
-            }}
-          >
-            {count > 99 ? "99+" : count}
-          </span>
-        )}
+        {count > 0 && <span className="gb-badge">{count > 99 ? "99+" : count}</span>}
       </button>
 
       {open && (
         <div
           role="dialog"
           aria-label="Notifications"
+          className="gb-floating-panel"
           style={{
             position: "absolute",
             top: "calc(100% + 10px)",
@@ -147,10 +128,6 @@ export default function NotificationBell({ setPage, currentPage }) {
             width: "min(360px, calc(100vw - 24px))",
             maxHeight: "min(85vh, 560px)",
             overflowY: "auto",
-            background: "var(--gb-bg-elevated)",
-            border: "1px solid var(--gb-border-subtle)",
-            borderRadius: 12,
-            boxShadow: panelShadow,
             zIndex: 100,
           }}
         >

@@ -35,12 +35,8 @@ function SettingsGroup({ title, children, embedded, first = false }) {
   return (
     <div style={{ marginBottom: 4 }}>
       <div
+        className="gb-settings-group__label"
         style={{
-          fontSize: 11,
-          fontFamily: font.mono,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: "var(--gb-text-faint)",
           marginBottom: 8,
           paddingTop: first ? 0 : 12,
         }}
@@ -191,13 +187,13 @@ export default function Settings({
   const tutorialHidden = isGettingStartedHidden(profile)
 
   const appearanceSection = (
-    <section style={sectionCard(undefined, embedded)}>
+    <section {...sectionCard(undefined, embedded)}>
       <CardTitle helper="Choose a dark or light background. Accent colors adjust automatically for readability.">
         Appearance
       </CardTitle>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {[
-          { id: "dark", label: "Dark", preview: { bg: "#0a0a0f", text: "#f0f0f5", accent: "#b8ff57" } },
+          { id: "dark", label: "Dark", preview: { bg: "#45454c", text: "#ececee", accent: "#9dce5c" } },
           { id: "light", label: "Light", preview: { bg: "#ffffff", text: "#181b22", accent: "#4d8c18" } },
         ].map(({ id, label, preview }) => {
           const active = colorScheme === id
@@ -236,7 +232,7 @@ export default function Settings({
                     height: 14,
                     borderRadius: "50%",
                     border: `2px solid ${preview.accent}`,
-                    background: id === "light" ? "#f4f9ef" : "rgba(184,255,87,0.12)",
+                    background: id === "light" ? "#f4f9ef" : "rgba(157,206,92,0.14)",
                     flexShrink: 0,
                   }}
                 />
@@ -256,7 +252,7 @@ export default function Settings({
   )
 
   const tutorialSection = (
-    <section style={sectionCard(undefined, embedded)}>
+    <section {...sectionCard(undefined, embedded)}>
       <CardTitle
         helper={
           loading
@@ -313,7 +309,7 @@ export default function Settings({
   )
 
   const googleSection = (
-    <section style={sectionCard("rgba(91,228,216,0.18)", embedded)}>
+    <section {...sectionCard("rgba(91,228,216,0.18)", embedded)}>
       <CardTitle>Google account</CardTitle>
       {googleLoading ? (
         <div style={{ color: "var(--gb-text-faint)", fontSize: 14 }}>Loading…</div>
@@ -326,8 +322,8 @@ export default function Settings({
         <>
           <p style={{ margin: "0 0 16px", fontSize: 14, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
             {googleStatus.connected
-              ? "Connected for Google Calendar reminder sync and Gmail drafts in Compose."
-              : "Connect once to sync reminders to Google Calendar and save or schedule emails from Compose."}
+              ? "Connected for Calendar sync, Gmail drafts in Compose, and read-only inbox scanning on Applications (status updates from recruiting email)."
+              : "Connect once for Calendar reminder sync, Compose drafts, and Applications → Sync from Gmail (read-only recruiting inbox — reconnect after we add new Google permissions)."}
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <span
@@ -384,8 +380,8 @@ export default function Settings({
   )
 
   const remindersSection = (
-    <section style={sectionCard("rgba(255,201,107,0.18)", embedded)}>
-      <CardTitle helper="Default behavior when you add a new follow-up reminder on the Reminders page.">
+    <section {...sectionCard("rgba(255,201,107,0.18)", embedded)}>
+      <CardTitle helper="Suggested follow-ups are generated automatically from contact warmth and your résumé date. Default behavior when you add your own reminder on the Reminders page.">
         Reminders & calendar
       </CardTitle>
       <label
@@ -413,14 +409,14 @@ export default function Settings({
           </span>
         </span>
       </label>
-      <button type="button" onClick={() => setPage("reminders")} style={secondaryBtn()}>
+      <button type="button" onClick={() => setPage("reminders")} {...secondaryBtn()}>
         Open reminders →
       </button>
     </section>
   )
 
   const composeSection = (
-    <section style={sectionCard(undefined, embedded)}>
+    <section {...sectionCard(undefined, embedded)}>
       <CardTitle helper="Pre-select your preferred tone when opening Compose. Career goals from your profile can pre-fill background.">
         Compose defaults
       </CardTitle>
@@ -477,14 +473,14 @@ export default function Settings({
           </span>
         </span>
       </label>
-      <button type="button" onClick={() => setPage("compose")} style={secondaryBtn()}>
+      <button type="button" onClick={() => setPage("compose")} {...secondaryBtn()}>
         Open compose on Contacts →
       </button>
     </section>
   )
 
   const warmthSection = (
-    <section style={sectionCard(undefined, embedded)}>
+    <section {...sectionCard(undefined, embedded)}>
       <CardTitle helper="Tracker and Home use these thresholds to flag contacts who need a check-in.">
         Connection warmth
       </CardTitle>
@@ -511,14 +507,14 @@ export default function Settings({
           </div>
         ))}
       </div>
-      <button type="button" onClick={() => setPage("tracker")} style={secondaryBtn()}>
+      <button type="button" onClick={() => setPage("tracker")} {...secondaryBtn()}>
         Open tracker →
       </button>
     </section>
   )
 
   const notificationsSection = (
-    <section style={sectionCard(undefined, embedded)}>
+    <section {...sectionCard(undefined, embedded)}>
       <CardTitle helper="The header bell counts pending reminders. Urgency colors match Reminders and the Notifications page.">
         Notifications
       </CardTitle>
@@ -556,7 +552,7 @@ export default function Settings({
           )
         })}
       </div>
-      <button type="button" onClick={() => setPage("notifications")} style={secondaryBtn()}>
+      <button type="button" onClick={() => setPage("notifications")} {...secondaryBtn()}>
         Open notifications →
       </button>
     </section>
@@ -564,8 +560,8 @@ export default function Settings({
 
   const privacySection = (
     <section
+      {...sectionCard("rgba(255,107,107,0.28)", embedded)}
       style={{
-        ...sectionCard("rgba(255,107,107,0.28)", embedded),
         marginBottom: embedded ? 0 : 24,
       }}
     >

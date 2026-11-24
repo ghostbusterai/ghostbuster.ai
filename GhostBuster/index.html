@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="ghostbuster-app" content="1" />
     <title>GhostBuster AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@600;700;800&family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
+      rel="stylesheet"
+    />
     <style>
       *,
       *::before,
@@ -20,19 +25,26 @@
         min-height: 100%;
       }
       body {
-        font-family: "DM Sans", sans-serif;
+        background: #000000;
+        color: #ffffff;
+        font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
         font-size: 15px;
+        font-weight: 400;
         line-height: 1.55;
+        letter-spacing: -0.015em;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
       }
       button {
         box-shadow: none;
         -webkit-appearance: none;
         appearance: none;
+        font-family: inherit;
       }
       button:focus-visible {
-        outline: 2px solid rgba(184, 255, 87, 0.6);
+        outline: 2px solid color-mix(in srgb, #c8ff5a 60%, transparent);
         outline-offset: 2px;
       }
     </style>
