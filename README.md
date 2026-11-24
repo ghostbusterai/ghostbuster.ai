@@ -63,7 +63,7 @@ Push to `main` on GitHub. Render redeploys automatically when the repo is connec
 
 ### Add contacts from Gmail
 
-On the Contacts page, **Add contacts from Gmail** (opt-in, needs Gmail read access) finds people the user has emailed back and forth with in the last 90 days. Only headers and Gmail's short preview snippets are read; full messages are never fetched or stored. Free rules pick two-way, non-automated conversations; Claude Haiku (`CONTACT_CLASSIFIER_MODEL`, default `claude-haiku-5-5`) labels each person professional, academic, personal, or service and pulls company and role from signature lines. Confident work and school contacts are added (tagged "From Gmail", undoable); borderline ones are shown as suggestions. Deleted or dismissed people aren't re-added. It runs with the daily Gmail scan and costs well under a cent per scan.
+On the Contacts page, **Add contacts from Gmail** (opt-in, needs Gmail read access) finds people the user has emailed back and forth with in the last 90 days. Headers and Gmail's short preview snippets are read; for senders with a generic name (a team or company inbox) the signature at the end of their latest email is also read to find the person's name. Emails are never stored. Free rules pick two-way, non-automated conversations; Claude Haiku (`CONTACT_CLASSIFIER_MODEL`, default `claude-haiku-5-5`) labels each person professional, academic, personal, or service and pulls company and role from signature lines. Confident work and school contacts are added (tagged "From Gmail", undoable); borderline ones are shown as suggestions. Deleted or dismissed people aren't re-added. It runs with the daily Gmail scan and costs well under a cent per scan.
 
 ### Ask GhostBuster evals
 

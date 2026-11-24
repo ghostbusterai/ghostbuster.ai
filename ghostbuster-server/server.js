@@ -1283,10 +1283,12 @@ async function start() {
         // Contacts first, so new follow-up reminders can use their names.
         let contactsAdded = []
         let contactSuggestions = 0
+        let contactsRenamed = 0
         if (scan.importContacts && anthropic) {
           const out = await gmailContacts.importContacts({ refreshToken, store, uid: id, anthropic })
           contactsAdded = out.added
           contactSuggestions = out.suggested
+          contactsRenamed = out.renamed || 0
           if (contactsAdded.length) {
             await store.setGmailScan(id, {
               lastImport: { at: new Date().toISOString(), contactIds: contactsAdded.map((c) => c.id) },
@@ -1294,10 +1296,10 @@ async function start() {
           }
         }
         if (!scan.enabled) {
-          if (contactsAdded.length) markUserDataChanged(id)
+          if (contactsAdded.length || contactsRenamed) markUserDataChanged(id)
           const lastScanAt = new Date().toISOString()
           await store.setGmailScan(id, { lastScanAt })
-          return ok({ created: 0, contactsAdded: contactsAdded.length, contactSuggestions, lastScanAt })
+          return ok({ created: 0, contactsAdded: contactsAdded.length, contactSuggestions, contactsRenamed, lastScanAt })
         }
 
         const { contacts } = await store.getContacts(id)
@@ -1322,10 +1324,10 @@ async function start() {
           openThreads.add(f.threadId)
           created++
         }
-        if (created || contactsAdded.length) markUserDataChanged(id)
+        if (created || contactsAdded.length || contactsRenamed) markUserDataChanged(id)
         const lastScanAt = new Date().toISOString()
         await store.setGmailScan(id, { lastScanAt })
-        return ok({ created, found: found.length, contactsAdded: contactsAdded.length, contactSuggestions, lastScanAt })
+        return ok({ created, found: found.length, contactsAdded: contactsAdded.length, contactSuggestions, contactsRenamed, lastScanAt })
       } catch (e) {
         if (gmailFollowups.isQuotaError(e)) {
           return fail(429, { error: "Gmail is limiting how fast GhostBuster can read right now. Try again in a minute." })

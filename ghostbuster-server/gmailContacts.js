@@ -28,6 +28,85 @@ function addresses(header) {
     .filter((a) => a.email && a.email.includes("@"))
 }
 
+const GENERIC_WORDS =
+  /\b(team|teams|recruit\w*|talent|careers?|jobs|hiring|hr|people ops|admissions?|registrar|office|department|dept|program|programs|support|help|info|contact|hello|admin|noreply|no-reply|notifications?|university|college|school|inc|llc|ltd|corp|company|foundation|group|staff|faculty|events?|news|newsletter)\b/i
+
+/**
+ * True when a display name doesn't look like one person: empty, just the email address, a team or
+ * company inbox ("Stripe Recruiting", "CMU Admissions"), or a single word that matches the domain.
+ */
+function looksGeneric(name, email) {
+  const n = String(name || "").trim()
+  const [local = "", domain = ""] = String(email || "").toLowerCase().split("@")
+  if (!n) return true
+  if (n.includes("@") || n.toLowerCase() === local) return true
+  if (GENERIC_WORDS.test(n)) return true
+  const words = n.split(/\s+/)
+  const org = domain.split(".").slice(-2, -1)[0] || ""
+  if (words.length === 1 && (n.toLowerCase() === org || /^[A-Z0-9&]{2,}$/.test(n))) return true
+  return false
+}
+
+function decodeBase64Url(data) {
+  return Buffer.from(String(data || "").replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
+}
+
+function plainText(payload) {
+  if (!payload) return ""
+  const parts = []
+  const walk = (p) => {
+    if (p.mimeType === "text/plain" && p.body?.data) parts.push(decodeBase64Url(p.body.data))
+    for (const c of p.parts || []) walk(c)
+  }
+  walk(payload)
+  if (parts.length) return parts.join("\n")
+  const html = []
+  const walkHtml = (p) => {
+    if (p.mimeType === "text/html" && p.body?.data) html.push(decodeBase64Url(p.body.data))
+    for (const c of p.parts || []) walkHtml(c)
+  }
+  walkHtml(payload)
+  return html
+    .join("\n")
+    .replace(/<(br|\/p|\/div|\/tr|\/li)[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+}
+
+/**
+ * The sign-off and signature: the last few lines of what the sender wrote, with the quoted earlier
+ * conversation removed. Only this tail is used (and only for senders with a generic display name).
+ */
+function signatureTail(text) {
+  const lines = String(text || "").replace(/\r/g, "").split("\n")
+  const own = []
+  for (const line of lines) {
+    const t = line.trim()
+    if (/^On .{5,200}wrote:?$/i.test(t) || /^-{2,}\s*Original Message/i.test(t) || /^From:\s.+/i.test(t)) break
+    if (t.startsWith(">")) continue
+    own.push(t)
+  }
+  return own
+    .filter(Boolean)
+    .slice(-8)
+    .join(" / ")
+    .slice(-400)
+}
+
+/** Latest message from this sender: its From display name and signature tail. */
+async function fetchSignature(gmail, { messageId, email }) {
+  let id = messageId
+  if (!id) {
+    const { data } = await gmailCall(() => gmail.users.messages.list({ userId: "me", q: `from:${email}`, maxResults: 1 }))
+    id = data.messages?.[0]?.id
+    if (!id) return null
+  }
+  const { data: m } = await gmailCall(() => gmail.users.messages.get({ userId: "me", id, format: "full" }))
+  const from = firstAddress(headerMap(m).from)
+  return { displayName: from.name, signature: signatureTail(plainText(m.payload)) }
+}
+
 function isBulk(h) {
   return Boolean(h["list-unsubscribe"] || h["list-id"] || /bulk|list|junk/i.test(h.precedence || ""))
 }
@@ -94,11 +173,12 @@ async function findCandidates(gmail, { skip = new Set() } = {}) {
       const at = Number(m.internalDate) || 0
       let c = people.get(from.email)
       if (!c) {
-        c = { email: from.email, name: "", fromThem: 0, fromMe: 0, lastAt: 0, subjects: [], snippets: [], threadIds: new Set() }
+        c = { email: from.email, name: "", fromThem: 0, fromMe: 0, lastAt: 0, lastMessageId: "", subjects: [], snippets: [], threadIds: new Set() }
         people.set(from.email, c)
       }
       if (from.name && from.name.length > c.name.length) c.name = from.name
       c.fromThem++
+      if (at >= c.lastAt) c.lastMessageId = m.id
       c.lastAt = Math.max(c.lastAt, at)
       if (!c.subjects.includes(subject) && c.subjects.length < 5) c.subjects.push(subject)
       const snip = String(m.snippet || "").replace(/\s+/g, " ").trim().slice(0, 220)
@@ -120,6 +200,7 @@ async function findCandidates(gmail, { skip = new Set() } = {}) {
       fromMe: c.fromMe,
       threads: c.threadIds.size,
       lastAt: new Date(c.lastAt).toISOString(),
+      lastMessageId: c.lastMessageId,
       subjects: c.subjects,
       snippets: c.snippets,
     }))
@@ -161,7 +242,7 @@ Categories:
 
 For each person:
 - confidence: 0 to 1, how sure you are of the category.
-- name: their full name as best shown (fix capitalization; keep empty-ish names as given).
+- name: the individual person's full name. If the display name is a team, company, office, or role (like "Stripe Recruiting", "Careers Team", "CMU Admissions") or just an email address, take the name from the sign-off or signature instead (e.g. "Best, Jane" with "Jane Doe | Recruiter" means "Jane Doe"). Fix capitalization. If no individual can be identified, return an empty string; never use a company or team name as a person's name.
 - company and role: only if a signature line, the email domain, or the text clearly shows it (e.g. "Jane Doe | Recruiter, Stripe", a @cmu.edu address means company "Carnegie Mellon University"). Otherwise an empty string. Never guess.
 - reason: one short sentence, e.g. "Recruiter scheduling your Stripe interview." No em dashes.
 
@@ -174,6 +255,7 @@ function candidateText(c) {
     `messages: ${c.fromThem} from them, ${c.fromMe} from the student, last ${c.lastAt.slice(0, 10)}`,
     `subjects: ${c.subjects.join(" | ")}`,
     `previews: ${c.snippets.map((s) => `"${s}"`).join(" | ")}`,
+    ...(c.signature ? [`end of their latest email (sign-off and signature): "${c.signature}"`] : []),
   ].join("\n")
 }
 
@@ -254,7 +336,10 @@ function decide(candidates, labels) {
       confidence: l.confidence,
       lastAt: c.lastAt,
     }
-    if (work && l.confidence >= AUTO_ADD_CONFIDENCE && c.fromThem > 0 && c.fromMe > 0) add.push(entry)
+    // A team or company inbox with no identifiable person is never added automatically.
+    const hasPerson = Boolean(l.name) && !looksGeneric(l.name, c.email)
+    if (!hasPerson) entry.name = l.company ? `${l.company} (${c.email})` : c.email
+    if (work && hasPerson && l.confidence >= AUTO_ADD_CONFIDENCE && c.fromThem > 0 && c.fromMe > 0) add.push(entry)
     else if (work && l.confidence >= SUGGEST_CONFIDENCE) suggest.push(entry)
     else ignore.push(entry)
   }
@@ -282,7 +367,10 @@ async function importContacts({ refreshToken, store, uid, anthropic, gmail }) {
   const candidates = (await findCandidates(client, { skip })).filter(
     (c) => !seenAt.has(c.email) || c.lastAt > seenAt.get(c.email)
   )
-  if (!candidates.length) return { added: [], suggested: 0, scanned: 0 }
+  // Contacts added earlier under a generic name ("Stripe Recruiting"): look again for a real name.
+  const renamed = await repairNames({ gmail: client, store, uid, anthropic, contacts: contacts || [] })
+  if (!candidates.length) return { added: [], suggested: 0, scanned: 0, renamed }
+  await addSignatures(client, candidates)
   const labels = await classify(anthropic, candidates)
   const { add, suggest, ignore } = decide(candidates, labels)
 
@@ -306,7 +394,72 @@ async function importContacts({ refreshToken, store, uid, anthropic, gmail }) {
     ...suggest.map((p) => ({ email: p.email, status: "suggested", convoAt: p.lastAt, updatedAt: now })),
     ...ignore.map((p) => ({ email: p.email, status: "seen", convoAt: p.lastAt, updatedAt: now })),
   ])
-  return { added, suggested: suggest.length, scanned: candidates.length }
+  return { added, suggested: suggest.length, scanned: candidates.length, renamed }
 }
 
-module.exports = { findCandidates, classify, decide, importContacts, SCHEMA }
+const MAX_SIGNATURES = 25
+
+/** Reads the signature of senders whose display name is generic (at most MAX_SIGNATURES per scan). */
+async function addSignatures(gmail, candidates) {
+  let fetched = 0
+  for (const c of candidates) {
+    if (fetched >= MAX_SIGNATURES || !looksGeneric(c.name, c.email)) continue
+    fetched++
+    try {
+      const sig = await fetchSignature(gmail, { messageId: c.lastMessageId, email: c.email })
+      if (sig?.signature) c.signature = sig.signature
+    } catch (e) {
+      if (isQuotaError(e)) throw e
+      console.warn("Gmail contacts: couldn't read signature for", c.email, e.message)
+    }
+  }
+}
+
+const MAX_REPAIRS = 15
+
+/** Renames contacts this feature added with a generic name, when a signature shows the person. */
+async function repairNames({ gmail, store, uid, anthropic, contacts }) {
+  const targets = contacts
+    .filter((c) => c.source === "gmail" && c.email && looksGeneric(c.name, c.email))
+    .slice(0, MAX_REPAIRS)
+  if (!targets.length) return 0
+  const cands = []
+  for (const c of targets) {
+    try {
+      const sig = await fetchSignature(gmail, { email: String(c.email).toLowerCase() })
+      if (!sig?.signature) continue
+      cands.push({
+        contactId: c.id,
+        hadCompany: Boolean(c.company),
+        hadRole: Boolean(c.role),
+        email: String(c.email).toLowerCase(),
+        name: sig.displayName || c.name,
+        fromThem: 1,
+        fromMe: 1,
+        lastAt: new Date().toISOString(),
+        subjects: [],
+        snippets: [],
+        signature: sig.signature,
+      })
+    } catch (e) {
+      if (isQuotaError(e)) throw e
+      console.warn("Gmail contacts: couldn't read signature for", c.email, e.message)
+    }
+  }
+  if (!cands.length) return 0
+  const labels = await classify(anthropic, cands)
+  let renamed = 0
+  for (const c of cands) {
+    const l = labels.get(c.email)
+    if (!l?.name || looksGeneric(l.name, c.email)) continue
+    await store.updateContact(uid, c.contactId, {
+      name: l.name,
+      ...(!c.hadCompany && l.company ? { company: l.company } : {}),
+      ...(!c.hadRole && l.role ? { role: l.role } : {}),
+    })
+    renamed++
+  }
+  return renamed
+}
+
+module.exports = { findCandidates, classify, decide, importContacts, looksGeneric, signatureTail, plainText, SCHEMA }

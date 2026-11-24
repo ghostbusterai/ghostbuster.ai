@@ -39,8 +39,8 @@ export default function GmailContacts({ onContactsChanged }) {
     setError("")
     try {
       const r = await api.scanGmailFollowups({ localDate: localDateString() })
-      setResult({ added: r.contactsAdded || 0, suggested: r.contactSuggestions || 0 })
-      if (r.contactsAdded) onContactsChanged?.()
+      setResult({ added: r.contactsAdded || 0, suggested: r.contactSuggestions || 0, renamed: r.contactsRenamed || 0 })
+      if (r.contactsAdded || r.contactsRenamed) onContactsChanged?.()
       await loadSuggestions()
     } catch (e) {
       if (e.data?.needsPermission) setEnabled(false)
@@ -157,8 +157,9 @@ export default function GmailContacts({ onContactsChanged }) {
           </div>
           <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 4, lineHeight: 1.5 }}>
             Adds people you've emailed back and forth with about work or school in the last 90 days. Sender, subject
-            and Gmail's short preview are sent to Claude to tell them apart from personal mail; full emails are never
-            read or stored.
+            and Gmail's short preview are sent to Claude to tell them apart from personal mail. When a sender's name is
+            generic (like "Stripe Recruiting"), the signature at the end of their latest email is read to find their
+            name. Emails are never stored.
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -202,6 +203,7 @@ export default function GmailContacts({ onContactsChanged }) {
               </button>
             </>
           )}
+          {result.renamed > 0 && ` Fixed the name of ${result.renamed} ${result.renamed === 1 ? "contact" : "contacts"} from their email signature.`}
           {result.suggested > 0 && ` ${result.suggested} more to review below.`}
         </p>
       )}
