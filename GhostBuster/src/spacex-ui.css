@@ -297,6 +297,20 @@
   color: rgba(255, 255, 255, 0.42);
 }
 
+.gb-spacex-reel-section__hint {
+  margin: 8px 0 0;
+  padding: 0 clamp(20px, 5vw, 48px) 4px;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.38);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .gb-spacex-reel-section .gb-success-reel--scroll {
   min-height: clamp(380px, 55vh, 560px);
   border-top: none;

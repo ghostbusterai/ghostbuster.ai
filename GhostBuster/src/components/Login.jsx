@@ -161,7 +161,7 @@ export default function Login({ error, onDemoLogin }) {
           </div>
 
           <a href="#networking-wins" className="gb-login-scroll-hint">
-            Real students, real offers — scroll
+            Example journeys — scroll
             <Icon name="chevron-down" size={16} className="gb-login-scroll-hint__arrow" />
           </a>
         </section>

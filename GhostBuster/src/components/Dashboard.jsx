@@ -8,6 +8,7 @@ import { formatContactName, formatLastTouch, formatActivityTime } from "../forma
 import { useMotivationalGreeting } from "../greeting"
 import ViewMoreButton from "./ViewMoreButton"
 import NetworkingSuccessReel from "./NetworkingSuccessReel"
+import { NETWORKING_REEL_SECTION_HINT, NETWORKING_REEL_SECTION_TITLE } from "../networkingStories"
 import { previewHiddenCount, previewSlice } from "../listPreview"
 import { Icon } from "../icons"
 
@@ -475,8 +476,9 @@ export default function Dashboard({ setPage }) {
         </div>
       </section>
 
-      <section className="gb-spacex-reel-section gb-scroll-reveal" aria-label="Networking success stories">
-        <p className="gb-spacex-reel-section__label">Students who landed roles through consistent networking</p>
+      <section className="gb-spacex-reel-section gb-scroll-reveal" aria-label="Networking journey examples">
+        <p className="gb-spacex-reel-section__label">{NETWORKING_REEL_SECTION_TITLE}</p>
+        <p className="gb-spacex-reel-section__hint">{NETWORKING_REEL_SECTION_HINT}</p>
         <NetworkingSuccessReel id="networking-wins" variant="scroll" />
       </section>
 

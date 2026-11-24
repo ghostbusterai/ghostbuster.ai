@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { Icon } from "../icons"
 import { font } from "../theme"
-import { NETWORKING_SUCCESS_STORIES } from "../networkingStories"
+import { NETWORKING_REEL_ARIA_LABEL, NETWORKING_SUCCESS_STORIES } from "../networkingStories"
 
 const SLIDE_MS = 5500
 
@@ -43,7 +43,7 @@ export default function NetworkingSuccessReel({
   const rootClass = `gb-success-reel gb-success-reel--${variant}`
 
   return (
-    <section id={id} className={rootClass} aria-label="Students who landed roles through consistent networking">
+    <section id={id} className={rootClass} aria-label={NETWORKING_REEL_ARIA_LABEL}>
       {videoSrc ? (
         <video
           className={`gb-success-reel__video${showVideo ? " gb-success-reel__video--on" : ""}`}
@@ -108,7 +108,7 @@ export default function NetworkingSuccessReel({
           "Meet people, follow up consistently, land the role."
         ) : (
           <>
-            Meet · remember · follow up · <span className="gb-success-reel__accent">get the offer</span>
+            Example flows · <span className="gb-success-reel__accent">your story can go here</span>
           </>
         )}
       </p>

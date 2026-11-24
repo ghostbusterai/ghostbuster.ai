@@ -86,6 +86,10 @@
 }
 
 [data-theme="light"] .gb-spacex-hero__eyebrow,
+[data-theme="light"] .gb-spacex-reel-section__hint {
+  color: var(--gb-text-muted);
+}
+
 [data-theme="light"] .gb-spacex-reel-section__label {
   color: var(--gb-text-muted);
 }
