@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { inputStyle, primaryBtn, secondaryBtn } from "../uiStyles"
+import { inputStyle, primaryBtn, secondaryBtn, uiClass } from "../uiStyles"
 import {
   PageShell,
   PageHero,
@@ -38,6 +38,7 @@ const LS_APPLICATIONS = "gb_applications"
 
 const FILTER_OPTIONS = [
   { id: "in_progress", label: "In progress" },
+  { id: "interview", label: "Interviewing" },
   { id: "saved", label: "To apply" },
   { id: "offer", label: "Offers" },
   { id: "closed", label: "Closed" },
@@ -460,7 +461,8 @@ export default function Applications() {
       const p = pipelineFromLegacy(a)
       if (filter === "all") return true
       if (filter === "saved") return p === "saved"
-      if (filter === "in_progress") return ["applied", "screening", "interview"].includes(p)
+      if (filter === "in_progress") return ["applied", "screening"].includes(p)
+      if (filter === "interview") return p === "interview"
       if (filter === "offer") return p === "offer"
       if (filter === "closed") return isPipelineClosed(p) && p !== "offer"
       return p === filter
@@ -468,13 +470,14 @@ export default function Applications() {
   }, [applications, filter])
 
   const pipelineCounts = useMemo(() => {
-    const counts = { in_progress: 0, saved: 0, offer: 0, closed: 0 }
+    const counts = { in_progress: 0, interview: 0, saved: 0, offer: 0, closed: 0 }
     for (const a of applications) {
       const p = pipelineFromLegacy(a)
       if (p === "saved") counts.saved += 1
       else if (p === "offer") counts.offer += 1
+      else if (p === "interview") counts.interview += 1
       else if (p === "rejected" || p === "withdrawn") counts.closed += 1
-      else if (["applied", "screening", "interview"].includes(p)) counts.in_progress += 1
+      else if (["applied", "screening"].includes(p)) counts.in_progress += 1
     }
     return counts
   }, [applications])
@@ -485,6 +488,7 @@ export default function Applications() {
   const needsInputCount = applications.filter((a) => a.status !== "completed" && a.fillStatus === "needs_input").length
   const todoCount = pipelineCounts.saved
   const inProgressCount = pipelineCounts.in_progress
+  const interviewingCount = pipelineCounts.interview
 
   return (
     <PageShell>
@@ -494,7 +498,7 @@ export default function Applications() {
         subtitle={
           listLoading
             ? "Loading…"
-            : `${todoCount} to apply · ${inProgressCount} in progress · ${pipelineCounts.offer} offers${needsInputCount ? ` · ${needsInputCount} need your answers` : ""}`
+            : `${todoCount} to apply · ${inProgressCount} in progress · ${interviewingCount} interviewing · ${pipelineCounts.offer} offers${needsInputCount ? ` · ${needsInputCount} need your answers` : ""}`
         }
         action={
           <button
@@ -555,7 +559,7 @@ export default function Applications() {
           <p style={{ margin: "8px 0 0", color: "var(--gb-text-faint)", fontSize: 13, fontFamily: font.body }}>
             Autofill works on Workday, Greenhouse, Lever, and Ashby. To follow jobs from company careers pages and
             other sites,{" "}
-            <button type="button" onClick={requestAllSitesAccess} style={{ ...rowBtn(true), padding: "3px 8px" }}>
+            <button type="button" onClick={requestAllSitesAccess} {...rowBtn(true, { style: { padding: "3px 8px" } })}>
               allow it on all sites
             </button>{" "}
             or approve each site when it asks.
@@ -575,19 +579,7 @@ export default function Applications() {
           type="button"
           onClick={loadSuggestions}
           disabled={suggesting}
-          style={{
-            background: "var(--gb-accent-soft)",
-            border: "1px solid var(--gb-border-subtle)",
-            color: "var(--gb-accent)",
-            padding: "10px 16px",
-            borderRadius: 9,
-            fontFamily: font.body,
-            fontWeight: 600,
-            fontSize: 13,
-            cursor: suggesting ? "not-allowed" : "pointer",
-            boxShadow: "none",
-            marginBottom: 12,
-          }}
+          {...primaryBtn({ style: { marginBottom: 12, opacity: suggesting ? 0.65 : 1, cursor: suggesting ? "not-allowed" : "pointer" } })}
         >
           {suggesting ? "Suggesting…" : "Suggest applications"}
         </button>
@@ -635,33 +627,25 @@ export default function Applications() {
                       type="button"
                       onClick={() => addSuggestion(s)}
                       disabled={addingKey === key}
-                      style={{
-                        background: "var(--gb-accent-bright)",
-                        color: "var(--gb-accent-text-on)",
-                        border: "1px solid rgba(10,15,9,0.22)",
-                        padding: "7px 12px",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: addingKey === key ? "not-allowed" : "pointer",
-                        boxShadow: "none",
-                      }}
+                      {...rowBtn(true, {
+                        style: { opacity: addingKey === key ? 0.65 : 1, cursor: addingKey === key ? "not-allowed" : "pointer" },
+                      })}
                     >
-                      {addingKey === key ? "Adding…" : "Save to complete"}
+                      {addingKey === key ? "Adding…" : "Save to tracker"}
                     </button>
                     {s.urls?.linkedin && (
-                      <a href={s.urls.linkedin} target="_blank" rel="noreferrer" style={linkBtn()}>
-                        LinkedIn
+                      <a href={s.urls.linkedin} target="_blank" rel="noreferrer" {...actionLink()}>
+                        Search LinkedIn
                       </a>
                     )}
                     {s.urls?.handshake && (
-                      <a href={s.urls.handshake} target="_blank" rel="noreferrer" style={linkBtn()}>
-                        Handshake
+                      <a href={s.urls.handshake} target="_blank" rel="noreferrer" {...actionLink()}>
+                        Search Handshake
                       </a>
                     )}
                     {s.urls?.google && (
-                      <a href={s.urls.google} target="_blank" rel="noreferrer" style={linkBtn()}>
-                        Google
+                      <a href={s.urls.google} target="_blank" rel="noreferrer" {...actionLink()}>
+                        Search Google
                       </a>
                     )}
                   </div>
@@ -685,15 +669,14 @@ export default function Applications() {
             type="button"
             disabled={emailSyncing || !googleConnected}
             onClick={syncFromGmail}
-            style={{
-              ...rowBtn(googleConnected),
-              padding: "10px 16px",
-              fontWeight: 600,
-              opacity: googleConnected ? 1 : 0.55,
-              cursor: googleConnected && !emailSyncing ? "pointer" : "not-allowed",
-            }}
+            {...rowBtn(googleConnected, {
+              style: {
+                opacity: googleConnected ? 1 : 0.55,
+                cursor: googleConnected && !emailSyncing ? "pointer" : "not-allowed",
+              },
+            })}
           >
-            {emailSyncing ? "Syncing Gmail…" : "Sync from Gmail"}
+            {emailSyncing ? "Syncing Gmail…" : "Update from Gmail"}
           </button>
           {!googleConnected && (
             <span style={{ fontSize: 12, color: "var(--gb-text-faint)", fontFamily: font.body }}>
@@ -844,18 +827,6 @@ export default function Applications() {
   )
 }
 
-function linkBtn() {
-  return {
-    color: "var(--gb-accent)",
-    fontSize: 12,
-    fontFamily: font.mono,
-    textDecoration: "none",
-    padding: "7px 10px",
-    border: "1px solid var(--gb-border)",
-    borderRadius: 8,
-  }
-}
-
 const FILL_BADGES = {
   needs_input: { text: "Needs your answers", color: "var(--gb-warning)" },
   needs_review: { text: "Filled · review before submitting", color: "var(--gb-accent)" },
@@ -961,7 +932,7 @@ function ApplicationRow({
                   onSavePortalUrl(portalDraft.trim() || urlDraft.trim())
                   setEditingUrl(false)
                 }}
-                style={rowBtn(true)}
+                {...rowBtn(true)}
               >
                 Save links
               </button>
@@ -972,7 +943,7 @@ function ApplicationRow({
                   setPortalDraft(a.portalUrl || a.url || "")
                   setEditingUrl(false)
                 }}
-                style={rowBtn()}
+                {...rowBtn()}
               >
                 Cancel
               </button>
@@ -1019,7 +990,7 @@ function ApplicationRow({
                 onSaveStatusNote(noteDraft.trim())
                 setEditingNote(false)
               }}
-              style={rowBtn(true)}
+              {...rowBtn(true)}
             >
               Save note
             </button>
@@ -1048,48 +1019,78 @@ function ApplicationRow({
           </ul>
         ) : null}
       </div>
-      <div className="gb-record-row__actions">
-        {portal && !editingUrl && (
-          <>
-            <a href={portal} target="_blank" rel="noreferrer" style={linkBtn()}>
-              Open portal
-            </a>
-            {onPortalSync && (
-              <button type="button" onClick={onPortalSync} disabled={portalSyncing} style={rowBtn(true)}>
-                {portalSyncing ? "Syncing…" : "Sync portal"}
+      {!editingUrl && (
+        <div className="gb-application-actions" role="toolbar" aria-label="Application actions">
+          {portal && (
+            <div className="gb-application-actions__cluster">
+              <span className="gb-application-actions__label">Status portal</span>
+              <a href={portal} target="_blank" rel="noreferrer" {...actionLink()}>
+                Open page
+              </a>
+              {onPortalSync && (
+                <button
+                  type="button"
+                  onClick={onPortalSync}
+                  disabled={portalSyncing}
+                  {...rowBtn(true, {
+                    style: { opacity: portalSyncing ? 0.65 : 1, cursor: portalSyncing ? "wait" : "pointer" },
+                  })}
+                >
+                  {portalSyncing ? "Updating…" : "Pull latest status"}
+                </button>
+              )}
+              <button type="button" onClick={onMarkPortalChecked} {...rowBtn()}>
+                Mark checked today
+              </button>
+            </div>
+          )}
+          {!done && a.url && onFill && (
+            <div className="gb-application-actions__cluster">
+              <span className="gb-application-actions__label">Apply</span>
+              <button
+                type="button"
+                onClick={onFill}
+                disabled={filling}
+                {...rowBtn(true, {
+                  style: { opacity: filling ? 0.65 : 1, cursor: filling ? "wait" : "pointer" },
+                })}
+              >
+                {filling ? "Opening form…" : a.fillStatus ? "Autofill again" : "Autofill form"}
+              </button>
+            </div>
+          )}
+          <div className="gb-application-actions__cluster">
+            <span className="gb-application-actions__label">Details</span>
+            <button type="button" onClick={() => setEditingUrl(true)} {...rowBtn()}>
+              {a.url ? "Edit links" : "Add links"}
+            </button>
+            <button type="button" onClick={() => setEditingNote((v) => !v)} {...rowBtn()}>
+              {a.statusNote || editingNote ? "Edit status note" : "Add status note"}
+            </button>
+          </div>
+          <div className="gb-application-actions__cluster gb-application-actions__cluster--end">
+            {pipeline === "saved" && (
+              <button type="button" onClick={onComplete} {...rowBtn(true)}>
+                Mark submitted
               </button>
             )}
-            <button type="button" onClick={onMarkPortalChecked} style={rowBtn()}>
-              Checked today
+            <button type="button" onClick={onDelete} {...rowBtn(false, { style: { color: "var(--gb-danger)" } })}>
+              Delete
             </button>
-          </>
-        )}
-        {!done && a.url && onFill && !editingUrl && (
-          <button type="button" onClick={onFill} disabled={filling} style={rowBtn(true)}>
-            {filling ? "Opening…" : a.fillStatus ? "Fill again" : "Fill"}
-          </button>
-        )}
-        {!editingUrl && (
-          <button type="button" onClick={() => setEditingUrl(true)} style={rowBtn()}>
-            {a.url ? "Edit links" : "Add links"}
-          </button>
-        )}
-        <button type="button" onClick={() => setEditingNote((v) => !v)} style={rowBtn()}>
-          {a.statusNote || editingNote ? "Edit status note" : "Add status note"}
-        </button>
-        {pipeline === "saved" && (
-          <button type="button" onClick={onComplete} style={rowBtn(true)}>
-            Mark submitted
-          </button>
-        )}
-        <button type="button" onClick={onDelete} style={{ ...rowBtn(), color: "var(--gb-danger)" }}>
-          Delete
-        </button>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function rowBtn(accent = false) {
-  return accent ? primaryBtn({ sm: true }) : secondaryBtn({ sm: true })
+function rowBtn(accent = false, extra = {}) {
+  return accent ? primaryBtn({ sm: true, ...extra }) : secondaryBtn({ sm: true, ...extra })
+}
+
+function actionLink(extra = {}) {
+  return {
+    className: [uiClass.btnSecondary, uiClass.btnSm].join(" "),
+    style: { textDecoration: "none", ...extra.style },
+  }
 }
