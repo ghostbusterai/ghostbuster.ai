@@ -268,8 +268,9 @@ button:focus-visible {
 .gb-header--cinema .gb-brand-ring {
   background: transparent;
   box-shadow: none;
-  border-radius: var(--gb-radius-sm);
+  border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.35);
+  overflow: hidden;
 }
 
 .gb-header--cinema .gb-brand-lockup {
@@ -352,7 +353,7 @@ button:focus-visible {
 .gb-brand-ring {
   width: 32px;
   height: 32px;
-  border-radius: var(--gb-radius-md);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;

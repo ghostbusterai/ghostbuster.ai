@@ -1,6 +1,6 @@
 import React from "react"
 
-/** Minimal mark — square frame, thin strokes (SpaceX-adjacent, not cartoon). */
+/** Minimal mark — circular frame, thin strokes (SpaceX-adjacent, not cartoon). */
 export default function GhostBusterLogo({ size = 22, className, ...rest }) {
   const sw = 2
   const ink = "var(--gb-logo-stroke)"
@@ -20,16 +20,7 @@ export default function GhostBusterLogo({ size = 22, className, ...rest }) {
       aria-hidden
       {...rest}
     >
-      <rect
-        x="6"
-        y="6"
-        width="88"
-        height="88"
-        rx="10"
-        fill="var(--gb-logo-fill)"
-        stroke={ink}
-        strokeWidth={sw}
-      />
+      <circle cx="50" cy="50" r="44" fill="var(--gb-logo-fill)" stroke={ink} strokeWidth={sw} />
 
       <path d="M 28 54 L 47 64 L 66 54 L 66 80 H 28 Z" fill={envDeep} />
 
