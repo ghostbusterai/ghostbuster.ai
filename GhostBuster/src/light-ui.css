@@ -265,6 +265,7 @@
   background: var(--gb-bg);
 }
 
+[data-theme="light"] .gb-success-reel__title,
 [data-theme="light"] .gb-success-reel__name,
 [data-theme="light"] .gb-success-reel__caption {
   color: var(--gb-text);

@@ -897,6 +897,10 @@ button:focus-visible {
 }
 
 .gb-success-reel__chapter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 6px;
   font-size: 11px;
   font-weight: 600;
@@ -905,6 +909,20 @@ button:focus-visible {
   color: rgba(var(--story-hue, 200, 255, 90), 0.85);
 }
 
+.gb-success-reel__sample-tag {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gb-text-subtle);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.gb-success-reel__title,
 .gb-success-reel__name {
   margin: 0 0 4px;
   font-family: var(--gb-font-sans);

@@ -612,10 +612,10 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-.gb-spacex-reel-section .gb-success-reel__name {
+.gb-spacex-reel-section .gb-success-reel__title {
   font-family: var(--gb-font-sans);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  text-transform: none;
+  letter-spacing: -0.03em;
 }
 
 .gb-spacex-reel-section .gb-success-reel__caption {

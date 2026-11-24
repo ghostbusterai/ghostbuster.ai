@@ -76,10 +76,12 @@ export default function NetworkingSuccessReel({
               >
                 <Icon name={s.icon || "check"} size={28} color="var(--gb-accent-bright)" />
               </div>
-              <p className="gb-success-reel__chapter">{s.chapter}</p>
-              <h2 className="gb-success-reel__name">{s.title}</h2>
+              <p className="gb-success-reel__chapter">
+                <span className="gb-success-reel__sample-tag">Sample</span>
+                {s.chapter}
+              </p>
+              <h2 className="gb-success-reel__title">{s.title}</h2>
               <p className="gb-success-reel__detail">{s.detail}</p>
-              <p className="gb-success-reel__networking">{s.networking}</p>
               <div className="gb-success-reel__outcome">
                 <span className="gb-success-reel__outcome-check" aria-hidden>
                   <Icon name="check" size={16} color="var(--gb-accent-bright)" />
