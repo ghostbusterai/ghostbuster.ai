@@ -6,7 +6,6 @@ import CinematicBackground from "./CinematicBackground"
 import NetworkingSuccessReel from "./NetworkingSuccessReel"
 import { font, accentNeon } from "../theme"
 import { BASE, api } from "../api"
-import { SUCCESS_REEL_VIDEO } from "../cinemaAssets"
 import { Icon } from "../icons"
 
 const REVIEWER_DEMO_CODE = "app-reviewer"
@@ -167,7 +166,7 @@ export default function Login({ error, onDemoLogin }) {
         </section>
 
         <div className="gb-scroll-reveal">
-          <NetworkingSuccessReel id="networking-wins" variant="scroll" videoSrc={SUCCESS_REEL_VIDEO} />
+          <NetworkingSuccessReel id="networking-wins" variant="scroll" />
         </div>
       </div>
     </div>

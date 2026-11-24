@@ -867,6 +867,17 @@ button:focus-visible {
   backdrop-filter: blur(12px);
 }
 
+.gb-success-reel__glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--gb-border-subtle);
+}
+
 .gb-success-reel__avatar-wrap {
   margin-bottom: 16px;
 }

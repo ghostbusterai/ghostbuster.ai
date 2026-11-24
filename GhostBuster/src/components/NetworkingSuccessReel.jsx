@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react"
 import { Icon } from "../icons"
-import { font } from "../theme"
 import { NETWORKING_REEL_ARIA_LABEL, NETWORKING_SUCCESS_STORIES } from "../networkingStories"
 
 const SLIDE_MS = 5500
@@ -67,26 +66,18 @@ export default function NetworkingSuccessReel({
           >
             <div className="gb-success-reel__slide-glow" />
             <div className="gb-success-reel__slide-inner">
-              <div className="gb-success-reel__avatar-wrap">
-                {s.photo ? (
-                  <img className="gb-success-reel__avatar" src={s.photo} alt="" />
-                ) : (
-                  <span
-                    className="gb-success-reel__avatar gb-success-reel__avatar--initials"
-                    style={{
-                      background: `linear-gradient(145deg, rgba(${s.hue},0.35), rgba(${s.hue},0.08))`,
-                      border: `1px solid rgba(${s.hue},0.45)`,
-                      fontFamily: font.h1,
-                      fontWeight: 800,
-                      fontSize: 28,
-                    }}
-                  >
-                    {s.initials}
-                  </span>
-                )}
+              <div
+                className="gb-success-reel__glyph"
+                style={{
+                  background: `linear-gradient(145deg, rgba(${s.hue},0.28), rgba(${s.hue},0.06))`,
+                  borderColor: `rgba(${s.hue},0.35)`,
+                }}
+                aria-hidden
+              >
+                <Icon name={s.icon || "check"} size={28} color="var(--gb-accent-bright)" />
               </div>
               <p className="gb-success-reel__chapter">{s.chapter}</p>
-              <h2 className="gb-success-reel__name">{s.name}</h2>
+              <h2 className="gb-success-reel__name">{s.title}</h2>
               <p className="gb-success-reel__detail">{s.detail}</p>
               <p className="gb-success-reel__networking">{s.networking}</p>
               <div className="gb-success-reel__outcome">
@@ -121,7 +112,7 @@ export default function NetworkingSuccessReel({
               type="button"
               role="tab"
               aria-selected={i === index}
-              aria-label={`${s.name}, ${s.outcome}`}
+              aria-label={`${s.title}, ${s.outcome}`}
               className={`gb-success-reel__dot${i === index ? " gb-success-reel__dot--active" : ""}`}
               onClick={() => setIndex(i)}
             />
