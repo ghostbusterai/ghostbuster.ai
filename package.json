@@ -1,0 +1,9 @@
+{
+  "name": "ghostbuster",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix GhostBuster",
+    "build": "npm run build --prefix GhostBuster",
+    "start": "npm run build --prefix GhostBuster && npm start --prefix ghostbuster-server"
+  }
+}

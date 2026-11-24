@@ -3,40 +3,40 @@ import { font } from "../theme"
 
 const PRESETS = {
   header: {
-    fontSize: 19,
+    fontSize: 18,
     aiSize: 10,
     aiPad: "2px 5px",
     gap: 6,
-    fontFamily: font.display,
+    fontFamily: font.sans,
     fontWeight: 700,
-    letterSpacing: "-0.3px",
+    letterSpacing: "-0.04em",
   },
   login: {
-    fontSize: 28,
-    aiSize: 12,
+    fontSize: 26,
+    aiSize: 11,
     aiPad: "2px 6px",
     gap: 7,
-    fontFamily: font.display,
+    fontFamily: font.sans,
     fontWeight: 800,
-    letterSpacing: "-0.4px",
+    letterSpacing: "-0.045em",
   },
   hero: {
-    fontSize: 28,
-    aiSize: 13,
+    fontSize: 26,
+    aiSize: 12,
     aiPad: "3px 7px",
     gap: 8,
-    fontFamily: font.h1,
+    fontFamily: font.sans,
     fontWeight: 800,
-    letterSpacing: "-0.5px",
+    letterSpacing: "-0.04em",
   },
   sm: {
     fontSize: 11,
     aiSize: 8,
     aiPad: "1px 4px",
     gap: 4,
-    fontFamily: font.mono,
-    fontWeight: 500,
-    letterSpacing: 0,
+    fontFamily: font.sans,
+    fontWeight: 600,
+    letterSpacing: "-0.02em",
   },
 }
 
@@ -60,11 +60,12 @@ export default function BrandName({ variant = "header", style, className }) {
     >
       <span>GhostBuster</span>
       <span
+        data-brand-ai
         style={{
-          fontFamily: font.mono,
+          fontFamily: font.sans,
           fontSize: preset.aiSize,
-          fontWeight: 700,
-          letterSpacing: "0.04em",
+          fontWeight: 800,
+          letterSpacing: "0.02em",
           color: "var(--gb-accent)",
           background: "var(--gb-accent-soft)",
           border: "1px solid var(--gb-border-subtle)",

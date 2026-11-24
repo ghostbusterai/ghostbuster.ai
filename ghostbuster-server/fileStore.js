@@ -1,6 +1,7 @@
 const { read, write } = require("./store")
 const { suggestResumeBucket } = require("./resumeBucketMatch")
 const { sanitizeAutofill, fillStatus, fillQuestions } = require("./autofill")
+const { normalizePipelineStatus, pipelineFromLegacyStatus, isoDateOnly } = require("./applicationPipeline")
 
 /** Single-tenant JSON file store (no user id). */
 
@@ -190,7 +191,15 @@ exports.createApplication = async (_userId, body) => {
     fillStatus: "",
     fillQuestions: [],
     fillUpdatedAt: "",
+    pipelineStatus: normalizePipelineStatus(
+      body?.pipelineStatus,
+      pipelineFromLegacyStatus(status)
+    ),
+    portalUrl: typeof body?.portalUrl === "string" ? body.portalUrl.trim() : "",
+    statusNote: typeof body?.statusNote === "string" ? body.statusNote.trim() : "",
+    lastPortalCheck: typeof body?.lastPortalCheck === "string" ? body.lastPortalCheck.trim() : "",
   }
+  if (!application.portalUrl && application.url) application.portalUrl = application.url
   if (!application.company && !application.role && !application.url) {
     throw new Error("empty")
   }
@@ -218,6 +227,37 @@ exports.patchApplication = async (_userId, id, body) => {
     status,
     completedAt:
       status === "completed" ? prev.completedAt || new Date().toISOString() : "",
+  }
+  if (body.pipelineStatus !== undefined) {
+    data.applications[idx].pipelineStatus = normalizePipelineStatus(
+      body.pipelineStatus,
+      pipelineFromLegacyStatus(status)
+    )
+  } else if (status === "completed" && !prev.pipelineStatus && prev.status !== "completed") {
+    data.applications[idx].pipelineStatus = "applied"
+  } else if (!data.applications[idx].pipelineStatus) {
+    data.applications[idx].pipelineStatus = pipelineFromLegacyStatus(status)
+  }
+  if (body.portalUrl !== undefined) {
+    data.applications[idx].portalUrl = String(body.portalUrl).trim()
+  }
+  if (body.statusNote !== undefined) {
+    data.applications[idx].statusNote = String(body.statusNote).trim()
+  }
+  if (body.lastPortalCheck !== undefined) {
+    data.applications[idx].lastPortalCheck = String(body.lastPortalCheck).trim()
+  }
+  if (body.markPortalChecked) {
+    data.applications[idx].lastPortalCheck = isoDateOnly()
+  }
+  if (body.lastEmailSyncId !== undefined) {
+    data.applications[idx].lastEmailSyncId = String(body.lastEmailSyncId)
+  }
+  if (body.lastEmailSyncAt !== undefined) {
+    data.applications[idx].lastEmailSyncAt = String(body.lastEmailSyncAt)
+  }
+  if (body.portalSyncAt !== undefined) {
+    data.applications[idx].portalSyncAt = String(body.portalSyncAt)
   }
   if (body.fillStatus !== undefined) {
     data.applications[idx].fillStatus = fillStatus(body.fillStatus, prev.fillStatus || "")
@@ -378,6 +418,8 @@ exports.getProfile = async () => {
       lastResumeUpdate: typeof p.lastResumeUpdate === "string" ? p.lastResumeUpdate : "",
       hideGettingStarted: Boolean(p.hideGettingStarted),
       autofill: sanitizeAutofill(p.autofill),
+      applicationSync:
+        p.applicationSync && typeof p.applicationSync === "object" ? p.applicationSync : {},
     },
   }
 }
@@ -400,6 +442,14 @@ exports.patchProfile = async (_userId, body) => {
   }
   if (body.autofill !== undefined) {
     data.profile.autofill = sanitizeAutofill(body.autofill)
+  }
+  if (body.applicationSync !== undefined && typeof body.applicationSync === "object") {
+    data.profile.applicationSync = {
+      ...(data.profile.applicationSync && typeof data.profile.applicationSync === "object"
+        ? data.profile.applicationSync
+        : {}),
+      ...body.applicationSync,
+    }
   }
   write(data)
   return exports.getProfile()

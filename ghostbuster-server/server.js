@@ -1,4 +1,4 @@
-const express = require("express")
+﻿const express = require("express")
 const cors = require("cors")
 const multer = require("multer")
 const path = require("path")
@@ -29,6 +29,29 @@ const { buildGhostItSummaryPrompt, parseGhostItSummaryJson } = require("./ghostw
 const { searchJobs } = require("./jobSearch")
 const { withAutofillDefaults, fillQuestions } = require("./autofill")
 const demo = require("./demo")
+const applicationSync = require("./applicationSync")
+const {
+  buildPrompt: buildApplicationSuggestPrompt,
+  parseSuggestionsJson: parseApplicationSuggestionsJson,
+  fallbackSuggestions: fallbackApplicationSuggestions,
+} = require("./applicationSuggestions")
+const {
+  buildResumeUpdateJobPrompt,
+  parseSuggestionsJson: parseResumeUpdateJobSuggestionsJson,
+  fallbackResumeUpdateJobSuggestions,
+} = require("./resumeUpdateJobSuggestions")
+const { searchGithubUsers, searchWebForPerson } = require("./publicPeopleSearch")
+const {
+  buildPrompt: buildConnectionDiscoverPrompt,
+  buildProfileDiscoverPrompt,
+  parseSuggestionsJson: parseConnectionSuggestionsJson,
+  enrichSuggestion,
+  fallbackSuggestions: fallbackConnectionSuggestions,
+  dedupeSuggestions,
+  mapGithubUser,
+  mapWebResult,
+  searchEngineLeads,
+} = require("./connectionDiscovery")
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -164,12 +187,12 @@ async function processScheduledEmails() {
 async function start() {
   if (!USE_MONGO) {
     console.warn(
-      "MONGODB_URI is not set — running in legacy single-user mode (JSON file storage, no Google sign-in)."
+      "MONGODB_URI is not set â€” running in legacy single-user mode (JSON file storage, no Google sign-in)."
     )
     console.warn("Set MONGODB_URI for multi-user MongoDB storage and Google account login.")
   }
   if (!process.env.SESSION_SECRET) {
-    console.warn("SESSION_SECRET is not set — using an insecure default (set SESSION_SECRET in .env)")
+    console.warn("SESSION_SECRET is not set â€” using an insecure default (set SESSION_SECRET in .env)")
   }
 
   if (USE_MONGO) {
@@ -230,7 +253,7 @@ async function start() {
     })
   }
 
-  // —— Auth (public) ——
+  // â€”â€” Auth (public) â€”â€”
   app.get("/api/auth/google", (req, res) => {
     if (!authGoogle.isLoginConfigured()) {
       return res.status(503).json({ error: "Google login is not configured on the server" })
@@ -275,7 +298,7 @@ async function start() {
     }
   })
 
-  // —— Demo access (reviewers who aren't on the Google beta-tester list) ——
+  // â€”â€” Demo access (reviewers who aren't on the Google beta-tester list) â€”â€”
   app.get("/api/auth/demo", (req, res) => {
     res.json({ enabled: USE_MONGO && demo.demoEnabled() })
   })
@@ -398,6 +421,7 @@ async function start() {
         "/api/auth/google",
         "/api/auth/me",
         "/api/contacts",
+        "/api/contacts/discover",
         "/api/reminders",
         "/api/profile",
         "/api/outreach-logs",
@@ -475,7 +499,7 @@ async function start() {
     }
   })
 
-  // —— Contacts ——
+  // â€”â€” Contacts â€”â€”
   app.get("/api/contacts", async (req, res) => {
     try {
       const { contacts } = await store.getContacts(userId(req))
@@ -510,6 +534,230 @@ async function start() {
     }
   })
 
+  app.post("/api/contacts/discover", async (req, res) => {
+    const body = req.body || {}
+    const criteria = {
+      name: String(body.name || "").trim(),
+      role: String(body.role || "").trim(),
+      industry: String(body.industry || "").trim(),
+      company: String(body.company || "").trim(),
+      school: String(body.school || "").trim(),
+      location: String(body.location || "").trim(),
+      keywords: String(body.keywords || "").trim(),
+    }
+    const includeGithub = body.includeGithub !== false
+    const includeWeb = body.includeWeb !== false && Boolean(criteria.name)
+    const ghQuery = criteria.name
+      ? [criteria.name, criteria.company, criteria.role, criteria.keywords].filter(Boolean).join(" ")
+      : [criteria.role, criteria.keywords, criteria.industry].filter(Boolean).join(" ") || "student developer"
+
+    try {
+      const uid = userId(req)
+      const [{ contacts }, { profile }, resumeOut] = await Promise.all([
+        store.getContacts(uid),
+        store.getProfile(uid),
+        store.getFullResume(uid),
+      ])
+      const careerGoals = profile?.careerGoals || profile?.profile?.careerGoals || ""
+      const resumeText = resumeOut?.resume?.text || ""
+      const userName = profile?.name || profile?.profile?.name || ""
+
+      const [githubRaw, webHitsRaw] = await Promise.all([
+        includeGithub
+          ? searchGithubUsers({
+              query: ghQuery,
+              location: criteria.location,
+              limit: criteria.name ? 8 : 6,
+            })
+          : Promise.resolve([]),
+        includeWeb
+          ? searchWebForPerson({
+              name: criteria.name,
+              company: criteria.company,
+              role: criteria.role,
+              school: criteria.school,
+              limit: 8,
+            })
+          : Promise.resolve([]),
+      ])
+      const webHits =
+        includeWeb && !webHitsRaw.length ? searchEngineLeads(criteria) : webHitsRaw
+
+      let aiSuggestions = []
+      let source = "fallback"
+      let warning = null
+
+      if (anthropic) {
+        try {
+          const message = await anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 1800,
+            messages: [
+              {
+                role: "user",
+                content: buildConnectionDiscoverPrompt({
+                  criteria,
+                  careerGoals,
+                  resumeText,
+                  contacts: contacts || [],
+                  userName,
+                }),
+              },
+            ],
+          })
+          const text = extractAssistantText(message.content)
+          const parsed = parseConnectionSuggestionsJson(text)
+          aiSuggestions = parsed
+            .map((s, i) => enrichSuggestion(s, i, criteria))
+            .filter(Boolean)
+          source = "ai"
+        } catch (err) {
+          console.warn("Connection discover AI failed:", err.message)
+          warning = "AI matching was unavailable; showing public search targets and GitHub results."
+        }
+      } else {
+        warning = "Add ANTHROPIC_API_KEY for personalized matches. Showing search targets and GitHub."
+      }
+
+      if (!aiSuggestions.length) {
+        aiSuggestions = fallbackConnectionSuggestions({
+          criteria,
+          careerGoals,
+          contacts: contacts || [],
+        })
+      }
+
+      const githubSuggestions = githubRaw.map((u, i) => mapGithubUser(u, i))
+      const webSuggestions = webHits.map((h, i) => mapWebResult(h, i, criteria))
+      const suggestions = dedupeSuggestions(
+        criteria.name
+          ? [...webSuggestions, ...githubSuggestions, ...aiSuggestions]
+          : [...aiSuggestions, ...githubSuggestions, ...webSuggestions]
+      )
+
+      let mergedWarning = warning
+      if (includeWeb && !webHitsRaw.length && webSuggestions.length) {
+        const extra =
+          "Live web scrape returned no pages (network or privacy block). Showing LinkedIn and Google search links instead."
+        mergedWarning = mergedWarning ? `${mergedWarning} ${extra}` : extra
+      }
+
+      res.json({
+        suggestions,
+        source,
+        warning: mergedWarning,
+        criteria,
+        public: { github: githubSuggestions.length, web: webSuggestions.length },
+      })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: e.message || "Failed to discover connections" })
+    }
+  })
+
+  /** Suggested people from career goals, rÃ©sumÃ©, contacts, applications â€” no manual search fields. */
+  app.post("/api/contacts/discover/profile", async (req, res) => {
+    try {
+      const uid = userId(req)
+      const [{ contacts }, { profile }, resumeOut, { updates }, { applications }] = await Promise.all([
+        store.getContacts(uid),
+        store.getProfile(uid),
+        store.getFullResume(uid),
+        store.getResumeUpdates(uid),
+        store.getApplications(uid),
+      ])
+      const careerGoals = profile?.careerGoals || ""
+      const resumeText = resumeOut?.resume?.text || ""
+      const userName = profile?.name || ""
+      const autofill = profile?.autofill || {}
+      const school =
+        String(autofill.school || "").trim() ||
+        String(req.body?.school || "").trim() ||
+        "Carnegie Mellon University"
+      const recentUpdate = (updates || []).sort((a, b) => (b.id || 0) - (a.id || 0))[0] || null
+
+      let aiSuggestions = []
+      let source = "fallback"
+      let warning = null
+
+      const ghQuery = [careerGoals, resumeText.split(/\s+/).slice(0, 12).join(" ")]
+        .filter(Boolean)
+        .join(" ")
+        .slice(0, 120) || "student internship"
+
+      const githubRaw = await searchGithubUsers({ query: ghQuery, limit: 4 })
+
+      if (anthropic) {
+        try {
+          const message = await anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 1800,
+            messages: [
+              {
+                role: "user",
+                content: buildProfileDiscoverPrompt({
+                  careerGoals,
+                  resumeText,
+                  contacts: contacts || [],
+                  applications: applications || [],
+                  recentUpdate,
+                  userName,
+                  school,
+                }),
+              },
+            ],
+          })
+          const text = extractAssistantText(message.content)
+          const parsed = parseConnectionSuggestionsJson(text)
+          aiSuggestions = parsed
+            .map((s, i) => {
+              const row = enrichSuggestion(s, i, { school })
+              return row ? { ...row, source: "profile", matchType: "profile" } : null
+            })
+            .filter(Boolean)
+          source = "ai"
+        } catch (err) {
+          console.warn("Profile discover AI failed:", err.message)
+          warning = "AI profile matching was unavailable; showing starter targets and GitHub."
+        }
+      } else {
+        warning = "Add career goals in Settings and ANTHROPIC_API_KEY on the server for personalized matches."
+      }
+
+      if (!aiSuggestions.length) {
+        aiSuggestions = fallbackConnectionSuggestions({
+          criteria: { school, role: careerGoals.split("\n")[0]?.slice(0, 60) || "" },
+          careerGoals,
+          contacts: contacts || [],
+        }).map((s) => ({ ...s, source: "profile", matchType: "profile" }))
+      }
+
+      const githubSuggestions = githubRaw.map((u, i) => ({
+        ...mapGithubUser(u, i),
+        matchType: "github",
+      }))
+
+      const suggestions = dedupeSuggestions([...aiSuggestions, ...githubSuggestions])
+
+      res.json({
+        suggestions,
+        source,
+        warning,
+        profileSummary: {
+          careerGoals: careerGoals.slice(0, 280),
+          hasResume: Boolean(resumeText?.trim()),
+          hasGoals: Boolean(careerGoals?.trim()),
+          school,
+          recentUpdateTitle: recentUpdate?.title || "",
+          contactCount: (contacts || []).length,
+        },
+      })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: e.message || "Failed to load profile suggestions" })
+    }
+  })
+
   app.put("/api/contacts/:id", async (req, res) => {
     const id = parseId(req.params.id)
     if (id == null) return res.status(400).json({ error: "Invalid id" })
@@ -541,7 +789,7 @@ async function start() {
     }
   })
 
-  // —— Reminders ——
+  // â€”â€” Reminders â€”â€”
   app.get("/api/reminders", async (req, res) => {
     try {
       const { reminders } = await store.getReminders(userId(req))
@@ -655,7 +903,7 @@ async function start() {
     }
   })
 
-  // —— Applications ——
+  // â€”â€” Applications â€”â€”
   app.get("/api/applications", async (req, res) => {
     try {
       const { applications } = await store.getApplications(userId(req))
@@ -768,6 +1016,119 @@ async function start() {
     }
   })
 
+  app.post("/api/applications/suggest", async (req, res) => {
+    try {
+      const uid = userId(req)
+      const [{ applications }, { contacts }, { profile }, resumeOut] = await Promise.all([
+        store.getApplications(uid),
+        store.getContacts(uid),
+        store.getProfile(uid),
+        store.getFullResume(uid),
+      ])
+      const resumeText = resumeOut?.resume?.text || ""
+      const ctx = {
+        careerGoals: profile?.careerGoals || "",
+        resumeText,
+        contacts: contacts || [],
+        existing: applications || [],
+        userName: profile?.name || "",
+      }
+
+      if (!anthropic) {
+        return res.json({
+          suggestions: fallbackApplicationSuggestions(ctx),
+          source: "fallback",
+        })
+      }
+
+      const message = await anthropic.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 1600,
+        messages: [{ role: "user", content: buildApplicationSuggestPrompt(ctx) }],
+      })
+      const text = extractAssistantText(message.content)
+      const suggestions = parseApplicationSuggestionsJson(text)
+      res.json({ suggestions, source: "ai" })
+    } catch (err) {
+      console.error(err)
+      try {
+        const uid = userId(req)
+        const [{ applications }, { contacts }, { profile }] = await Promise.all([
+          store.getApplications(uid),
+          store.getContacts(uid),
+          store.getProfile(uid),
+        ])
+        res.json({
+          suggestions: fallbackApplicationSuggestions({
+            careerGoals: profile?.careerGoals || "",
+            contacts: contacts || [],
+            existing: applications || [],
+          }),
+          source: "fallback",
+          warning: "AI suggestions were unavailable, so these are based on your contacts and goals.",
+        })
+      } catch (e) {
+        const msg = formatAnthropicError(err)
+        res.status(500).json({ error: msg || "Failed to suggest applications" })
+      }
+    }
+  })
+
+  app.patch("/api/applications/:id", async (req, res) => {
+    const id = parseId(req.params.id)
+    if (id == null) return res.status(400).json({ error: "Invalid id" })
+    const body = req.body || {}
+    const patch = { ...body }
+    if (body.url !== undefined) patch.url = normalizeHttpUrl(body.url)
+    try {
+      const out = await store.patchApplication(userId(req), id, patch)
+      if (!out) return res.status(404).json({ error: "Application not found" })
+      res.json(out)
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: "Failed to update application" })
+    }
+  })
+
+  app.post("/api/applications/sync/email", async (req, res) => {
+    if (!googleCal.isConfigured()) {
+      return res.status(503).json({ error: "Google is not configured on the server." })
+    }
+    const refreshToken = await store.getGoogleRefreshToken(userId(req))
+    if (!refreshToken) {
+      return res.status(400).json({
+        error: "Connect Google in Settings to sync application updates from Gmail.",
+        needsGoogle: true,
+      })
+    }
+    const dryRun = Boolean(req.body?.dryRun)
+    try {
+      const result = await applicationSync.syncApplicationsFromEmail(store, userId(req), refreshToken, { dryRun })
+      res.json(result)
+    } catch (e) {
+      console.error(e)
+      const msg = String(e.message || "")
+      if (/insufficient|permission|403|scope/i.test(msg)) {
+        return res.status(403).json({
+          error: "Gmail read access is required. Disconnect Google in Settings and connect again to grant inbox read.",
+          needsReconnect: true,
+        })
+      }
+      res.status(500).json({ error: msg || "Email sync failed" })
+    }
+  })
+
+  app.post("/api/applications/sync/portal", async (req, res) => {
+    try {
+      const out = await applicationSync.applyPortalSync(store, userId(req), req.body || {})
+      if (!out) return res.status(404).json({ error: "Application not found" })
+      res.json({ application: out })
+    } catch (e) {
+      console.error(e)
+      res.status(400).json({ error: e.message || "Portal sync failed" })
+    }
+  })
+
   app.patch("/api/applications/:id", async (req, res) => {
     const id = parseId(req.params.id)
     if (id == null) return res.status(400).json({ error: "Invalid id" })
@@ -797,7 +1158,7 @@ async function start() {
     }
   })
 
-  // —— Google Calendar / Gmail connect ——
+  // â€”â€” Google Calendar / Gmail connect â€”â€”
   app.get("/api/google/status", async (req, res) => {
     try {
       const status = await store.getGoogleCalendarStatus(userId(req))
@@ -871,7 +1232,7 @@ async function start() {
     }
   })
 
-  // —— Gmail follow-up reminders ——
+  // â€”â€” Gmail follow-up reminders â€”â€”
   // Scans recent mail for recruiter threads waiting on a reply or a follow-up and adds reminders.
   // auto: true is the background scan on app load; it runs at most every GMAIL_AUTO_SCAN_HOURS.
   const GMAIL_AUTO_SCAN_HOURS = 12
@@ -942,7 +1303,7 @@ async function start() {
     res.status(204).end()
   })
 
-  // —— Gmail ——
+  // â€”â€” Gmail â€”â€”
   app.post("/api/gmail/draft", async (req, res) => {
     if (!googleCal.isConfigured()) {
       return res.status(503).json({ error: "Google is not configured on the server" })
@@ -1021,7 +1382,7 @@ async function start() {
     }
   })
 
-  // —— Profile ——
+  // â€”â€” Profile â€”â€”
   app.get("/api/profile", async (req, res) => {
     try {
       const out = await store.getProfile(userId(req))
@@ -1042,7 +1403,7 @@ async function start() {
     }
   })
 
-  // —— Résumé updates ——
+  // â€”â€” RÃ©sumÃ© updates â€”â€”
   app.get("/api/resume-updates", async (req, res) => {
     try {
       const { updates } = await store.getResumeUpdates(userId(req))
@@ -1099,7 +1460,110 @@ async function start() {
     }
   })
 
-  // —— Full résumé ——
+  // â€”â€” Full rÃ©sumÃ© â€”â€”
+  app.post("/api/resume-updates/jobs/suggest", async (req, res) => {
+    try {
+      const uid = userId(req)
+      const body = req.body || {}
+      const updateId = parseId(body.updateId)
+      let update = null
+
+      if (updateId != null) {
+        const { updates } = await store.getResumeUpdates(uid)
+        update = (updates || []).find((u) => u.id === updateId)
+        if (!update) return res.status(404).json({ error: "Update not found" })
+      } else {
+        const title = typeof body.title === "string" ? body.title.trim() : ""
+        const details = typeof body.details === "string" ? body.details.trim() : ""
+        if (!title || !details) {
+          return res.status(400).json({ error: "Provide updateId or both title and details." })
+        }
+        update = {
+          title,
+          details,
+          effectiveDate: typeof body.effectiveDate === "string" ? body.effectiveDate.trim() : "",
+        }
+      }
+
+      const [{ applications }, { contacts }, { profile }, resumeOut] = await Promise.all([
+        store.getApplications(uid),
+        store.getContacts(uid),
+        store.getProfile(uid),
+        store.getFullResume(uid),
+      ])
+
+      const ctx = {
+        update,
+        careerGoals: profile?.careerGoals || "",
+        resumeText: resumeOut?.resume?.text || "",
+        contacts: contacts || [],
+        existing: applications || [],
+        userName: profile?.name || "",
+      }
+
+      if (!anthropic) {
+        return res.json({
+          suggestions: fallbackResumeUpdateJobSuggestions(ctx),
+          source: "fallback",
+        })
+      }
+
+      const message = await anthropic.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 1600,
+        messages: [{ role: "user", content: buildResumeUpdateJobPrompt(ctx) }],
+      })
+      const text = message.content?.find((b) => b.type === "text")?.text || ""
+      const suggestions = parseResumeUpdateJobSuggestionsJson(text)
+      res.json({ suggestions, source: "ai" })
+    } catch (e) {
+      console.error(e)
+      const msg = e?.message || ""
+      if (
+        msg.includes("Invalid suggestions") ||
+        msg.includes("Empty response") ||
+        msg.includes("did not return JSON")
+      ) {
+        try {
+          const uid = userId(req)
+          const body = req.body || {}
+          const updateId = parseId(body.updateId)
+          let update = null
+          if (updateId != null) {
+            const { updates } = await store.getResumeUpdates(uid)
+            update = (updates || []).find((u) => u.id === updateId)
+          } else {
+            update = {
+              title: String(body.title || "").trim(),
+              details: String(body.details || "").trim(),
+              effectiveDate: String(body.effectiveDate || "").trim(),
+            }
+          }
+          const [{ applications }, { contacts }, { profile }, resumeOut] = await Promise.all([
+            store.getApplications(uid),
+            store.getContacts(uid),
+            store.getProfile(uid),
+            store.getFullResume(uid),
+          ])
+          return res.json({
+            suggestions: fallbackResumeUpdateJobSuggestions({
+              update,
+              careerGoals: profile?.careerGoals || "",
+              resumeText: resumeOut?.resume?.text || "",
+              contacts: contacts || [],
+              existing: applications || [],
+            }),
+            source: "fallback",
+            warning: "AI suggestions were unavailable — showing search-based matches from your update.",
+          })
+        } catch (inner) {
+          console.error(inner)
+        }
+      }
+      res.status(500).json({ error: msg || "Failed to suggest jobs for this update" })
+    }
+  })
+
   app.get("/api/resume-buckets/suggestions", (_req, res) => {
     res.json({ names: SUGGESTED_BUCKET_NAMES })
   })
@@ -1110,7 +1574,7 @@ async function start() {
       res.json(out)
     } catch (e) {
       console.error(e)
-      res.status(500).json({ error: "Failed to load résumé buckets" })
+      res.status(500).json({ error: "Failed to load rÃ©sumÃ© buckets" })
     }
   })
 
@@ -1189,7 +1653,7 @@ async function start() {
     }
   })
 
-  // Original résumé files for the extension to attach (data URLs; at most one per bucket).
+  // Original rÃ©sumÃ© files for the extension to attach (data URLs; at most one per bucket).
   app.get("/api/resume-files", async (req, res) => {
     try {
       const files = await store.getResumeFiles(userId(req))
@@ -1204,7 +1668,7 @@ async function start() {
       })
     } catch (e) {
       console.error(e)
-      res.status(500).json({ error: "Failed to load résumé files" })
+      res.status(500).json({ error: "Failed to load rÃ©sumÃ© files" })
     }
   })
 
@@ -1213,13 +1677,13 @@ async function start() {
     if (id == null) return res.status(400).json({ error: "Invalid id" })
     try {
       const out = await store.deleteBucketResume(userId(req), id)
-      if (!out) return res.status(404).json({ error: "No résumé in this bucket" })
-      // The stored file no longer matches this bucket's résumé.
+      if (!out) return res.status(404).json({ error: "No rÃ©sumÃ© in this bucket" })
+      // The stored file no longer matches this bucket's rÃ©sumÃ©.
       await store.deleteResumeFile(userId(req), id)
       res.json(out)
     } catch (e) {
       console.error(e)
-      res.status(500).json({ error: "Failed to remove résumé" })
+      res.status(500).json({ error: "Failed to remove rÃ©sumÃ©" })
     }
   })
 
@@ -1230,12 +1694,12 @@ async function start() {
     try {
       const out = await store.restoreResumeVersion(userId(req), bucketId, versionId)
       if (!out) return res.status(404).json({ error: "Archived version not found" })
-      // The stored file no longer matches this bucket's résumé.
+      // The stored file no longer matches this bucket's rÃ©sumÃ©.
       await store.deleteResumeFile(userId(req), bucketId)
       res.json(out)
     } catch (e) {
       console.error(e)
-      res.status(500).json({ error: "Failed to restore résumé version" })
+      res.status(500).json({ error: "Failed to restore rÃ©sumÃ© version" })
     }
   })
 
@@ -1249,7 +1713,7 @@ async function start() {
       res.json(out)
     } catch (e) {
       console.error(e)
-      res.status(500).json({ error: "Failed to delete archived résumé" })
+      res.status(500).json({ error: "Failed to delete archived rÃ©sumÃ©" })
     }
   })
 
@@ -1259,24 +1723,24 @@ async function start() {
       res.json(out)
     } catch (e) {
       console.error(e)
-      res.status(500).json({ error: "Failed to load résumé" })
+      res.status(500).json({ error: "Failed to load rÃ©sumÃ©" })
     }
   })
 
   app.post("/api/resume", async (req, res) => {
     const { text, fileName } = req.body || {}
     if (typeof text !== "string" || !text.trim()) {
-      return res.status(400).json({ error: "Résumé text is required" })
+      return res.status(400).json({ error: "RÃ©sumÃ© text is required" })
     }
     try {
       const out = await store.saveFullResume(userId(req), { text, fileName })
       res.status(201).json(out)
     } catch (e) {
       if (e.message === "empty") {
-        return res.status(400).json({ error: "Résumé text is required" })
+        return res.status(400).json({ error: "RÃ©sumÃ© text is required" })
       }
       console.error(e)
-      res.status(500).json({ error: "Failed to save résumé" })
+      res.status(500).json({ error: "Failed to save rÃ©sumÃ©" })
     }
   })
 
@@ -1318,11 +1782,11 @@ async function start() {
         bucketId: Number.isFinite(bucketId) ? bucketId : undefined,
       })
       if (ok && Number.isFinite(bucketId)) await store.deleteResumeFile(userId(req), bucketId)
-      if (!ok) return res.status(404).json({ error: "No résumé on file" })
+      if (!ok) return res.status(404).json({ error: "No rÃ©sumÃ© on file" })
       res.status(204).end()
     } catch (e) {
       console.error(e)
-      res.status(500).json({ error: "Failed to delete résumé" })
+      res.status(500).json({ error: "Failed to delete rÃ©sumÃ©" })
     }
   })
 
@@ -1351,7 +1815,7 @@ async function start() {
         })
       }
       if (!resumeText) {
-        return res.status(400).json({ error: "Upload your full résumé before requesting suggestions." })
+        return res.status(400).json({ error: "Upload your full rÃ©sumÃ© before requesting suggestions." })
       }
 
       const userName = typeof profile?.name === "string" ? profile.name.trim() : ""
@@ -1409,7 +1873,7 @@ async function start() {
         resumeText = typeof bucket?.text === "string" ? bucket.text.trim() : ""
       }
       if (!resumeText) {
-        return res.status(400).json({ error: "Upload a résumé first, then export a .txt for Workday or other ATS." })
+        return res.status(400).json({ error: "Upload a rÃ©sumÃ© first, then export a .txt for Workday or other ATS." })
       }
 
       if (!anthropic) {
@@ -1433,11 +1897,11 @@ async function start() {
       const lowCredits =
         /credit balance|billing|Plans & Billing/i.test(msg) || /too low to access/i.test(msg)
       const status = lowCredits ? 402 : err?.status >= 400 ? err.status : 500
-      res.status(status).json({ error: msg || "Failed to format résumé for ATS" })
+      res.status(status).json({ error: msg || "Failed to format rÃ©sumÃ© for ATS" })
     }
   })
 
-  // —— Outreach logs ——
+  // â€”â€” Outreach logs â€”â€”
   app.get("/api/outreach-logs", async (req, res) => {
     try {
       const q = req.query.contactId
@@ -1480,7 +1944,7 @@ async function start() {
     }
   })
 
-  // —— Ghostwriter (live meeting notes) ——
+  // â€”â€” Ghostwriter (live meeting notes) â€”â€”
   function toGhostwriterPayload(out) {
     if (!out) return null
     if (out.ghostIts) return { ghostwriters: out.ghostIts }
@@ -1602,7 +2066,7 @@ async function start() {
     }
   })
 
-  // —— Admin: AI metrics (latency, cost, cache hits, errors) ——
+  // â€”â€” Admin: AI metrics (latency, cost, cache hits, errors) â€”â€”
   app.get("/api/admin/ai-metrics", async (req, res) => {
     try {
       if (!USE_MONGO) return res.status(404).json({ error: "AI metrics need MongoDB" })
@@ -1625,7 +2089,7 @@ async function start() {
     }
   })
 
-  // —— People Finder (suggests people to contact from the public web; LinkedIn excluded) ——
+  // â€”â€” People Finder (suggests people to contact from the public web; LinkedIn excluded) â€”â€”
   app.post("/api/people/find", async (req, res) => {
     if (!anthropic) {
       return res.status(503).json({ error: "People Finder requires ANTHROPIC_API_KEY on the server" })
@@ -1644,7 +2108,7 @@ async function start() {
     }
   })
 
-  // —— Ask GhostBuster (answers from the user's own records) ——
+  // â€”â€” Ask GhostBuster (answers from the user's own records) â€”â€”
   app.post("/api/ask", async (req, res) => {
     if (!anthropic) {
       return res.status(503).json({ error: "Ask GhostBuster requires ANTHROPIC_API_KEY on the server" })
@@ -1673,7 +2137,7 @@ async function start() {
     }
   })
 
-  // —— AI compose ——
+  // â€”â€” AI compose â€”â€”
   app.post("/compose", async (req, res) => {
     if (!anthropic) {
       return res.status(503).json({ error: "AI compose is not configured (missing ANTHROPIC_API_KEY)" })
@@ -1699,7 +2163,7 @@ async function start() {
     const purposeRaw = typeof purpose === "string" ? purpose.trim() : ""
     const hasPurpose = purposeRaw.length > 0
     const purposeBlock = hasPurpose
-      ? `PRIMARY GOAL — The sender filled this in on purpose; the email must pursue it (stay polite, but do not ignore it):
+      ? `PRIMARY GOAL â€” The sender filled this in on purpose; the email must pursue it (stay polite, but do not ignore it):
 
 ${purposeRaw}
 
@@ -1707,7 +2171,7 @@ Requirements when PRIMARY GOAL is present:
 - The closing paragraph must include a concrete ask, question, or proposed next step that clearly relates to the goal above (not a generic "would love to connect" unless that is literally the goal).
 - Reference the goal in the body at least once in plain language (paraphrase is fine) so the reader knows why you are writing.
 - Subject line should hint at the same intent when it fits the tone.`
-      : "PRIMARY GOAL: Not specified — infer one light, appropriate next step from the Situation only."
+      : "PRIMARY GOAL: Not specified â€” infer one light, appropriate next step from the Situation only."
 
     const prevRaw = typeof previousCommunication === "string" ? previousCommunication.trim() : ""
     const hasPrev = prevRaw.length > 0
@@ -1721,16 +2185,16 @@ Requirements when PRIMARY GOAL is present:
             : "Keep it under 150 words."
 
     const previousBlock = hasPrev
-      ? `Previous communication (paste or detailed notes — treat as ground truth only; never invent people, dates, promises, or quotes that are not clearly supported here):
+      ? `Previous communication (paste or detailed notes â€” treat as ground truth only; never invent people, dates, promises, or quotes that are not clearly supported here):
 
 ${prevRaw}
 
 How to use this thread in the draft:
 - Pull in specific, concrete details: topics they raised, questions left open, advice they gave, dates or deadlines they mentioned, how they signed off, anything they offered or you committed to.
-- Use light continuity cues where natural ("Thanks again for…", "Following up on…", "As you mentioned about…") — do not rehash the whole history.
+- Use light continuity cues where natural ("Thanks again forâ€¦", "Following up onâ€¦", "As you mentioned aboutâ€¦") â€” do not rehash the whole history.
 - Where the prior thread suggests formality vs casualness, blend it sensibly with the user's chosen Tone (below); prefer the chosen Tone if they conflict slightly.
-- Prioritize the 1–3 details most relevant to the current Situation.`
-      : `Previous communication: None provided — write the email without assuming a prior email thread (still use Contact info and Extra context).`
+- Prioritize the 1â€“3 details most relevant to the current Situation.`
+      : `Previous communication: None provided â€” write the email without assuming a prior email thread (still use Contact info and Extra context).`
 
     const prompt = `You are a networking assistant helping someone write a professional outreach message.
 
@@ -1747,11 +2211,11 @@ Write a concise, human networking email for this situation.
 - Apply "${toneLine}" consistently in both the subject line and body: formality, warmth, energy, and sentence length should match that tone.
 ${
   hasPurpose
-    ? `- The PRIMARY GOAL section is binding: after drafting, verify the last paragraph would make sense to someone who only read that goal — they should see you asked for that outcome.\n`
+    ? `- The PRIMARY GOAL section is binding: after drafting, verify the last paragraph would make sense to someone who only read that goal â€” they should see you asked for that outcome.\n`
     : ""
 }- ${lengthHint}
 - Sound genuine, not salesy or template-like
-- Do not use em dashes (—); use commas, periods, or parentheses instead
+- Do not use em dashes (â€”); use commas, periods, or parentheses instead
 - Include a clear subject line
 - Format it as:
   Subject: [subject line]
@@ -1812,7 +2276,7 @@ Do not add any explanation, just the email.`
     app.get("/", (req, res) => {
       res.json({
         status: "GhostBuster API running (no UI build found)",
-        hint: "Run: cd GhostBuster && npm run build — or visit /api/health",
+        hint: "Run: cd GhostBuster && npm run build â€” or visit /api/health",
         storage: USE_MONGO ? "mongodb" : "json-file",
       })
     })
@@ -1820,7 +2284,7 @@ Do not add any explanation, just the email.`
 
   const HOST = process.env.HOST || "0.0.0.0"
   const server = app.listen(PORT, HOST, () => {
-    console.log("GhostBuster API is running — keep this terminal open (Ctrl+C to stop).")
+    console.log("GhostBuster API is running â€” keep this terminal open (Ctrl+C to stop).")
     console.log(`  Local:   http://127.0.0.1:${PORT}/`)
     console.log(`  Network: http://localhost:${PORT}/`)
     if (USE_MONGO) {
@@ -1828,9 +2292,9 @@ Do not add any explanation, just the email.`
     } else {
       console.log("  Data:   JSON file (ghostbuster-server/data/app-data.json)")
     }
-    if (!apiKey) console.warn("ANTHROPIC_API_KEY is not set — /compose will return 503")
+    if (!apiKey) console.warn("ANTHROPIC_API_KEY is not set â€” /compose will return 503")
     if (USE_MONGO && !authGoogle.isLoginConfigured()) {
-      console.warn("Google login is not configured — set GOOGLE_CLIENT_ID/SECRET and GOOGLE_LOGIN_REDIRECT_URI")
+      console.warn("Google login is not configured â€” set GOOGLE_CLIENT_ID/SECRET and GOOGLE_LOGIN_REDIRECT_URI")
     }
     if (USE_MONGO) {
       const cleanupDemos = async () => {

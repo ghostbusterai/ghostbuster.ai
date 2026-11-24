@@ -3,11 +3,16 @@ import { api } from "../api"
 import { getReminderDueStatus, isReminderOverdue, summarizePendingReminders, getReminderUrgencyStyle, getReminderUrgency } from "../reminderUtils"
 import { font } from "../theme"
 import { CardTitle, ContentCard, PageShell, responsiveGrid, PAGE_SPLIT_GRID, type } from "../layout"
+import { primaryBtn, secondaryBtn } from "../uiStyles"
+import { formatContactName, formatLastTouch, formatActivityTime } from "../formatters"
 import { useMotivationalGreeting } from "../greeting"
 import ViewMoreButton from "./ViewMoreButton"
+import NetworkingSuccessReel from "./NetworkingSuccessReel"
 import { previewHiddenCount, previewSlice } from "../listPreview"
+import { Icon } from "../icons"
 
 import { readLocalProfile, saveLocalProfile, GETTING_STARTED_SESSION_KEY, GETTING_STARTED_RESTORED_EVENT } from "../profile"
+import { buildSortedReminderFeed } from "../autoReminders"
 
 const LS_LOGS = "gb_outreach_logs"
 const LS_UPDATES = "gb_resume_updates"
@@ -16,7 +21,7 @@ const GETTING_STARTED_STEPS = [
   {
     step: 1,
     title: "Add someone you've met",
-    detail: "Career fair, coffee chat, LinkedIn: save their name and how you know them.",
+    detail: "Career fair, coffee chat, LinkedIn — save their name and how you know them.",
     page: "contacts",
     cta: "Go to Contacts",
   },
@@ -35,14 +40,6 @@ const GETTING_STARTED_STEPS = [
     cta: "Open Tracker",
   },
 ]
-
-function tintedCard(rgb, borderAlpha = 0.2) {
-  return {
-    background: `color-mix(in srgb, rgb(${rgb}) 14%, var(--gb-bg-elevated))`,
-    border: "1px solid var(--gb-border-subtle)",
-    boxShadow: `var(--gb-inset-highlight), 0 12px 40px -12px rgba(${rgb},0.22)`,
-  }
-}
 
 function parseDay(iso) {
   const t = new Date(iso).getTime()
@@ -80,22 +77,11 @@ function contactReminderBadge(contact, reminders) {
   return "pending"
 }
 
-function formatActivityTime(ts) {
-  if (!ts || Number.isNaN(ts)) return "—"
-  const d = new Date(ts)
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const startOfYesterday = new Date(startOfToday)
-  startOfYesterday.setDate(startOfYesterday.getDate() - 1)
-  const ms = d.getTime()
-  if (ms >= startOfToday.getTime()) {
-    const hours = Math.floor((now - d) / (1000 * 60 * 60))
-    if (hours < 1) return "Now"
-    if (hours < 24) return `${hours}h`
-    return "Today"
-  }
-  if (ms >= startOfYesterday.getTime()) return "Yesterday"
-  return d.toLocaleDateString(undefined, { weekday: "short" })
+function warmthTone(label) {
+  if (label === "Warm") return "warm"
+  if (label === "Check in") return "check"
+  if (label === "Overdue") return "overdue"
+  return "muted"
 }
 
 function isWithinDays(ms, days) {
@@ -164,12 +150,71 @@ function SnapshotIcon({ name, color, size = 20 }) {
   }
 }
 
+function QuickActionIcon({ name, color, size = 20 }) {
+  const svgProps = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    "aria-hidden": true,
+  }
+  const stroke = { stroke: color, ...SNAPSHOT_ICON_STROKE }
+
+  switch (name) {
+    case "add":
+      return (
+        <svg {...svgProps}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" {...stroke} />
+          <circle cx="9" cy="7" r="4" {...stroke} />
+          <path d="M19 8v6" {...stroke} />
+          <path d="M22 11h-6" {...stroke} />
+        </svg>
+      )
+    case "reminders":
+      return <SnapshotIcon name="reminders" color={color} size={size} />
+    case "compose":
+      return <SnapshotIcon name="outreach" color={color} size={size} />
+    case "resume":
+      return (
+        <svg {...svgProps}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" {...stroke} />
+          <path d="M14 2v6h6" {...stroke} />
+          <path d="M10 13H8" {...stroke} />
+          <path d="M16 13h-2" {...stroke} />
+          <path d="M10 17H8" {...stroke} />
+          <path d="M16 17h-4" {...stroke} />
+        </svg>
+      )
+    case "applications":
+      return (
+        <svg {...svgProps}>
+          <rect x="8" y="3" width="8" height="4" rx="1" {...stroke} />
+          <path d="M8 7v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7" {...stroke} />
+          <path d="M10 11h4" {...stroke} />
+          <path d="M10 15h4" {...stroke} />
+        </svg>
+      )
+    case "tracker":
+      return (
+        <svg {...svgProps}>
+          <path d="M4 20V10" {...stroke} />
+          <path d="M10 20V4" {...stroke} />
+          <path d="M16 20v-8" {...stroke} />
+          <path d="M22 20v-12" {...stroke} />
+        </svg>
+      )
+    default:
+      return null
+  }
+}
+
 const QUICK_ACTIONS = [
-  { page: "contacts", title: "Add contact", sub: "Save someone new", mark: "+", markColor: "var(--gb-accent)" },
-  { page: "reminders", title: "Set reminder", sub: "Schedule follow-up", mark: "⏰", markColor: "var(--gb-danger)" },
-  { page: "compose", title: "Compose message", sub: "From Contacts", mark: "✉", markColor: "#5be4d8" },
-  { page: "updates", title: "Update resume", sub: "Refresh your docs", mark: "📄", markColor: "#b482ff" },
-  { page: "applications", title: "Track applications", sub: "Links to apply", mark: "📋", markColor: "#6eb5ff" },
+  { page: "contacts", title: "Add contact", sub: "Save someone new", icon: "add" },
+  { page: "compose", title: "Compose", sub: "Draft outreach", icon: "compose" },
+  { page: "reminders", title: "Set reminder", sub: "Schedule follow-up", icon: "reminders" },
+  { page: "tracker", title: "Tracker", sub: "Warmth & touches", icon: "tracker" },
+  { page: "applications", title: "Applications", sub: "Pipeline & portals", icon: "applications" },
+  { page: "updates", title: "Resume", sub: "Update your docs", icon: "resume" },
 ]
 
 const WEEKLY_OUTREACH_GOAL = 15
@@ -180,6 +225,7 @@ export default function Dashboard({ setPage }) {
   const [reminders, setReminders] = useState([])
   const [outreachLogs, setOutreachLogs] = useState([])
   const [resumeUpdates, setResumeUpdates] = useState([])
+  const [lastResumeUpdate, setLastResumeUpdate] = useState(() => readLocalProfile().lastResumeUpdate || "")
   const [hideGettingStarted, setHideGettingStarted] = useState(
     () => readLocalProfile().hideGettingStarted === true
   )
@@ -197,6 +243,7 @@ export default function Dashboard({ setPage }) {
         if (!cancelled && profile) {
           saveLocalProfile(profile)
           if (profile.hideGettingStarted) setHideGettingStarted(true)
+          if (profile.lastResumeUpdate) setLastResumeUpdate(profile.lastResumeUpdate)
         }
       } catch {
         /* use local profile from initial state */
@@ -248,9 +295,20 @@ export default function Dashboard({ setPage }) {
     }
   }, [])
 
-  const dueReminders = reminders.filter((r) => !r.done)
-  const overdueReminders = reminders.filter((r) => isReminderOverdue(r))
-  const reminderSummary = summarizePendingReminders(reminders)
+  const reminderFeed = useMemo(
+    () =>
+      buildSortedReminderFeed({
+        savedReminders: reminders,
+        contacts,
+        outreachLogs,
+        lastResumeUpdate,
+      }),
+    [reminders, contacts, outreachLogs, lastResumeUpdate]
+  )
+
+  const dueReminders = reminderFeed.filter((r) => !r.done)
+  const overdueReminders = reminderFeed.filter((r) => isReminderOverdue(r))
+  const reminderSummary = summarizePendingReminders(reminderFeed)
 
   const isNewUser = contacts.length === 0
   const showGettingStarted = !hideGettingStarted && !sessionDismissedTutorial
@@ -288,39 +346,36 @@ export default function Dashboard({ setPage }) {
 
   const stats = [
     {
-      label: "Total contacts",
+      label: "Contacts in your network",
       value: contacts.length,
-      trend: contactsThisWeek > 0 ? `${contactsThisWeek} this week` : null,
+      trend: contactsThisWeek > 0 ? `+${contactsThisWeek} added this week` : null,
       tag: contacts.length > 0 ? "Active" : null,
       icon: "contacts",
       color: "var(--gb-accent)",
-      rgb: "184, 255, 87",
+      page: "contacts",
     },
     {
-      label: "Pending reminders",
+      label: "Items in your reminder feed",
       value: dueReminders.length,
       trend: overdueReminders.length > 0 ? `${overdueReminders.length} overdue` : reminderSummary.today > 0 ? `${reminderSummary.today} due today` : null,
       tag: reminderSummary.attention > 0 ? "Urgent" : null,
       icon: "reminders",
       color: overdueReminders.length > 0 ? "var(--gb-danger)" : "var(--gb-warning)",
-      rgb: overdueReminders.length > 0 ? "255, 107, 107" : "255, 201, 107",
       page: "notifications",
     },
     {
-      label: "Companies tracked",
+      label: "Companies you're tracking",
       value: companiesSet.length,
-      trend: companiesThisWeek > 0 ? `${companiesThisWeek} new` : null,
+      trend: companiesThisWeek > 0 ? `${companiesThisWeek} new this week` : null,
       icon: "companies",
-      color: "#5be4d8",
-      rgb: "91, 228, 216",
+      color: "var(--gb-text-secondary)",
     },
     {
-      label: "Weekly outreach",
-      value: weeklyOutreachCount,
-      trend: `goal: ${WEEKLY_OUTREACH_GOAL}`,
+      label: "Outreach touches logged this week",
+      value: weeklyLogTotal,
+      trend: `Weekly goal: ${WEEKLY_OUTREACH_GOAL}`,
       icon: "outreach",
-      color: "#b482ff",
-      rgb: "180, 130, 255",
+      color: "var(--gb-accent-muted)",
       page: "tracker",
     },
   ]
@@ -398,406 +453,133 @@ export default function Dashboard({ setPage }) {
   const hiddenRecentActivityCount = previewHiddenCount(activityFeed, showAllRecentActivity)
 
   return (
-    <PageShell>
-      <section
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border)",
-          borderRadius: 20,
-          padding: "24px 22px 22px",
-          marginBottom: 24,
-          boxShadow: "var(--gb-shadow-panel)",
-        }}
-      >
-        <div style={{ ...type.eyebrow, marginBottom: 10 }}>Bridging ambition with experience</div>
-        <h1 style={{ ...type.heroTitle, margin: "0 0 10px" }}>{greeting}</h1>
-        <p style={{ ...type.heroSubtitle, margin: 0 }}>
-          Stay in touch with people you&apos;ve already met. Add contacts, send messages, and log follow-ups here.
-        </p>
+    <PageShell className="gb-dashboard">
+      <section className="gb-spacex-hero gb-spacex-hero--intro" aria-labelledby="dashboard-hero-title">
+        <div className="gb-spacex-hero__content">
+          <p className="gb-spacex-hero__eyebrow">GhostBuster</p>
+          <h1 id="dashboard-hero-title" className="gb-spacex-hero__title">
+            {greeting}
+          </h1>
+          <p className="gb-spacex-hero__lede">
+            Nurture the relationships that turn intros into interviews — contacts, outreach, and follow-ups in one
+            place.
+          </p>
+          <div className="gb-spacex-hero__cta-row">
+            <button type="button" className="gb-spacex-hero__cta" onClick={() => setPage("contacts")}>
+              Build your network
+            </button>
+            <button type="button" className="gb-spacex-hero__cta gb-spacex-hero__cta--ghost" onClick={() => setPage("compose")}>
+              Compose
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="gb-spacex-reel-section" aria-label="Networking success stories">
+        <p className="gb-spacex-reel-section__label">Students who landed roles through consistent networking</p>
+        <NetworkingSuccessReel id="networking-wins" variant="scroll" />
       </section>
 
       {showGettingStarted && (
-        <section
-          style={{
-            background: "var(--gb-bg-elevated)",
-            border: "1px solid var(--gb-border)",
-            borderRadius: 18,
-            padding: "28px 28px 24px",
-            marginBottom: 32,
-            boxShadow: "var(--gb-shadow-panel)",
-            position: "relative",
-            fontFamily: font.body,
-          }}
-        >
-          <div style={{ marginBottom: 24 }}>
-            <div
-              style={{
-                fontSize: 12,
-                fontFamily: font.body,
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                color: "var(--gb-accent-muted)",
-                textTransform: "uppercase",
-                marginBottom: 10,
-              }}
-            >
-              Getting started
-            </div>
-            <h2
-              style={{
-                fontFamily: font.h2,
-                fontWeight: 700,
-                fontSize: 24,
-                letterSpacing: "-0.3px",
-                margin: "0 0 12px",
-                lineHeight: 1.35,
-                color: "var(--gb-text)",
-              }}
-            >
-              Welcome! Here&apos;s how to connect with people
-            </h2>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 16,
-                fontFamily: font.body,
-                color: "var(--gb-text-secondary)",
-                lineHeight: 1.65,
-              }}
-            >
-              GhostBuster doesn&apos;t find strangers for you. It helps you nurture relationships with people
-              you&apos;ve already met: at a career fair, through a friend, on LinkedIn, or after an interview.
-            </p>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gridTemplateRows: "auto 1fr",
-              columnGap: 16,
-              rowGap: 14,
-              marginBottom: 24,
-              alignItems: "stretch",
-            }}
-          >
-            {GETTING_STARTED_STEPS.map((s, idx) => (
-              <div key={s.step} style={{ display: "contents" }}>
-                <div
-                  style={{
-                    gridColumn: idx + 1,
-                    gridRow: 1,
-                    alignSelf: "start",
-                    justifySelf: "center",
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    background: "var(--gb-accent-soft)",
-                    border: "1px solid var(--gb-border-subtle)",
-                    color: "var(--gb-accent)",
-                    fontFamily: font.body,
-                    fontWeight: 600,
-                    fontSize: 15,
-                    fontVariantNumeric: "tabular-nums",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {s.step}
-                </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setPage(s.page)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      setPage(s.page)
-                    }
-                  }}
-                  style={{
-                    gridColumn: idx + 1,
-                    gridRow: 2,
-                    display: "grid",
-                    gridTemplateRows: "45px auto 1fr auto",
-                    gap: 10,
-                    minHeight: 160,
-                    height: "100%",
-                    background: "var(--gb-surface-hover)",
-                    border: "1px solid var(--gb-border-subtle)",
-                    borderRadius: 14,
-                    padding: "18px 18px 16px",
-                    cursor: "pointer",
-                    color: "var(--gb-text)",
-                    fontFamily: font.body,
-                    boxShadow: "none",
-                    transition: "border-color 0.15s, background 0.15s",
-                    textAlign: "left",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--gb-border)"
-                    e.currentTarget.style.background = "var(--gb-surface-active)"
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--gb-border-subtle)"
-                    e.currentTarget.style.background = "var(--gb-surface-hover)"
-                  }}
-                >
-                  <div
-                    style={{
-                      gridRow: 1,
-                      fontFamily: font.body,
-                      fontWeight: 600,
-                      fontSize: 16,
-                      lineHeight: 1.4,
-                      width: "100%",
-                      color: "var(--gb-text)",
-                      overflow: "hidden",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      alignSelf: "start",
-                    }}
-                  >
-                    {s.title}
-                  </div>
-                  <div
-                    style={{
-                      gridRow: 2,
-                      fontSize: 14,
-                      fontFamily: font.body,
-                      color: "var(--gb-text-secondary)",
-                      lineHeight: 1.65,
-                      width: "100%",
-                      alignSelf: "start",
-                    }}
-                  >
-                    {s.detail}
-                  </div>
-                  <div
-                    style={{
-                      gridRow: 4,
-                      fontSize: 14,
-                      fontFamily: font.body,
-                      fontWeight: 600,
-                      color: "var(--gb-accent)",
-                      paddingTop: 4,
-                      width: "100%",
-                      alignSelf: "end",
-                    }}
-                  >
-                    {s.cta} →
-                  </div>
-                </div>
-              </div>
+        <ContentCard className="gb-getting-started" marginBottom={32}>
+          <CardTitle helper="GhostBuster helps you nurture relationships with people you've already met — career fairs, coffee chats, LinkedIn, interviews.">
+            Welcome — here's how to connect
+          </CardTitle>
+          <div className="gb-steps">
+            {GETTING_STARTED_STEPS.map((s) => (
+              <button key={s.step} type="button" className="gb-step-tile" onClick={() => setPage(s.page)}>
+                <span className="gb-step-tile__num">{String(s.step).padStart(2, "0")}</span>
+                <span className="gb-step-tile__title">{s.title}</span>
+                <span className="gb-step-tile__detail">{s.detail}</span>
+                <span className="gb-step-tile__cta">{s.cta.replace(/\s*→\s*$/, "")}</span>
+              </button>
             ))}
           </div>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: isNewUser ? "space-between" : "flex-end",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="gb-getting-started__footer">
             {isNewUser && (
-              <button
-                type="button"
-                onClick={() => setPage("contacts")}
-                style={{
-                  background: "var(--gb-accent-bright)",
-                  color: "var(--gb-accent-text-on)",
-                  border: "1px solid rgba(10,15,9,0.22)",
-                  boxShadow: "none",
-                  padding: "13px 26px",
-                  borderRadius: 11,
-                  fontFamily: font.display,
-                  fontWeight: 700,
-                  fontSize: 15,
-                  cursor: "pointer",
-                }}
-              >
-                Add your first contact →
+              <button type="button" onClick={() => setPage("contacts")} {...primaryBtn()}>
+                Add your first contact
+                <Icon name="chevron-right" size={14} color="var(--gb-accent-text-on)" />
               </button>
             )}
-            <button
-              type="button"
-              onClick={dismissTutorialPermanently}
-              style={{
-                background: "transparent",
-                color: "var(--gb-text-subtle)",
-                border: "none",
-                boxShadow: "none",
-                padding: "8px 4px",
-                fontFamily: font.body,
-                fontSize: 14,
-                cursor: "pointer",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
-            >
+            <button type="button" onClick={dismissTutorialPermanently} {...secondaryBtn({ style: { background: "transparent", border: "none" } })}>
               Don&apos;t show again
             </button>
           </div>
-        </section>
+        </ContentCard>
       )}
 
-      {/* Snapshot stats */}
-      <ContentCard marginBottom={28}>
-        <CardTitle>Your snapshot</CardTitle>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: responsiveGrid(220),
-          gap: 12,
-        }}
-      >
-        {stats.map((s) => {
-          const tg = tintedCard(s.rgb)
-          const cardStyle = {
-            ...tg,
-            borderRadius: 16,
-            padding: "16px 16px 14px",
-            position: "relative",
-            overflow: "hidden",
-            width: "100%",
-            textAlign: "left",
-            color: "inherit",
-            font: "inherit",
-            cursor: s.page ? "pointer" : "default",
-            boxShadow: "none",
-            minHeight: 132,
-          }
-          const content = (
-            <>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    lineHeight: 1,
-                  }}
-                  aria-hidden
-                >
-                  <SnapshotIcon name={s.icon} color={s.color} size={22} />
-                </span>
-                {s.tag && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontFamily: font.mono,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      padding: "4px 8px",
-                      borderRadius: 20,
-                      color: s.color,
-                      background: `rgba(${s.rgb},0.16)`,
-                      border: `1px solid rgba(${s.rgb},0.28)`,
-                    }}
-                  >
-                    {s.tag}
+      <section className="gb-snapshot-wrap gb-stat-showcase" aria-labelledby="dashboard-stats-title">
+        <header className="gb-stat-showcase__intro">
+          <h2 id="dashboard-stats-title" className="gb-stat-showcase__title">
+            Your network, measured
+          </h2>
+          <p className="gb-stat-showcase__lede">Tap a metric to open the right workspace — live counts from your account.</p>
+        </header>
+        <div className="gb-snapshot-grid gb-stat-showcase__grid">
+          {stats.map((s) => {
+            const interactive = Boolean(s.page)
+            const className = `gb-snapshot-stat${interactive ? " gb-snapshot-stat--interactive" : ""}`
+            const accentStyle = { "--snapshot-accent": s.color }
+            const body = (
+              <>
+                <div className="gb-snapshot-stat__value">{s.value}</div>
+                <p className="gb-snapshot-stat__label">{s.label}</p>
+                {s.trend && <div className="gb-snapshot-stat__trend">{s.trend}</div>}
+                <div className="gb-snapshot-stat__head" aria-hidden>
+                  <span className="gb-snapshot-stat__icon">
+                    <SnapshotIcon name={s.icon} color={s.color} size={20} />
                   </span>
-                )}
-              </div>
-              <div
-                style={{
-                  fontFamily: font.h1,
-                  fontWeight: 800,
-                  fontSize: 34,
-                  color: "var(--gb-text)",
-                  letterSpacing: "-1px",
-                  lineHeight: 1,
-                  marginBottom: 4,
-                }}
+                  {s.tag && <span className="gb-snapshot-stat__tag">{s.tag}</span>}
+                </div>
+              </>
+            )
+            return interactive ? (
+              <button
+                key={s.label}
+                type="button"
+                className={className}
+                style={accentStyle}
+                aria-label={`${s.label}: ${s.value}${s.trend ? `, ${s.trend}` : ""}`}
+                onClick={() => setPage(s.page)}
               >
-                {s.value}
+                {body}
+              </button>
+            ) : (
+              <div key={s.label} className={className} style={accentStyle}>
+                {body}
               </div>
-              <div style={{ fontFamily: font.h1, fontSize: 13, color: "var(--gb-text-secondary)", marginBottom: 6 }}>{s.label}</div>
-              {s.trend && (
-                <div style={{ fontSize: 12, fontFamily: font.h1, color: s.color, opacity: 0.9 }}>↗ {s.trend}</div>
-              )}
-            </>
-          )
-          return s.page ? (
-            <button key={s.label} type="button" onClick={() => setPage(s.page)} style={cardStyle}>
-              {content}
-            </button>
-          ) : (
-            <div key={s.label} style={cardStyle}>
-              {content}
-            </div>
-          )
-        })}
-      </div>
-      </ContentCard>
+            )
+          })}
+        </div>
+      </section>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: PAGE_SPLIT_GRID,
-          gap: 28,
-          alignItems: "start",
-          marginBottom: 28,
-        }}
-      >
-      <ContentCard marginBottom={0}>
-        <CardTitle>Quick actions</CardTitle>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: responsiveGrid(240),
-          gap: 12,
-        }}
-      >
-        {QUICK_ACTIONS.map((action) => (
-          <button
-            key={action.page}
-            type="button"
-            onClick={() => setPage(action.page)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-              padding: "16px 14px",
-              borderRadius: 14,
-              background: "var(--gb-bg-elevated)",
-              border: "1px solid var(--gb-border)",
-              cursor: "pointer",
-              textAlign: "left",
-              color: "inherit",
-              font: "inherit",
-              boxShadow: "none",
-            }}
-          >
-            <span
-              style={{
-                fontSize: action.mark.length > 1 ? 20 : 22,
-                color: action.markColor,
-                flexShrink: 0,
-                lineHeight: 1,
-              }}
-              aria-hidden
+      <ContentCard marginBottom={24} className="gb-quick-actions-card" padding="22px 24px 0">
+        <CardTitle helper="Jump straight into a workflow.">Quick actions</CardTitle>
+        <div className="gb-quick-actions-grid" role="list">
+          {QUICK_ACTIONS.map((action) => (
+            <button
+              key={action.page}
+              type="button"
+              role="listitem"
+              className="gb-quick-action"
+              aria-label={`${action.title} — ${action.sub}`}
+              onClick={() => setPage(action.page)}
             >
-              {action.mark}
-            </span>
-            <span>
-              <span style={{ display: "block", fontFamily: font.h1, fontWeight: 700, fontSize: 15, marginBottom: 3 }}>
-                {action.title}
+              <span className="gb-quick-action__icon" aria-hidden>
+                <QuickActionIcon name={action.icon} color="currentColor" />
               </span>
-              <span style={{ display: "block", fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)" }}>{action.sub}</span>
-            </span>
-          </button>
-        ))}
-      </div>
+              <span className="gb-quick-action__copy">
+                <span className="gb-quick-action__title">{action.title}</span>
+                <span className="gb-quick-action__sub">{action.sub}</span>
+              </span>
+              <Icon name="chevron-right" size={16} className="gb-quick-action__arrow" />
+            </button>
+          ))}
+        </div>
       </ContentCard>
 
-      {/* Weekly outreach goal */}
-      <ContentCard marginBottom={0}>
+      <ContentCard marginBottom={24} className="gb-weekly-outreach-card">
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
           <CardTitle style={{ marginBottom: 0, flex: "1 1 auto" }}>Weekly outreach goal</CardTitle>
           <div style={{ fontFamily: font.mono, fontSize: 12, color: "var(--gb-text-muted)" }}>
@@ -805,10 +587,10 @@ export default function Dashboard({ setPage }) {
           </div>
         </div>
         {[
-          { label: "Cold outreach", value: outreachBuckets.cold, color: "var(--gb-accent)" },
-          { label: "Follow-ups", value: outreachBuckets.followups, color: "var(--gb-danger)" },
-          { label: "Referral asks", value: outreachBuckets.referral, color: "#5be4d8" },
-        ].map(({ label, value, color }) => {
+          { label: "Cold outreach", value: outreachBuckets.cold },
+          { label: "Follow-ups", value: outreachBuckets.followups },
+          { label: "Referral asks", value: outreachBuckets.referral },
+        ].map(({ label, value }) => {
           const pct = WEEKLY_OUTREACH_GOAL > 0 ? Math.min(100, (value / WEEKLY_OUTREACH_GOAL) * 100) : 0
           return (
             <div key={label} style={{ marginBottom: 12 }}>
@@ -816,31 +598,16 @@ export default function Dashboard({ setPage }) {
                 <span style={{ color: "var(--gb-text-secondary)" }}>{label}</span>
                 <span style={{ fontFamily: font.mono, color: "var(--gb-text-muted)" }}>{value}</span>
               </div>
-              <div
-                style={{
-                  height: 8,
-                  borderRadius: 99,
-                  background: "var(--gb-surface-muted)",
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${pct}%`,
-                    height: "100%",
-                    borderRadius: 99,
-                    background: color,
-                    minWidth: value > 0 ? 8 : 0,
-                  }}
-                />
+              <div className="gb-progress-bar">
+                <div className="gb-progress-bar__fill" style={{ width: `${pct}%`, minWidth: value > 0 ? 4 : 0 }} />
               </div>
             </div>
           )
         })}
       </ContentCard>
-      </div>
 
       <div
+        className="gb-dashboard-split"
         style={{
           display: "grid",
           gridTemplateColumns: PAGE_SPLIT_GRID,
@@ -849,9 +616,9 @@ export default function Dashboard({ setPage }) {
           marginBottom: 8,
         }}
       >
-      <ContentCard padding="18px 18px 16px" marginBottom={0}>
-        <CardTitle>Recent activity</CardTitle>
-      <div style={{ padding: "0 0 2px" }}>
+      <ContentCard className="gb-recent-activity-card" padding="18px 18px 8px" marginBottom={0}>
+        <CardTitle style={{ marginBottom: 14 }}>Recent activity</CardTitle>
+      <div className="gb-activity-list-wrap">
         {activityFeed.length === 0 ? (
           <div
             style={{
@@ -865,53 +632,19 @@ export default function Dashboard({ setPage }) {
           </div>
         ) : (
           <>
-          {visibleActivityFeed.map((item, idx) => (
+          {visibleActivityFeed.map((item) => (
             <button
               key={item.id}
               type="button"
+              className="gb-activity-row"
               onClick={() => setPage(item.page)}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 12,
-                width: "100%",
-                textAlign: "left",
-                background: "transparent",
-                border: "none",
-                borderTop: idx === 0 ? "none" : "1px solid var(--gb-border-subtle)",
-                padding: "14px 10px",
-                cursor: "pointer",
-                color: "inherit",
-                font: "inherit",
-                boxShadow: "none",
-              }}
             >
-              <span
-                aria-hidden
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: item.accent,
-                  marginTop: 6,
-                  flexShrink: 0,
-                }}
-              />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.45, color: "var(--gb-text-secondary)" }}>
-                {item.title}
-                {item.detail ? ` · ${item.detail}` : ""}
+              <span className="gb-activity-row__dot" style={{ background: item.accent }} aria-hidden />
+              <span className="gb-activity-row__copy">
+                <span className="gb-activity-row__title">{item.title}</span>
+                {item.detail ? <span className="gb-activity-row__detail">{item.detail}</span> : null}
               </span>
-              <span
-                style={{
-                  flexShrink: 0,
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  color: "var(--gb-text-faint)",
-                  marginTop: 2,
-                }}
-              >
-                {formatActivityTime(item.ts)}
-              </span>
+              <span className="gb-activity-row__time">{formatActivityTime(item.ts)}</span>
             </button>
           ))}
           <ViewMoreButton
@@ -927,220 +660,78 @@ export default function Dashboard({ setPage }) {
       </div>
       </ContentCard>
 
-      <ContentCard padding="18px 18px 16px" marginBottom={0}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 12,
-            marginBottom: 14,
-          }}
-        >
-          <CardTitle helper="Sorted by latest touch or date added" style={{ marginBottom: 0, flex: "1 1 auto" }}>
+      <ContentCard className="gb-recent-contacts-card" padding="18px 18px 8px" marginBottom={0}>
+        <div className="gb-card-toolbar">
+          <CardTitle helper="Sorted by latest touch or date added" style={{ marginBottom: 0 }}>
             Recent contacts
           </CardTitle>
-          <button
-            type="button"
-            onClick={() => setPage("contacts")}
-            style={{
-              flexShrink: 0,
-              background: "var(--gb-surface-muted)",
-              border: "1px solid var(--gb-border-strong)",
-              color: "var(--gb-text-secondary)",
-              fontFamily: font.mono,
-              fontSize: 10,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              padding: "8px 12px",
-              borderRadius: 8,
-              cursor: "pointer",
-              boxShadow: "none",
-            }}
-          >
+          <button type="button" className="gb-btn gb-btn--ghost gb-btn--sm" onClick={() => setPage("contacts")}>
             View all
           </button>
         </div>
 
-          {sortedRecentContacts.length === 0 ? (
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "32px 24px",
-                textAlign: "center",
-                borderRadius: 12,
-                border: "1px dashed var(--gb-border-strong)",
-                background: "var(--gb-surface-hover)",
-              }}
-            >
-              <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.45 }}>👋</div>
-              <div
-                style={{
-                  fontFamily: font.display,
-                  fontWeight: 700,
-                  fontSize: 16,
-                  color: "var(--gb-text-strong)",
-                  marginBottom: 8,
-                }}
-              >
-                No contacts saved yet
-              </div>
-              <p
-                style={{
-                  margin: "0 0 18px",
-                  maxWidth: 320,
-                  fontSize: 14,
-                  color: "var(--gb-text-muted)",
-                  lineHeight: 1.55,
-                  fontFamily: font.body,
-                }}
-              >
-                Add someone from a career fair, class, or LinkedIn conversation, then use Compose to reach out.
-              </p>
-              <button
-                type="button"
-                onClick={() => setPage("contacts")}
-                style={{
-                  background: "var(--gb-accent-bright)",
-                  color: "var(--gb-accent-text-on)",
-                  border: "1px solid rgba(10,15,9,0.22)",
-                  boxShadow: "none",
-                  padding: "10px 20px",
-                  borderRadius: 9,
-                  fontFamily: font.display,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                Add someone you met →
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {visibleRecentContacts.map((c) => {
-                const d = daysSinceLastTouch(c)
-                const warm = warmthPill(d)
-                const reminderBadge = contactReminderBadge(c, reminders)
-                return (
-                  <div
-                    key={c.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 14,
-                      padding: "14px 16px",
-                      borderRadius: 12,
-                      background: "var(--gb-surface-hover)",
-                      border: "1px solid var(--gb-surface-active)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: "50%",
-                        background: "var(--gb-accent-soft)",
-                        color: "var(--gb-accent)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: font.display,
-                        fontWeight: 700,
-                        fontSize: 16,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {c.name?.[0]?.toUpperCase() || "?"}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, fontFamily: font.h1 }}>{c.name}</div>
-                      <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginBottom: 8, fontFamily: font.body }}>
-                        {[c.company, c.role].filter(Boolean).join(" · ") || "No company on file"}
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            fontFamily: font.mono,
-                            fontSize: 10,
-                            fontWeight: 500,
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            padding: "4px 10px",
-                            borderRadius: 20,
-                            color: warm.fg,
-                            background: warm.bg,
-                            border: `1px solid ${warm.fg}33`,
-                          }}
-                        >
+        {sortedRecentContacts.length === 0 ? (
+          <div className="gb-contact-empty">
+            <Icon name="users" size={28} color="var(--gb-text-faint)" />
+            <p className="gb-contact-empty__title">No contacts saved yet</p>
+            <p className="gb-contact-empty__lede">
+              Add someone from a career fair, class, or LinkedIn — then use Compose to reach out.
+            </p>
+            <button type="button" className="gb-spacex-hero__cta" onClick={() => setPage("contacts")}>
+              Add contact
+            </button>
+          </div>
+        ) : (
+          <ul className="gb-contact-list">
+            {visibleRecentContacts.map((c) => {
+              const d = daysSinceLastTouch(c)
+              const warm = warmthPill(d)
+              const reminderBadge = contactReminderBadge(c, reminders)
+              const lastTouch = formatLastTouch(c.lastContacted)
+              const displayName = formatContactName(c.name)
+              const meta = [c.role, c.company].filter(Boolean).join(" · ")
+
+              return (
+                <li key={c.id}>
+                  <button type="button" className="gb-contact-row" onClick={() => setPage("contacts")}>
+                    <span className="gb-contact-row__avatar" aria-hidden>
+                      {displayName.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="gb-contact-row__body">
+                      <span className="gb-contact-row__top">
+                        <span className="gb-contact-row__name">{displayName}</span>
+                        <span className="gb-contact-row__date">{lastTouch || "Not yet"}</span>
+                      </span>
+                      <span className="gb-contact-row__meta">{meta || "Add company & role in Contacts"}</span>
+                      <span className="gb-contact-row__status-line">
+                        <span className="gb-contact-row__status" data-tone={warmthTone(warm.label)}>
                           {warm.label}
                         </span>
                         {reminderBadge ? (
                           <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              fontFamily: font.mono,
-                              fontSize: 10,
-                              fontWeight: 500,
-                              letterSpacing: "0.06em",
-                              textTransform: "uppercase",
-                              padding: "4px 10px",
-                              borderRadius: 20,
-                              color: reminderBadge === "overdue" ? "var(--gb-danger)" : "var(--gb-warning)",
-                              background:
-                                reminderBadge === "overdue"
-                                  ? "rgba(255,107,107,0.1)"
-                                  : "rgba(255,201,107,0.1)",
-                              border:
-                                reminderBadge === "overdue"
-                                  ? "1px solid rgba(255,107,107,0.35)"
-                                  : "1px solid rgba(255,201,107,0.28)",
-                            }}
+                            className="gb-contact-row__status"
+                            data-tone={reminderBadge === "overdue" ? "overdue" : "check"}
                           >
-                            {reminderBadge === "overdue" ? "Reminder overdue" : "Reminder set"}
+                            {reminderBadge === "overdue" ? "Reminder overdue" : "Reminder pending"}
                           </span>
                         ) : null}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        flexShrink: 0,
-                        textAlign: "right",
-                        fontSize: 10,
-                        fontFamily: font.mono,
-                        color: "var(--gb-text-faint)",
-                        maxWidth: 100,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {c.lastContacted ? (
-                        <>
-                          Last
-                          <br />
-                          {new Date(c.lastContacted).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-              <ViewMoreButton
-                hiddenCount={hiddenRecentContactCount}
-                showAll={showAllRecentContacts}
-                onToggle={() => setShowAllRecentContacts((v) => !v)}
-                singular="contact"
-              />
-            </div>
-          )}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {sortedRecentContacts.length > 0 && (
+          <ViewMoreButton
+            hiddenCount={hiddenRecentContactCount}
+            showAll={showAllRecentContacts}
+            onToggle={() => setShowAllRecentContacts((v) => !v)}
+            singular="contact"
+            style={{ margin: "4px 0 8px" }}
+          />
+        )}
       </ContentCard>
       </div>
     </PageShell>

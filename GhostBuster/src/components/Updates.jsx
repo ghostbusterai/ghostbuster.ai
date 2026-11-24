@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { api } from "../api"
-import { syncResumesToExtension } from "../autofillBridge"
 import { suggestContactsForUpdate } from "../updateRelevance"
 import {
   buildResumeUpdateComposePayload,
@@ -8,13 +7,13 @@ import {
 } from "../outreachMessage"
 import { font } from "../theme"
 import { inputStyle } from "../uiStyles"
-import { readLocalProfile, saveLocalProfile, PROFILE_UPDATED_EVENT } from "../profile"
+import { readLocalProfile, saveLocalProfile } from "../profile"
 import { contactsNeedingResumeNudge, buildResumeShareComposePrefill } from "../resumeNudge"
 import { SUGGESTED_BUCKET_NAMES } from "../resumeBucketMatch"
 import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
 import ViewMoreButton from "./ViewMoreButton"
+import AiDisclaimer from "./AiDisclaimer"
 import { previewHiddenCount, previewSlice } from "../listPreview"
-import { atsResumeFileName, downloadTextFile, formatAtsResumeText } from "../atsResumeText"
 
 const LS_LOGS = "gb_outreach_logs"
 
@@ -102,7 +101,7 @@ function formatResumeDate(iso) {
 async function readTextFileLocally(file) {
   const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase()
   if (![".txt", ".md", ".text"].includes(ext)) {
-    throw new Error("Offline mode supports TXT and MD only. Start the server for PDF/DOCX.")
+    throw new Error("Offline mode supports TXT and MD only — start the server for PDF/DOCX.")
   }
   return file.text()
 }
@@ -118,6 +117,12 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [relevanceModal, setRelevanceModal] = useState(null)
+  const [jobSuggestions, setJobSuggestions] = useState([])
+  const [jobSuggestLoading, setJobSuggestLoading] = useState(false)
+  const [jobSuggestError, setJobSuggestError] = useState(null)
+  const [jobSuggestWarning, setJobSuggestWarning] = useState(null)
+  const [jobSuggestSource, setJobSuggestSource] = useState(null)
+  const [addingJobKey, setAddingJobKey] = useState(null)
   const [outreachByContact, setOutreachByContact] = useState({})
   const [copiedContactId, setCopiedContactId] = useState(null)
   const [profileName, setProfileName] = useState("")
@@ -139,8 +144,6 @@ export default function Updates({ setPage, setComposePrefill }) {
   const [archiveActionKey, setArchiveActionKey] = useState(null)
   const [showAllArchiveItems, setShowAllArchiveItems] = useState(false)
   const [showAllUpdatesHistory, setShowAllUpdatesHistory] = useState(false)
-  const [copiedAtsKey, setCopiedAtsKey] = useState(null)
-  const [atsBusyKey, setAtsBusyKey] = useState(null)
 
   const resumeArchiveItems = useMemo(() => {
     const items = []
@@ -233,22 +236,10 @@ export default function Updates({ setPage, setComposePrefill }) {
     load()
   }, [load])
 
-  // Profile edits (e.g. career goals from the profile menu) apply here without a page refresh.
-  useEffect(() => {
-    function onProfileUpdated(e) {
-      const p = e.detail || {}
-      setCareerGoals(p.careerGoals?.trim() || "")
-      setProfileName(p.name?.trim() || "")
-      setResumeDate(p.lastResumeUpdate || "")
-    }
-    window.addEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated)
-    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated)
-  }, [])
-
   useEffect(() => {
     if (!relevanceModal) return
     function onKey(e) {
-      if (e.key === "Escape") setRelevanceModal(null)
+      if (e.key === "Escape") closeRelevanceModal()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -329,12 +320,72 @@ export default function Updates({ setPage, setComposePrefill }) {
     setPage("compose")
   }
 
+  const loadJobSuggestionsForUpdate = useCallback(
+    async (update) => {
+      if (!update?.title?.trim() || !update?.details?.trim()) return
+      setJobSuggestLoading(true)
+      setJobSuggestError(null)
+      setJobSuggestWarning(null)
+      setJobSuggestions([])
+      try {
+        const body = update.id
+          ? { updateId: update.id }
+          : {
+              title: update.title,
+              details: update.details,
+              effectiveDate: update.effectiveDate || "",
+            }
+        const data = await api.suggestJobsFromResumeUpdate(body)
+        setJobSuggestions(data.suggestions || [])
+        setJobSuggestSource(data.source || null)
+        setJobSuggestWarning(data.warning || null)
+      } catch (err) {
+        setJobSuggestError(
+          loadError ? "Start the API server to get job suggestions from this update." : err.message
+        )
+      } finally {
+        setJobSuggestLoading(false)
+      }
+    },
+    [loadError]
+  )
+
+  async function addJobSuggestionToApplications(s) {
+    const key = `${s.company}|${s.role}|${s.url}`
+    setAddingJobKey(key)
+    setJobSuggestError(null)
+    try {
+      await api.createApplication({
+        company: s.company || "",
+        role: s.role || "",
+        url: s.url || s.urls?.linkedin || "",
+        notes: s.why ? `Résumé update match: ${s.why}` : "",
+        status: "todo",
+        source: "resume_update",
+      })
+      setJobSuggestions((prev) => prev.filter((x) => x !== s))
+    } catch (err) {
+      setJobSuggestError(err.message)
+    } finally {
+      setAddingJobKey(null)
+    }
+  }
+
+  function closeRelevanceModal() {
+    setRelevanceModal(null)
+    setJobSuggestions([])
+    setJobSuggestError(null)
+    setJobSuggestWarning(null)
+    setJobSuggestSource(null)
+  }
+
   function openSaveResultModal(update, relevance, contactList) {
     const list = contactList ?? contacts
     let notice = null
     if (list.length === 0) notice = "no_contacts"
     else if (!relevance || relevance.length === 0) notice = "no_matches"
     setRelevanceModal({ update, relevance: relevance || [], notice })
+    loadJobSuggestionsForUpdate(update)
   }
 
   function showOutreachForUpdate(update) {
@@ -442,7 +493,6 @@ export default function Updates({ setPage, setComposePrefill }) {
     setActionError(null)
     try {
       await api.deleteResumeBucket(id)
-      syncResumesToExtension()
       setResumeBuckets((prev) => {
         const next = prev.filter((b) => b.id !== id)
         saveLocalResumeBuckets(next)
@@ -471,7 +521,6 @@ export default function Updates({ setPage, setComposePrefill }) {
     setUploadingBucketId(bucketId)
     try {
       const { bucket } = await api.uploadBucketResume(bucketId, file)
-      syncResumesToExtension()
       setResumeBuckets((prev) => {
         const next = prev.map((b) => (b.id === bucket.id ? bucket : b))
         saveLocalResumeBuckets(next)
@@ -541,7 +590,6 @@ export default function Updates({ setPage, setComposePrefill }) {
     setActionError(null)
     try {
       const { bucket } = await api.deleteBucketResume(bucketId)
-      syncResumesToExtension()
       updateBucketInState(bucket)
       if (suggestionsBucketId === bucketId) {
         setSuggestions([])
@@ -578,7 +626,6 @@ export default function Updates({ setPage, setComposePrefill }) {
     setActionError(null)
     try {
       const { bucket } = await api.restoreResumeVersion(bucketId, versionId)
-      syncResumesToExtension()
       updateBucketInState(bucket)
     } catch (err) {
       if (loadError) {
@@ -656,7 +703,7 @@ export default function Updates({ setPage, setComposePrefill }) {
       ...buildResumeUpdateComposePayload(contact, update, row.reasons),
       ...(draft?.message ? { preGeneratedResult: draft.message } : {}),
     })
-    setRelevanceModal(null)
+    closeRelevanceModal()
     setPage("compose")
   }
 
@@ -667,72 +714,16 @@ export default function Updates({ setPage, setComposePrefill }) {
     setTimeout(() => setCopiedContactId(null), 2000)
   }
 
-  function downloadAtsText(rawText, meta) {
-    const formatted = formatAtsResumeText(rawText)
-    downloadTextFile(
-      atsResumeFileName({
-        personName: profileName,
-        bucketName: meta.bucketName,
-        fileName: meta.fileName,
-      }),
-      formatted
-    )
-  }
-
-  async function copyAtsText(rawText, key) {
-    try {
-      await navigator.clipboard.writeText(formatAtsResumeText(rawText))
-      setCopiedAtsKey(key)
-      setTimeout(() => setCopiedAtsKey(null), 2000)
-    } catch {
-      setActionError("Could not copy. Try Download ATS .txt instead.")
-    }
-  }
-
-  async function downloadAiAtsText(rawText, meta) {
-    const key = meta.key
-    setAtsBusyKey(key)
-    setActionError(null)
-    try {
-      let sourceText = rawText
-      let source = "cleaned"
-      if (!loadError) {
-        const data = await api.formatResumeForAts({
-          bucketId: meta.bucketId,
-          versionId: meta.versionId,
-          text: rawText,
-        })
-        if (typeof data?.text === "string" && data.text.trim()) {
-          sourceText = data.text
-          source = data.source || "ai"
-        }
-      }
-      downloadAtsText(sourceText, meta)
-      if (source !== "ai") {
-        setActionError(null)
-      }
-    } catch (e) {
-      downloadAtsText(rawText, meta)
-      setActionError(
-        e.message
-          ? `${e.message} Downloaded a cleaned .txt of your uploaded text instead.`
-          : "AI format unavailable. Downloaded a cleaned .txt of your uploaded text instead."
-      )
-    } finally {
-      setAtsBusyKey(null)
-    }
-  }
-
   return (
     <PageShell>
       <PageHero
         eyebrow="Resume"
         title="Resume"
-        subtitle="Log résumé or career changes here. No need to name contacts. Each update can optionally turn into matched outreach, AI-drafted messages, and follow-up reminders when you're ready."
+        subtitle="Log résumé or career changes here. After each update we suggest contacts to message and roles to apply for — plus optional AI drafts when you're ready."
       >
         {loadError && (
           <p style={{ color: "var(--gb-warning)", fontSize: 13, marginTop: 10, marginBottom: 0, fontFamily: font.body }}>
-            API offline. Saving locally. Run the server (with ANTHROPIC_API_KEY for best matching) to sync and use AI recommendations.
+            API offline — saving locally. Run the server (with ANTHROPIC_API_KEY for best matching) to sync and use AI recommendations.
           </p>
         )}
         {actionError && <p style={{ color: "var(--gb-danger)", fontSize: 13, marginTop: 8, marginBottom: 0, fontFamily: font.body }}>{actionError}</p>}
@@ -744,7 +735,7 @@ export default function Updates({ setPage, setComposePrefill }) {
         }}
         padding="24px"
       >
-        <CardTitle helper="When did you last refresh your résumé? We'll optionally suggest contacts you haven't messaged since then, with draft messages and reminders in Notifications when you want them.">
+        <CardTitle helper="When did you last refresh your résumé? We'll optionally suggest contacts you haven't messaged since then — with draft messages and reminders in Notifications when you want them.">
           Résumé last updated
         </CardTitle>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -839,13 +830,13 @@ export default function Updates({ setPage, setComposePrefill }) {
 
         {resumeDate && resumeNudgeContacts.length === 0 && contacts.length > 0 && (
           <p style={{ fontSize: 13, color: "var(--gb-text-faint)", marginTop: 16, marginBottom: 0, fontFamily: font.body }}>
-            You&apos;re caught up. Everyone has heard from you since this date.
+            You&apos;re caught up — everyone has heard from you since this date.
           </p>
         )}
       </ContentCard>
 
       <ContentCard padding="24px">
-        <CardTitle helper="Upload a résumé for each role you're targeting, for example, a PM version and a SWE version. Create a role bucket below, then drag in a PDF, DOCX, or text file. Contacts are auto-matched from their job role. Replacing or removing a résumé saves the previous version to your archive below.">
+        <CardTitle helper="Upload a résumé for each role you're targeting — for example, a PM version and a SWE version. Create a role bucket below, then drag in a PDF, DOCX, or text file. Contacts are auto-matched from their job role. Replacing or removing a résumé saves the previous version to your archive below.">
           Upload your résumé by role
         </CardTitle>
 
@@ -929,7 +920,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               fontSize: 14,
             }}
           >
-            No buckets yet. Create one above, then upload a résumé for that role.
+            No buckets yet — create one above, then upload a résumé for that role.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -964,7 +955,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                       <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4 }}>
                         {assignedCount > 0
                           ? `${assignedCount} contact${assignedCount !== 1 ? "s" : ""} assigned`
-                          : "No contacts assigned yet. We'll auto-match from their role"}
+                          : "No contacts assigned yet — we'll auto-match from their role"}
                       </div>
                     </div>
                     <button
@@ -1147,7 +1138,7 @@ export default function Updates({ setPage, setComposePrefill }) {
               fontSize: 14,
             }}
           >
-            No archived résumés yet. Upload a new version to a role bucket and the previous file will appear here.
+            No archived résumés yet — upload a new version to a role bucket and the previous file will appear here.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1309,7 +1300,7 @@ export default function Updates({ setPage, setComposePrefill }) {
           }}
         >
           <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-            <CardTitle helper="AI feedback tailored to your career goals: rewording, stronger activities, metrics, and more.">
+            <CardTitle helper="AI feedback tailored to your career goals — rewording, stronger activities, metrics, and more.">
               Suggested improvements
             </CardTitle>
           </div>
@@ -1502,7 +1493,7 @@ export default function Updates({ setPage, setComposePrefill }) {
       </ContentCard>
 
       <ContentCard padding="24px" marginBottom={36}>
-        <CardTitle helper="Describe a résumé or career change in plain language. You don't have to message anyone right away. Saving an update is the first step toward optional outreach later.">
+        <CardTitle helper="Describe a résumé or career change in plain language. You don't have to message anyone right away — saving an update is the first step toward optional outreach later.">
           Career update
         </CardTitle>
 
@@ -1522,7 +1513,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             {
               step: "1",
               title: "Save the update",
-              detail: "Stored in History. No contacts named upfront.",
+              detail: "Stored in History — no contacts named upfront.",
             },
             {
               step: "2",
@@ -1599,7 +1590,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                 marginBottom: 6,
               }}
             >
-              DETAILS * (describe the update; we match it to contacts automatically)
+              DETAILS * (describe the update — we match it to contacts automatically)
             </label>
             <textarea
               placeholder="e.g. Shipped a recommendation feature, completed a data science internship, led a campus hackathon project… You don't need to name companies or people."
@@ -1628,8 +1619,8 @@ export default function Updates({ setPage, setComposePrefill }) {
             {saving ? "Saving…" : "Save update & see matches"}
           </button>
           <p style={{ margin: 0, fontSize: 12, color: "var(--gb-text-faint)", lineHeight: 1.5, maxWidth: 560, fontFamily: font.body }}>
-            After saving, you can review optional message drafts. Set reminders anytime from the Reminders tab. We
-            also surface nudges in Notifications when follow-ups are due.
+            After saving, we suggest who to message and roles to apply for based on this update. Set reminders on the
+            Reminders tab when you want follow-up nudges.
           </p>
         </form>
       </ContentCard>
@@ -1650,7 +1641,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             color: "var(--gb-text-faint)",
           }}
         >
-          No updates yet. Add your first one above.
+          No updates yet — add your first one above.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1704,7 +1695,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  Message ideas →
+                  Matches & jobs →
                 </button>
                 <button
                   type="button"
@@ -1750,7 +1741,7 @@ export default function Updates({ setPage, setComposePrefill }) {
             justifyContent: "center",
             padding: 24,
           }}
-          onClick={() => setRelevanceModal(null)}
+          onClick={closeRelevanceModal}
         >
           <div
             style={{
@@ -1783,25 +1774,25 @@ export default function Updates({ setPage, setComposePrefill }) {
                 {relevanceModal.notice === "no_contacts"
                   ? "Update saved"
                   : relevanceModal.notice === "no_matches"
-                    ? "Update saved. No matches yet"
+                    ? "Update saved — no matches yet"
                     : "Recommended outreach"}
               </div>
               <p style={{ margin: "12px 0 0", fontSize: 14, color: "var(--gb-text-subtle)", lineHeight: 1.5, fontFamily: font.body }}>
                 {relevanceModal.notice === "no_contacts" ? (
                   <>
                     Your update was saved, but there are no contacts yet. Add people on the{" "}
-                    <strong style={{ color: "var(--gb-accent)" }}>Contacts</strong> page first. Include their role,
+                    <strong style={{ color: "var(--gb-accent)" }}>Contacts</strong> page first — include their role,
                     company, and notes so we can recommend who to message.
                   </>
                 ) : relevanceModal.notice === "no_matches" ? (
                   <>
-                    Your update was saved. We couldn&apos;t find strong contact matches yet. Fill in{" "}
+                    Your update was saved. We couldn&apos;t find strong contact matches yet — fill in{" "}
                     <strong style={{ color: "var(--gb-accent)" }}>role, company, and notes</strong> on your contacts
                     (e.g. a consultant for a consulting club update) and try again.
                   </>
                 ) : (
                   <>
-                    These matches are optional. Copy an AI draft or open Compose to edit, then set a follow-up
+                    These matches are optional. Copy an AI draft or open Compose to edit — then set a follow-up
                     reminder in Reminders if you want a nudge later (Notifications will flag due items).
                   </>
                 )}
@@ -1835,7 +1826,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                 >
                   {relevanceModal.notice === "no_contacts"
                     ? "Tip: Even one contact with a role like “Consultant” or notes about their industry is enough for us to suggest outreach."
-                    : "Tip: Restart isn’t needed. Just add or edit contacts, then save another update (or re-save this one from History after deleting duplicates)."}
+                    : "Tip: Restart isn’t needed — just add or edit contacts, then save another update (or re-save this one from History after deleting duplicates)."}
                 </div>
               )}
               {relevanceModal.relevance.map((row) => {
@@ -1864,7 +1855,7 @@ export default function Updates({ setPage, setComposePrefill }) {
                     }}
                   >
                     This fits well with {row.name.split(/\s+/)[0] || row.name}
-                    {outreach.loading ? " Generating your message…" : ":"}
+                    {outreach.loading ? " — generating your message…" : ":"}
                   </div>
                   <ul style={{ margin: "10px 0 0", paddingLeft: 18, color: "var(--gb-text-subtle)", fontSize: 12, lineHeight: 1.5 }}>
                     {row.reasons.map((r, i) => (
@@ -1962,6 +1953,169 @@ export default function Updates({ setPage, setComposePrefill }) {
                   </div>
                 </div>
               )})}
+
+              <div
+                style={{
+                  marginTop: relevanceModal.relevance.length ? 28 : 0,
+                  paddingTop: relevanceModal.relevance.length ? 20 : 0,
+                  borderTop: relevanceModal.relevance.length ? "1px solid var(--gb-border-subtle)" : "none",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: font.h1,
+                    fontWeight: 800,
+                    fontSize: 16,
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  Roles to apply for
+                </div>
+                <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--gb-text-muted)", lineHeight: 1.5, fontFamily: font.body }}>
+                  Based on this résumé update, your goals, and résumé — saves to Job applications as search targets (verify listings before you apply).
+                </p>
+                {jobSuggestLoading && (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)", fontFamily: font.body }}>
+                    Finding role ideas…
+                  </p>
+                )}
+                {jobSuggestError && (
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--gb-danger)", fontFamily: font.body }}>
+                    {jobSuggestError}
+                  </p>
+                )}
+                {jobSuggestWarning && (
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--gb-warning)", fontFamily: font.body }}>
+                    {jobSuggestWarning}
+                  </p>
+                )}
+                {jobSuggestSource === "ai" && jobSuggestions.length > 0 && (
+                  <AiDisclaimer
+                    text="These roles are AI-generated from your update — confirm they're real and still open before applying."
+                    style={{ marginBottom: 12 }}
+                  />
+                )}
+                {jobSuggestions.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {jobSuggestions.map((s) => {
+                      const key = `${s.company}|${s.role}|${s.url}`
+                      return (
+                        <div
+                          key={key}
+                          style={{
+                            border: "1px solid var(--gb-border)",
+                            borderRadius: 12,
+                            padding: "12px 14px",
+                            background: "var(--gb-surface-hover)",
+                          }}
+                        >
+                          <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+                            {s.role || "Role"}
+                            {s.company ? ` · ${s.company}` : ""}
+                          </div>
+                          {s.location ? (
+                            <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginBottom: 6, fontFamily: font.mono }}>
+                              {s.location}
+                            </div>
+                          ) : null}
+                          {s.why ? (
+                            <p
+                              style={{
+                                margin: "0 0 10px",
+                                fontSize: 13,
+                                color: "var(--gb-text-muted)",
+                                lineHeight: 1.45,
+                                fontFamily: font.body,
+                              }}
+                            >
+                              {s.why}
+                            </p>
+                          ) : null}
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() => addJobSuggestionToApplications(s)}
+                              disabled={addingJobKey === key}
+                              style={{
+                                background: "var(--gb-accent-bright)",
+                                color: "var(--gb-accent-text-on)",
+                                border: "1px solid rgba(10,15,9,0.22)",
+                                padding: "7px 12px",
+                                borderRadius: 8,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: addingJobKey === key ? "not-allowed" : "pointer",
+                                boxShadow: "none",
+                              }}
+                            >
+                              {addingJobKey === key ? "Saving…" : "Save to pipeline"}
+                            </button>
+                            {s.url ? (
+                              <a
+                                href={s.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  fontSize: 12,
+                                  fontFamily: font.mono,
+                                  color: "var(--gb-accent)",
+                                  textDecoration: "none",
+                                }}
+                              >
+                                Search listings →
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {!jobSuggestLoading && !jobSuggestError && jobSuggestions.length === 0 && (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)", fontFamily: font.body }}>
+                    No job ideas yet — add career goals in Settings and upload a résumé for stronger matches.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => loadJobSuggestionsForUpdate(relevanceModal.update)}
+                  disabled={jobSuggestLoading}
+                  style={{
+                    marginTop: 14,
+                    background: "transparent",
+                    border: "1px solid var(--gb-border-strong)",
+                    color: "var(--gb-text-subtle)",
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    cursor: jobSuggestLoading ? "not-allowed" : "pointer",
+                    fontFamily: font.body,
+                    boxShadow: "none",
+                  }}
+                >
+                  Refresh job ideas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage("applications")}
+                  style={{
+                    marginTop: 10,
+                    marginLeft: 8,
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--gb-accent)",
+                    padding: "8px 0",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    fontFamily: font.body,
+                  }}
+                >
+                  Open Job applications →
+                </button>
+              </div>
             </div>
             <div
               style={{
@@ -1975,8 +2129,8 @@ export default function Updates({ setPage, setComposePrefill }) {
               <button
                 type="button"
                 onClick={() => {
-                  setRelevanceModal(null)
                   if (relevanceModal.notice === "no_contacts") setPage("contacts")
+                  closeRelevanceModal()
                 }}
                 style={{
                   background: relevanceModal.notice === "no_contacts" ? "var(--gb-accent-bright)" : "var(--gb-border-subtle)",

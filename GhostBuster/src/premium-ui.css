@@ -1,0 +1,370 @@
+/**
+ * Premium UI — mission-control density, flat panels, restrained accent.
+ * Scoped under .gb-ui-premium on the app root.
+ */
+
+.gb-ui-premium .gb-cinematic-bg::after {
+  opacity: 0.35;
+}
+
+.gb-ui-premium .gb-header {
+  border-bottom: 1px solid var(--gb-border-subtle);
+  backdrop-filter: blur(16px) saturate(1.08);
+}
+
+.gb-ui-premium .gb-header--cinema .gb-brand-lockup {
+  text-transform: none;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+
+.gb-ui-premium .gb-header--cinema .gb-brand-ring {
+  border-color: var(--gb-border);
+  width: 30px;
+  height: 30px;
+}
+
+/* Main nav tabs: styled by .gb-ui-spacex (Plus Jakarta Sans). */
+
+.gb-ui-premium:not(.gb-ui-spacex) .gb-main {
+  padding-top: 4px;
+}
+
+.gb-ui-premium .gb-stagger-in > * {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.gb-ui-premium .gb-page-enter {
+  animation: gb-page-fade 0.35s ease-out;
+}
+
+@keyframes gb-page-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.gb-ui-premium .gb-content-card::after {
+  display: none;
+}
+
+.gb-ui-premium .gb-app--cinema .gb-content-card {
+  background: var(--gb-bg-panel);
+  border-color: var(--gb-border-subtle);
+}
+
+.gb-ui-premium .gb-card-title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.gb-ui-premium .gb-card-helper {
+  font-size: 13px;
+  color: var(--gb-text-faint);
+}
+
+.gb-ui-premium .gb-page-hero--mission {
+  padding: 4px 0 28px;
+  margin-bottom: 8px;
+}
+
+.gb-ui-premium .gb-page-hero--mission .gb-eyebrow {
+  font-family: var(--gb-font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--gb-accent-muted);
+  margin-bottom: 10px;
+}
+
+.gb-ui-premium .gb-page-hero--mission .gb-hero-title {
+  font-size: clamp(1.85rem, 4vw, 2.75rem);
+  font-weight: 750;
+  letter-spacing: -0.038em;
+  line-height: 1.08;
+  max-width: 20ch;
+  text-shadow: none;
+  color: var(--gb-text);
+}
+
+.gb-ui-premium .gb-page-hero--mission .gb-page-hero__subtitle,
+.gb-ui-premium .gb-page-hero--mission p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--gb-text-muted);
+  max-width: 36rem;
+}
+
+/* —— Metrics —— */
+
+.gb-ui-premium .gb-snapshot-wrap {
+  margin-bottom: 24px;
+}
+
+.gb-ui-premium .gb-snapshot-grid {
+  gap: 10px;
+}
+
+.gb-ui-premium .gb-snapshot-grid > * {
+  animation: none;
+}
+
+.gb-ui-premium .gb-snapshot-stat {
+  min-height: 128px;
+  padding: 16px 16px 14px 18px;
+  background: var(--gb-bg-panel);
+  border: 1px solid var(--gb-border-subtle);
+  border-radius: var(--gb-radius-md);
+  box-shadow: none;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.gb-ui-premium .gb-snapshot-stat::after {
+  display: none;
+}
+
+.gb-ui-premium .gb-snapshot-stat::before {
+  inset: 12px auto 12px 0;
+  width: 2px;
+  opacity: 0.75;
+}
+
+.gb-ui-premium .gb-snapshot-stat--interactive:hover {
+  transform: none;
+  background: color-mix(in srgb, var(--gb-bg-panel) 92%, var(--gb-accent-soft));
+  border-color: color-mix(in srgb, var(--snapshot-accent) 28%, var(--gb-border));
+  box-shadow: none;
+}
+
+.gb-ui-premium .gb-snapshot-stat__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--gb-radius-sm);
+  background: var(--gb-surface-muted);
+  border-color: var(--gb-border-subtle);
+}
+
+.gb-ui-premium .gb-snapshot-stat__label {
+  color: var(--gb-text-faint);
+  letter-spacing: 0.08em;
+}
+
+.gb-ui-premium .gb-snapshot-stat__value {
+  color: var(--gb-text);
+  font-size: clamp(1.75rem, 3.5vw, 2.15rem);
+  text-shadow: none;
+}
+
+.gb-ui-premium .gb-snapshot-stat__trend {
+  font-size: 12px;
+  color: var(--gb-text-subtle);
+}
+
+.gb-ui-premium .gb-snapshot-stat__tag {
+  border-radius: var(--gb-radius-sm);
+  padding: 3px 7px;
+  font-size: 9px;
+}
+
+/* —— Quick actions (merged grid) —— */
+
+.gb-ui-premium .gb-quick-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--gb-border-subtle);
+  border: 1px solid var(--gb-border-subtle);
+  border-radius: 0;
+}
+
+@media (min-width: 520px) {
+  .gb-ui-premium .gb-quick-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 720px) {
+  .gb-ui-premium .gb-quick-actions-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1120px) {
+  .gb-ui-premium .gb-quick-actions-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.gb-ui-premium .gb-quick-action {
+  --qa-accent: var(--gb-accent);
+  min-height: 76px;
+  padding: 14px 14px 14px 16px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--gb-bg-panel);
+  box-shadow: none;
+  gap: 12px;
+  overflow: visible;
+  align-items: center;
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: left;
+}
+
+.gb-ui-premium .gb-quick-action::before {
+  display: none;
+}
+
+.gb-ui-premium .gb-quick-action:hover {
+  transform: none;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+  color: #fff;
+}
+
+.gb-ui-premium .gb-quick-action__icon {
+  width: 32px;
+  height: 32px;
+  margin-left: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+}
+
+.gb-ui-premium .gb-quick-action__sub {
+  color: var(--gb-text-faint);
+  font-family: var(--gb-font-sans);
+  letter-spacing: -0.01em;
+}
+
+.gb-ui-premium .gb-quick-action__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.gb-ui-premium .gb-quick-action__title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+  color: var(--gb-text);
+}
+
+.gb-ui-premium .gb-quick-action__sub {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.gb-ui-premium .gb-quick-action__arrow {
+  display: block;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.22);
+}
+
+.gb-ui-premium .gb-quick-action:hover .gb-quick-action__arrow {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.gb-ui-premium .gb-quick-actions-card .gb-card-title-block {
+  margin-bottom: 18px;
+}
+
+/* —— Reel (contained) —— */
+
+.gb-ui-premium .gb-reel-card {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.gb-ui-premium .gb-reel-card .gb-success-reel--wide {
+  min-height: clamp(180px, 22vw, 240px);
+  border-radius: 0;
+  margin: 0;
+}
+
+.gb-ui-premium .gb-success-reel--scroll {
+  min-height: clamp(200px, 26vh, 260px);
+}
+
+/* —— Steps / getting started —— */
+
+.gb-ui-premium .gb-step-tile {
+  background: var(--gb-bg-panel);
+  border-color: var(--gb-border-subtle);
+  box-shadow: none;
+  border-radius: var(--gb-radius-md);
+  min-height: 0;
+}
+
+.gb-ui-premium .gb-step-tile:hover {
+  transform: none;
+  border-color: var(--gb-border);
+}
+
+/* —— Buttons —— */
+
+.gb-ui-premium .gb-btn--primary {
+  background: var(--gb-accent);
+  box-shadow: none;
+  font-weight: 650;
+}
+
+.gb-ui-premium .gb-btn--primary:hover {
+  background: var(--gb-accent-bright);
+  transform: none;
+  box-shadow: none;
+}
+
+.gb-ui-premium .gb-compose-fab {
+  border-radius: var(--gb-radius-md);
+  font-weight: 650;
+  box-shadow: 0 12px 40px -16px rgba(0, 0, 0, 0.65);
+}
+
+/* —— Fields —— */
+
+.gb-ui-premium input:not([type="checkbox"]):not([type="radio"]),
+.gb-ui-premium textarea,
+.gb-ui-premium select,
+.gb-ui-premium .gb-field {
+  background: var(--gb-bg-input);
+  border-color: var(--gb-border-subtle);
+  border-radius: var(--gb-radius-sm);
+}
+
+.gb-ui-premium input:focus,
+.gb-ui-premium textarea:focus,
+.gb-ui-premium select:focus {
+  box-shadow: 0 0 0 2px var(--gb-accent-soft);
+}
+
+/* —— Dashboard layout rhythm —— */
+
+.gb-ui-premium.gb-dashboard-layout .gb-dashboard-split {
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.gb-ui-premium .gb-progress-bar {
+  height: 3px;
+  border-radius: 0;
+  background: var(--gb-surface-muted);
+}
+
+.gb-ui-premium .gb-progress-bar__fill {
+  height: 100%;
+  border-radius: 0;
+  background: var(--gb-accent);
+}

@@ -1,56 +1,71 @@
 import { font } from "./theme"
 
+/** Shared class names — pair with theme.css `.gb-*` rules */
+export const uiClass = {
+  input: "gb-field",
+  btnPrimary: "gb-btn gb-btn--primary",
+  btnSecondary: "gb-btn gb-btn--secondary",
+  btnGhost: "gb-btn gb-btn--ghost",
+  btnSm: "gb-btn--sm",
+  sectionCard: "gb-section-card",
+  floatingPanel: "gb-floating-panel",
+  iconBtn: "gb-icon-btn",
+  menuItem: "gb-menu-item",
+}
+
 export function inputStyle() {
   return {
     width: "100%",
     background: "var(--gb-bg-input)",
     border: "1px solid var(--gb-border-strong)",
-    borderRadius: 8,
-    padding: "10px 14px",
+    borderRadius: "var(--gb-radius-md, 12px)",
+    padding: "11px 14px",
     color: "var(--gb-text)",
     fontSize: 14,
     fontFamily: font.body,
     outline: "none",
     boxSizing: "border-box",
+    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+  }
+}
+
+export function inputProps(extraStyle) {
+  return {
+    className: uiClass.input,
+    style: { ...inputStyle(), ...extraStyle },
   }
 }
 
 export function sectionCard(borderColor = "var(--gb-border-subtle)", embedded = false) {
+  const className = [
+    uiClass.sectionCard,
+    embedded ? "gb-section-card--embedded" : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+  const style = {}
+  if (borderColor && borderColor !== "var(--gb-border-subtle)") {
+    style.borderColor = borderColor
+  }
+  return { className, style }
+}
+
+export function secondaryBtn(extra = {}) {
   return {
-    background: embedded ? "var(--gb-bg-panel)" : "var(--gb-bg-elevated)",
-    border: `1px solid ${borderColor}`,
-    borderRadius: embedded ? 12 : 16,
-    padding: embedded ? 16 : 24,
-    marginBottom: embedded ? 14 : 24,
+    className: [uiClass.btnSecondary, extra.sm ? uiClass.btnSm : ""].filter(Boolean).join(" "),
+    style: {
+      ...(extra.fullWidth ? { width: "100%" } : {}),
+      ...extra.style,
+    },
   }
 }
 
-export function secondaryBtn() {
+export function primaryBtn(extra = {}) {
   return {
-    background: "var(--gb-surface-muted)",
-    border: "1px solid var(--gb-border)",
-    color: "var(--gb-text-strong)",
-    padding: "10px 16px",
-    borderRadius: 9,
-    fontFamily: font.body,
-    fontWeight: 600,
-    fontSize: 13,
-    cursor: "pointer",
-    boxShadow: "none",
-  }
-}
-
-export function primaryBtn() {
-  return {
-    background: "var(--gb-accent-bright)",
-    color: "var(--gb-accent-text-on)",
-    border: "1px solid color-mix(in srgb, var(--gb-accent-text-on) 22%, transparent)",
-    boxShadow: "none",
-    padding: "10px 24px",
-    borderRadius: 9,
-    fontFamily: font.h1,
-    fontWeight: 700,
-    fontSize: 14,
-    cursor: "pointer",
+    className: [uiClass.btnPrimary, extra.sm ? uiClass.btnSm : ""].filter(Boolean).join(" "),
+    style: {
+      ...(extra.fullWidth ? { width: "100%" } : {}),
+      ...extra.style,
+    },
   }
 }

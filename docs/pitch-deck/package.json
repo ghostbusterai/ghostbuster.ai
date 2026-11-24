@@ -1,0 +1,19 @@
+{
+  "name": "pitch-deck",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:pptx": "node generate-pptx.mjs",
+    "export:logos": "node export-logos.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "pptxgenjs": "^4.0.1",
+    "sharp": "^0.35.4"
+  }
+}

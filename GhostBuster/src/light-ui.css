@@ -1,0 +1,276 @@
+/**
+ * Clean white presentation — pairs with [data-theme="light"] tokens.
+ * Overrides SpaceX / site-ui hardcoded dark colors while keeping layout + accent.
+ */
+
+[data-theme="light"] {
+  --gb-divider: rgba(24, 27, 34, 0.08);
+  --gb-divider-subtle: rgba(24, 27, 34, 0.06);
+}
+
+[data-theme="light"] body,
+[data-theme="light"] .gb-app {
+  background: var(--gb-bg);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-cinematic-bg,
+[data-theme="light"] .gb-ui-spacex .gb-cinematic-bg::after {
+  background: var(--gb-bg) !important;
+  background-image: none !important;
+  opacity: 1 !important;
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-header,
+[data-theme="light"] .gb-ui-spacex .gb-header--cinema {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--gb-border-subtle);
+  backdrop-filter: blur(14px) saturate(1.05);
+  box-shadow: 0 1px 0 rgba(24, 27, 34, 0.04);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-brand-lockup,
+[data-theme="light"] .gb-ui-spacex .gb-header-actions .gb-icon-btn {
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-brand-ring {
+  border-color: var(--gb-border);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-header .gb-nav-tab {
+  color: var(--gb-text-muted);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-header .gb-nav-tab--active {
+  color: var(--gb-text);
+  border-bottom-color: var(--gb-accent);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-header .gb-nav-tab:hover,
+[data-theme="light"] .gb-ui-spacex .gb-header .gb-nav-tab--active:hover {
+  color: var(--gb-text);
+}
+
+/* —— Page shell & cards —— */
+
+[data-theme="light"] .gb-ui-spacex .gb-page-shell .gb-content-card,
+[data-theme="light"] .gb-ui-premium .gb-app--cinema .gb-content-card {
+  background: var(--gb-bg);
+  border-color: var(--gb-border-subtle);
+  box-shadow: none;
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-page-hero--mission {
+  border-bottom-color: var(--gb-divider);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-page-hero--mission .gb-eyebrow {
+  color: var(--gb-text-muted);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-page-hero--mission .gb-hero-title {
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-page-hero--mission .gb-page-hero__subtitle {
+  color: var(--gb-text-muted);
+}
+
+/* —— Dashboard SpaceX hero —— */
+
+[data-theme="light"] .gb-spacex-hero,
+[data-theme="light"] .gb-spacex-reel-section,
+[data-theme="light"] .gb-spacex-hero--intro {
+  background: var(--gb-bg);
+  border-bottom-color: var(--gb-divider);
+}
+
+[data-theme="light"] .gb-spacex-hero__eyebrow,
+[data-theme="light"] .gb-spacex-reel-section__label {
+  color: var(--gb-text-muted);
+}
+
+[data-theme="light"] .gb-spacex-hero__title {
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-spacex-hero__lede {
+  color: var(--gb-text-secondary);
+}
+
+[data-theme="light"] .gb-spacex-hero__cta {
+  background: var(--gb-text);
+  color: var(--gb-bg);
+}
+
+[data-theme="light"] .gb-spacex-hero__cta:hover {
+  opacity: 0.92;
+}
+
+[data-theme="light"] .gb-spacex-hero__cta--ghost {
+  color: var(--gb-text);
+  border-color: var(--gb-border-strong);
+  background: transparent;
+}
+
+/* —— Metrics & quick actions —— */
+
+[data-theme="light"] .gb-ui-spacex .gb-snapshot-stat {
+  border-left-color: var(--gb-divider);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-snapshot-wrap .gb-card-title {
+  color: var(--gb-text-muted);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-snapshot-stat__label,
+[data-theme="light"] .gb-ui-spacex .gb-snapshot-stat__value {
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-stat-showcase {
+  background: var(--gb-surface-muted);
+  border-color: var(--gb-border-subtle);
+}
+
+[data-theme="light"] .gb-stat-showcase__title,
+[data-theme="light"] .gb-ui-spacex .gb-stat-showcase .gb-snapshot-stat__value {
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-stat-showcase__lede,
+[data-theme="light"] .gb-ui-spacex .gb-stat-showcase .gb-snapshot-stat__label {
+  color: var(--gb-text-muted);
+}
+
+[data-theme="light"] .gb-ui-premium .gb-quick-actions-grid {
+  background: var(--gb-divider);
+  border-color: var(--gb-border-subtle);
+}
+
+[data-theme="light"] .gb-ui-premium .gb-quick-action {
+  background: var(--gb-bg);
+  color: var(--gb-text-muted);
+}
+
+[data-theme="light"] .gb-ui-premium .gb-quick-action:hover {
+  background: var(--gb-surface-hover);
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-quick-actions-grid {
+  background: var(--gb-divider-subtle);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-quick-action {
+  background: var(--gb-bg);
+}
+
+/* —— Lists (contacts, activity, records) —— */
+
+[data-theme="light"] .gb-contact-list,
+[data-theme="light"] .gb-activity-list-wrap,
+[data-theme="light"] .gb-record-list,
+[data-theme="light"] .gb-contact-empty,
+[data-theme="light"] .gb-empty-state {
+  border-top-color: var(--gb-divider);
+}
+
+[data-theme="light"] .gb-contact-row,
+[data-theme="light"] .gb-activity-row,
+[data-theme="light"] .gb-record-row,
+[data-theme="light"] .gb-application-row {
+  border-bottom-color: var(--gb-divider-subtle);
+}
+
+[data-theme="light"] .gb-contact-row:hover,
+[data-theme="light"] .gb-activity-row:hover {
+  background: var(--gb-surface-hover);
+}
+
+[data-theme="light"] .gb-contact-row__avatar {
+  background: var(--gb-surface-muted);
+  border-color: var(--gb-border-subtle);
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-segmented {
+  border-color: var(--gb-border-subtle);
+}
+
+[data-theme="light"] .gb-segmented__btn {
+  color: var(--gb-text-muted);
+  border-right-color: var(--gb-divider-subtle);
+}
+
+[data-theme="light"] .gb-segmented__btn--active {
+  color: var(--gb-text);
+  background: var(--gb-surface-muted);
+}
+
+[data-theme="light"] .gb-legend-chip {
+  background: var(--gb-bg);
+  border-color: var(--gb-border-subtle);
+}
+
+[data-theme="light"] .gb-filter-banner {
+  background: var(--gb-surface-muted);
+  border-color: var(--gb-border-subtle);
+  color: var(--gb-text-secondary);
+}
+
+[data-theme="light"] .gb-badge {
+  border-color: var(--gb-border);
+  color: var(--gb-text-secondary);
+}
+
+/* —— Login (mission layout) —— */
+
+[data-theme="light"] .gb-login-hero--mission {
+  background: var(--gb-bg);
+}
+
+[data-theme="light"] .gb-mission-title,
+[data-theme="light"] .gb-mission-lede,
+[data-theme="light"] .gb-mission-eyebrow {
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-mission-lede,
+[data-theme="light"] .gb-mission-eyebrow {
+  color: var(--gb-text-muted);
+}
+
+[data-theme="light"] .gb-login-glass {
+  background: var(--gb-surface-muted);
+  border-color: var(--gb-border-subtle);
+}
+
+[data-theme="light"] .gb-btn--outline-light {
+  border-color: var(--gb-border-strong);
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-ui-spacex .gb-section-label,
+[data-theme="light"] .gb-ui-spacex .gb-card-title {
+  color: var(--gb-text-muted);
+}
+
+[data-theme="light"] .gb-success-reel--scroll {
+  border-top-color: var(--gb-divider);
+  background: var(--gb-bg);
+}
+
+[data-theme="light"] .gb-success-reel__name,
+[data-theme="light"] .gb-success-reel__caption {
+  color: var(--gb-text);
+}
+
+[data-theme="light"] .gb-ui-premium .gb-header {
+  background: var(--gb-header-bg);
+  border-bottom-color: var(--gb-border-subtle);
+}
+
+[data-theme="light"] .gb-ui-premium .gb-quick-action__icon {
+  border-color: var(--gb-border-subtle);
+}

@@ -3,6 +3,7 @@ const { ObjectId } = require("mongodb")
 const { getDb } = require("./db")
 const { suggestResumeBucket } = require("./resumeBucketMatch")
 const { sanitizeAutofill, fillStatus, fillQuestions } = require("./autofill")
+const { normalizePipelineStatus, pipelineFromLegacyStatus, isoDateOnly } = require("./applicationPipeline")
 
 function uid(userId) {
   if (!userId) throw new Error("userId required")
@@ -292,7 +293,15 @@ exports.createApplication = async (userId, body) => {
     fillStatus: "",
     fillQuestions: [],
     fillUpdatedAt: "",
+    pipelineStatus: normalizePipelineStatus(
+      body?.pipelineStatus,
+      pipelineFromLegacyStatus(status)
+    ),
+    portalUrl: typeof body?.portalUrl === "string" ? body.portalUrl.trim() : "",
+    statusNote: typeof body?.statusNote === "string" ? body.statusNote.trim() : "",
+    lastPortalCheck: typeof body?.lastPortalCheck === "string" ? body.lastPortalCheck.trim() : "",
   }
+  if (!application.portalUrl && application.url) application.portalUrl = application.url
   if (!application.company && !application.role && !application.url) {
     throw new Error("empty")
   }
@@ -317,6 +326,20 @@ exports.patchApplication = async (userId, id, body) => {
         ? prev.completedAt || new Date().toISOString()
         : "",
   }
+  if (body.pipelineStatus !== undefined) {
+    next.pipelineStatus = normalizePipelineStatus(body.pipelineStatus, pipelineFromLegacyStatus(status))
+  } else if (status === "completed" && !prev.pipelineStatus && prev.status !== "completed") {
+    next.pipelineStatus = "applied"
+  } else if (!prev.pipelineStatus) {
+    next.pipelineStatus = pipelineFromLegacyStatus(status)
+  }
+  if (body.portalUrl !== undefined) next.portalUrl = String(body.portalUrl).trim()
+  if (body.statusNote !== undefined) next.statusNote = String(body.statusNote).trim()
+  if (body.lastPortalCheck !== undefined) next.lastPortalCheck = String(body.lastPortalCheck).trim()
+  if (body.markPortalChecked) next.lastPortalCheck = isoDateOnly()
+  if (body.lastEmailSyncId !== undefined) next.lastEmailSyncId = String(body.lastEmailSyncId)
+  if (body.lastEmailSyncAt !== undefined) next.lastEmailSyncAt = String(body.lastEmailSyncAt)
+  if (body.portalSyncAt !== undefined) next.portalSyncAt = String(body.portalSyncAt)
   if (body.fillStatus !== undefined) {
     next.fillStatus = fillStatus(body.fillStatus, prev.fillStatus || "")
     next.fillUpdatedAt = new Date().toISOString()
@@ -480,6 +503,8 @@ exports.getProfile = async (userId) => {
       lastResumeUpdate: typeof p.lastResumeUpdate === "string" ? p.lastResumeUpdate : "",
       hideGettingStarted: Boolean(p.hideGettingStarted),
       autofill: sanitizeAutofill(p.autofill),
+      applicationSync:
+        p.applicationSync && typeof p.applicationSync === "object" ? p.applicationSync : {},
     },
   }
 }
@@ -501,6 +526,13 @@ exports.patchProfile = async (userId, body) => {
   }
   if (body.autofill !== undefined) {
     $set.autofill = sanitizeAutofill(body.autofill)
+  }
+  if (body.applicationSync !== undefined && typeof body.applicationSync === "object") {
+    const existing = await getDb().collection("profiles").findOne({ userId: uid(userId) })
+    $set.applicationSync = {
+      ...(existing?.applicationSync && typeof existing.applicationSync === "object" ? existing.applicationSync : {}),
+      ...body.applicationSync,
+    }
   }
   if (Object.keys($set).length) {
     await getDb().collection("profiles").updateOne({ userId: uid(userId) }, { $set })

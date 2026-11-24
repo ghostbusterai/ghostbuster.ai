@@ -1,0 +1,622 @@
+/**
+ * Site-wide list, empty, filter, and row patterns (SpaceX / premium).
+ * Works under .gb-ui-premium and .gb-ui-spacex.
+ */
+
+/* —— Page shells —— */
+
+.gb-ui-spacex .gb-page-shell {
+  padding-bottom: 48px;
+}
+
+.gb-ui-spacex .gb-page-shell .gb-content-card {
+  background: #000;
+  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.gb-ui-spacex .gb-quick-actions-card.gb-content-card {
+  border-bottom: none;
+}
+
+.gb-ui-spacex .gb-page-hero--mission {
+  padding: 12px 0 32px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  scroll-margin-top: 120px;
+  position: relative;
+  z-index: 1;
+}
+
+.gb-ui-spacex .gb-page-hero--mission::before {
+  display: none;
+}
+
+.gb-ui-spacex .gb-page-hero--mission .gb-eyebrow {
+  font-family: var(--gb-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  margin-bottom: 14px;
+  display: block;
+  visibility: visible;
+}
+
+.gb-ui-spacex .gb-page-hero--mission .gb-hero-title {
+  font-family: var(--gb-font-sans);
+  font-size: clamp(1.75rem, 4.2vw, 2.85rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  text-transform: none;
+  color: #fff;
+  max-width: none;
+}
+
+.gb-ui-spacex .gb-page-hero--mission .gb-page-hero__subtitle {
+  font-size: 16px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.55);
+  max-width: 36rem;
+}
+
+.gb-ui-spacex .gb-section-label,
+.gb-ui-spacex .gb-card-title {
+  font-family: var(--gb-font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* —— Empty states —— */
+
+.gb-empty-state {
+  padding: 36px 8px 40px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gb-empty-state--left {
+  text-align: left;
+  max-width: 28rem;
+}
+
+.gb-empty-state__icon {
+  margin: 0 auto 14px;
+  opacity: 0.55;
+  color: var(--gb-accent);
+}
+
+.gb-empty-state--left .gb-empty-state__icon {
+  margin-left: 0;
+}
+
+.gb-empty-state__title {
+  margin: 0 0 8px;
+  font-family: var(--gb-font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gb-text);
+}
+
+.gb-empty-state__lede {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--gb-text-muted);
+}
+
+.gb-empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.gb-empty-state--left .gb-empty-state__actions {
+  justify-content: flex-start;
+}
+
+/* —— Segmented filter (flat tabs) —— */
+
+.gb-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.gb-segmented__btn {
+  padding: 11px 18px;
+  min-height: 42px;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--gb-font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  font-style: normal;
+  font-synthesis: none;
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.gb-segmented__btn:last-child {
+  border-right: none;
+}
+
+.gb-segmented__btn:hover {
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gb-segmented__btn--active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* —— Record / application lists —— */
+
+.gb-record-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gb-record-list--in-card {
+  border-top: none;
+}
+
+.gb-record-row,
+.gb-application-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+}
+
+.gb-record-row:last-child,
+.gb-application-row:last-child {
+  border-bottom: none;
+}
+
+.gb-record-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.gb-record-row__title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--gb-text);
+}
+
+.gb-record-row__meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--gb-text-muted);
+  line-height: 1.4;
+}
+
+.gb-record-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gb-record-row--urgent {
+  border-left: 2px solid var(--gb-danger);
+  padding-left: 12px;
+  margin-left: -4px;
+}
+
+.gb-record-row--done {
+  opacity: 0.72;
+}
+
+.gb-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-family: var(--gb-font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--gb-text-secondary);
+}
+
+.gb-badge--accent {
+  border-color: color-mix(in srgb, var(--gb-accent) 40%, transparent);
+  color: var(--gb-accent-muted);
+}
+
+.gb-badge--warn {
+  border-color: color-mix(in srgb, var(--gb-warning) 40%, transparent);
+  color: var(--gb-warning);
+}
+
+/* —— Contact hub rows (actions on desktop) —— */
+
+.gb-contact-list--hub {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gb-contact-row--hub {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding: 16px 4px;
+  cursor: default;
+}
+
+.gb-contact-row--hub .gb-contact-row__avatar {
+  border-radius: var(--gb-radius-sm);
+}
+
+.gb-contact-row--pinned {
+  background: rgba(255, 201, 107, 0.03);
+}
+
+.gb-contact-row--pinned .gb-contact-row__avatar {
+  border-color: color-mix(in srgb, var(--gb-warning) 35%, transparent);
+  color: var(--gb-warning);
+}
+
+.gb-contact-row__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.gb-contact-row__links a {
+  color: var(--gb-accent);
+  text-decoration: none;
+}
+
+.gb-contact-row__notes {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--gb-text-dim);
+  max-width: 420px;
+  line-height: 1.45;
+}
+
+.gb-contact-row__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.gb-contact-row__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.gb-list-divider {
+  font-family: var(--gb-font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+  padding: 14px 4px 6px;
+}
+
+.gb-list-divider--warn {
+  color: color-mix(in srgb, var(--gb-warning) 75%, transparent);
+}
+
+/* —— Legend chips (tracker, settings) —— */
+
+.gb-legend-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.gb-legend-chip {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 220px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--gb-text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gb-legend-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.gb-legend-chip strong {
+  display: block;
+  color: var(--gb-text);
+  font-weight: 600;
+}
+
+.gb-legend-chip span small,
+.gb-legend-chip .gb-legend-chip__detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--gb-text-faint);
+  line-height: 1.35;
+  font-size: 11px;
+}
+
+/* —— Summary chips (notifications) —— */
+
+.gb-summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gb-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-family: var(--gb-font-mono);
+  font-size: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+}
+
+.gb-summary-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* —— Form actions —— */
+
+.gb-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.gb-filter-banner {
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--gb-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gb-filter-banner strong {
+  color: var(--gb-text);
+}
+
+/* —— Settings (embedded) —— */
+
+.gb-ui-spacex .gb-settings-group__label {
+  font-family: var(--gb-font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+/* —— Reminders page —— */
+
+.gb-reminders-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 720px) {
+  .gb-reminders-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 20px;
+  }
+}
+
+.gb-reminders-calendar-line {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--gb-text-muted);
+  line-height: 1.5;
+}
+
+.gb-reminders-calendar-line__ok {
+  color: var(--gb-accent);
+  font-weight: 600;
+}
+
+.gb-reminders-calendar-line__link {
+  margin-left: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gb-accent);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.gb-reminders-calendar-help {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gb-text-faint);
+}
+
+.gb-reminder-banner {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gb-accent);
+}
+
+.gb-reminder-banner--error {
+  color: var(--gb-danger);
+}
+
+.gb-reminder-banner--warn {
+  color: var(--gb-warning);
+}
+
+.gb-reminder-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+@media (min-width: 640px) {
+  .gb-reminder-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.gb-reminder-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gb-reminder-form__calendar {
+  margin-top: 14px;
+}
+
+.gb-reminder-row {
+  flex-direction: column;
+  align-items: stretch;
+  padding-left: 12px !important;
+  margin-left: 0 !important;
+}
+
+@media (min-width: 720px) {
+  .gb-reminder-row {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+.gb-reminder-row--suggested {
+  background: rgba(157, 206, 92, 0.04);
+}
+
+.gb-reminder-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.gb-record-row__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gb-reminder-row__title--done {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.gb-reminder-row__due {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.gb-reminder-row__actions {
+  margin-top: 10px;
+}
+
+@media (min-width: 720px) {
+  .gb-reminder-row__actions {
+    margin-top: 0;
+    flex-shrink: 0;
+    max-width: 280px;
+    justify-content: flex-end;
+  }
+}
+
+.gb-reminders-section-label {
+  margin: 16px 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gb-text-faint);
+}
+
+.gb-reminders-section-label:first-child {
+  margin-top: 0;
+}
+
+.gb-reminders-footnote {
+  margin: 20px 4px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--gb-text-faint);
+  max-width: 40rem;
+}
+
+.gb-pill--accent {
+  color: var(--gb-accent);
+  background: var(--gb-accent-soft);
+  border-color: var(--gb-accent-border);
+}
+
+@media (max-width: 720px) {
+  .gb-contact-row--hub .gb-contact-row__side {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .gb-contact-row__toolbar {
+    justify-content: flex-start;
+  }
+
+  .gb-record-row {
+    flex-direction: column;
+  }
+
+  .gb-record-row__actions {
+    justify-content: flex-start;
+  }
+}

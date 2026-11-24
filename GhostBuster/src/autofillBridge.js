@@ -43,6 +43,22 @@ export function extensionInstalled() {
   return Boolean(document.documentElement.dataset.gbAutofill)
 }
 
+async function savePortalReport(report) {
+  if (report?.applicationId == null || handledReports.has(report.reportId)) return
+  handledReports.add(report.reportId)
+  try {
+    await api.syncApplicationPortal({
+      applicationId: report.applicationId,
+      statusText: [report.statusText, report.title].filter(Boolean).join(" · "),
+      url: report.url || "",
+    })
+    post({ type: "REPORT_ACK", reportId: report.reportId })
+    emit({ type: "portal", report })
+  } catch {
+    handledReports.delete(report.reportId)
+  }
+}
+
 async function saveReport(report) {
   if (report?.applicationId == null || handledReports.has(report.reportId)) return
   handledReports.add(report.reportId)
@@ -119,14 +135,13 @@ export function initAutofillBridge() {
     else if (m.type === "FILL_REPORT") saveReport(m.report)
     else if (m.type === "SAVE_CONTACT") saveContact(m.contact)
     else if (m.type === "GHOSTWRITER_START" && m.meeting) {
-      // Kept until the Ghostwriter page picks it up (it may not be mounted yet).
       try {
         sessionStorage.setItem(GHOSTWRITER_PENDING_KEY, JSON.stringify(m.meeting))
       } catch {
         /* storage unavailable: the event below still carries it */
       }
       window.dispatchEvent(new CustomEvent(GHOSTWRITER_START_EVENT, { detail: m.meeting }))
-    }
+    } else if (m.type === "PORTAL_SYNC") savePortalReport(m.report)
   })
   post({ type: "PING" })
   // Coming back from LinkedIn or an application tab: collect anything the extension is holding.
@@ -184,4 +199,23 @@ export async function syncResumesToExtension() {
 /** Opens the extension's prompt to let it run on any site (follows jobs off the big ATS sites). */
 export function requestAllSitesAccess() {
   post({ type: "REQUEST_ALL_SITES" })
+}
+
+/** Opens the status portal in a new tab; extension reads status text and syncs back. */
+export async function startPortalSync(application) {
+  if (!extensionInstalled()) throw new Error("Install the GhostBuster Autofill extension to sync from portals.")
+  const url = (application?.portalUrl || application?.url || "").trim()
+  if (!url) throw new Error("Add a status portal or application link first.")
+  post({
+    type: "START_PORTAL_SYNC",
+    job: {
+      application: {
+        id: application.id,
+        url: application.url,
+        portalUrl: application.portalUrl || application.url,
+        company: application.company || "",
+        role: application.role || "",
+      },
+    },
+  })
 }

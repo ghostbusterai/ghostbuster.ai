@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GhostBuster AI — Logo Zoom</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Mono:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #f0f0f5;
+      --muted: rgba(240,240,245,0.55);
+      --accent: #b8ff57;
+      --border: rgba(255,255,255,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 24px 48px;
+    }
+    h1 {
+      font-family: Syne, sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+    .hint {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    .stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 48px;
+      width: 100%;
+      max-width: 960px;
+    }
+    .panel {
+      width: 100%;
+      background: #111118;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .panel.light {
+      background: #ffffff;
+    }
+    .panel h2 {
+      font-family: Syne, sans-serif;
+      font-size: 14px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .panel.light h2 { color: #666; }
+    .zoom-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 420px;
+      width: 100%;
+    }
+    .zoom-wrap img {
+      width: 400px;
+      height: 400px;
+      image-rendering: auto;
+      cursor: zoom-in;
+      transition: transform 0.2s ease;
+    }
+    .zoom-wrap img.zoomed {
+      transform: scale(1.75);
+      cursor: zoom-out;
+    }
+    .lockup-wrap img {
+      width: min(100%, 720px);
+      height: auto;
+      cursor: zoom-in;
+      transition: transform 0.2s ease;
+    }
+    .lockup-wrap img.zoomed {
+      transform: scale(1.4);
+      cursor: zoom-out;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    button {
+      border: 1px solid var(--border);
+      background: rgba(184,255,87,0.12);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background: rgba(184,255,87,0.22); }
+    .size-label {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <h1>GhostBuster AI Logo — Zoomed Preview</h1>
+  <p class="hint">Click the logo to zoom in further · Use buttons to change size · Scroll if needed when zoomed</p>
+
+  <div class="stage">
+    <div class="panel">
+      <h2>Icon mark (dark deck)</h2>
+      <div class="zoom-wrap">
+        <img id="mark" src="assets/logo-mark.svg" alt="GhostBuster logo mark" width="400" height="400" />
+      </div>
+      <p class="size-label" id="mark-size">Showing at 400 × 400 px</p>
+      <div class="controls">
+        <button type="button" data-target="mark" data-size="280">280px</button>
+        <button type="button" data-target="mark" data-size="400">400px</button>
+        <button type="button" data-target="mark" data-size="512">512px</button>
+        <button type="button" data-target="mark" data-size="640">640px</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Full lockup — icon + GhostBuster AI</h2>
+      <div class="zoom-wrap lockup-wrap">
+        <img id="lockup" src="assets/logo-full-horizontal.svg" alt="GhostBuster full logo" />
+      </div>
+      <div class="controls">
+        <button type="button" data-target="lockup" data-size="480">480px wide</button>
+        <button type="button" data-target="lockup" data-size="720">720px wide</button>
+        <button type="button" data-target="lockup" data-size="960">960px wide</button>
+      </div>
+    </div>
+
+    <div class="panel light">
+      <h2>Icon mark (light background)</h2>
+      <div class="zoom-wrap">
+        <img id="mark-light" src="assets/logo-mark-light-bg.svg" alt="GhostBuster logo light" width="400" height="400" />
+      </div>
+      <div class="controls">
+        <button type="button" data-target="mark-light" data-size="400">400px</button>
+        <button type="button" data-target="mark-light" data-size="512">512px</button>
+        <button type="button" data-target="mark-light" data-size="640">640px</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll(".zoom-wrap img, .lockup-wrap img").forEach((img) => {
+      img.addEventListener("click", () => img.classList.toggle("zoomed"));
+    });
+
+    document.querySelectorAll("[data-target]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const img = document.getElementById(btn.dataset.target);
+        const size = Number(btn.dataset.size);
+        if (btn.dataset.target === "lockup") {
+          img.style.width = size + "px";
+          img.style.height = "auto";
+          img.classList.remove("zoomed");
+        } else {
+          img.style.width = size + "px";
+          img.style.height = size + "px";
+          img.classList.remove("zoomed");
+          if (btn.dataset.target === "mark") {
+            document.getElementById("mark-size").textContent = `Showing at ${size} × ${size} px`;
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

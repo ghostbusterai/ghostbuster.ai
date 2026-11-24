@@ -22,6 +22,15 @@ function IconUser() {
   )
 }
 
+function IconAbout() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M12 10v6M12 7h.01" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function IconGear() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -54,45 +63,9 @@ function IconChevronLeft() {
 }
 
 function DropdownRow({ icon, label, onClick }) {
-  const [hover, setHover] = useState(false)
   return (
-    <button
-      type="button"
-      role="menuitem"
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onClick={onClick}
-      style={{
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 14px",
-        margin: 0,
-        border: "none",
-        borderRadius: 8,
-        background: hover ? "var(--gb-surface-active)" : "transparent",
-        color: hover ? "var(--gb-text)" : "var(--gb-text-secondary)",
-        fontFamily: font.body,
-        fontSize: 14,
-        fontWeight: 500,
-        cursor: "pointer",
-        textAlign: "left",
-        boxShadow: "none",
-        transition: "background 0.12s ease, color 0.12s ease",
-      }}
-    >
-      <span
-        style={{
-          color: hover ? "var(--gb-text-muted)" : "var(--gb-text-faint)",
-          display: "flex",
-          flexShrink: 0,
-          width: 20,
-          justifyContent: "center",
-        }}
-      >
-        {icon}
-      </span>
+    <button type="button" role="menuitem" onClick={onClick} className="gb-menu-item">
+      <span className="gb-menu-item__icon">{icon}</span>
       {label}
     </button>
   )
@@ -212,7 +185,6 @@ function AvatarCircle({ authUser, displayName, size = 40 }) {
   )
 }
 
-const panelShadow = "0 12px 16px -4px rgba(0,0,0,0.45), 0 4px 6px -2px rgba(0,0,0,0.25)"
 
 export default function ProfileMenu({
   authUser = null,
@@ -378,20 +350,8 @@ export default function ProfileMenu({
           if (!open) setView("menu")
           setOpen(!open)
         }}
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          border: "none",
-          background: "transparent",
-          padding: 0,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: open ? "0 0 0 2px var(--gb-border-strong)" : "none",
-          transition: "box-shadow 0.15s",
-        }}
+        className={`gb-icon-btn gb-icon-btn--avatar${open ? " gb-icon-btn--open" : ""}`}
+        style={{ borderRadius: "50%", padding: 0, overflow: "hidden" }}
       >
         <AvatarCircle authUser={authUser} displayName={displayName} size={40} />
       </button>
@@ -400,6 +360,7 @@ export default function ProfileMenu({
         <div
           role={view === "menu" ? "menu" : "dialog"}
           aria-label="Account"
+          className="gb-floating-panel"
           style={{
             position: "absolute",
             top: "calc(100% + 10px)",
@@ -409,10 +370,6 @@ export default function ProfileMenu({
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            background: "var(--gb-bg-elevated)",
-            border: "1px solid var(--gb-border-subtle)",
-            borderRadius: 12,
-            boxShadow: panelShadow,
             zIndex: 100,
             padding: view === "menu" ? "4px 0 6px" : 0,
           }}
@@ -424,6 +381,16 @@ export default function ProfileMenu({
               <div style={{ padding: "0 4px" }}>
                 <DropdownRow icon={<IconUser />} label="View profile" onClick={() => setView("profile")} />
                 <DropdownRow icon={<IconGear />} label="Account settings" onClick={() => setView("settings")} />
+                {typeof setPage === "function" && (
+                  <DropdownRow
+                    icon={<IconAbout />}
+                    label="About us"
+                    onClick={() => {
+                      setOpen(false)
+                      setPage("about")
+                    }}
+                  />
+                )}
                 {typeof onLogout === "function" && (
                   <>
                     <MenuDivider />

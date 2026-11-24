@@ -3,7 +3,8 @@ import { font } from "../theme"
 import GhostBusterLogo from "./GhostBusterLogo"
 import BrandName from "./BrandName"
 import { PageShell, PageHero, SectionLabel, ContentCard, CardTitle } from "../layout"
-import { FOUNDERS, PRODUCT_FEATURES, PRODUCT_MISSION, PRODUCT_TAGLINE, SITE_URL } from "../aboutContent"
+import { FOUNDERS, PRODUCT_FEATURES, PRODUCT_MISSION, PRODUCT_PROOF_STATS, PRODUCT_TAGLINE, SITE_URL } from "../aboutContent"
+import { Icon } from "../icons"
 
 function founderInitials(name) {
   return name
@@ -122,7 +123,25 @@ function FounderCard({ founder }) {
 export default function About() {
   return (
     <PageShell>
-      <PageHero eyebrow="About us" title={<BrandName variant="hero" />} subtitle={PRODUCT_TAGLINE} />
+      <PageHero eyebrow="GhostBuster" title="About us" subtitle={PRODUCT_TAGLINE}>
+        <div className="gb-about-hero-brand" style={{ marginTop: 20 }}>
+          <BrandName variant="hero" />
+        </div>
+      </PageHero>
+
+      <section className="gb-stat-showcase gb-stat-showcase--about" aria-labelledby="about-proof-title">
+        <h2 id="about-proof-title" className="gb-stat-showcase__title">
+          Built to scale with your network
+        </h2>
+        <div className="gb-snapshot-grid gb-stat-showcase__grid">
+          {PRODUCT_PROOF_STATS.map((item) => (
+            <article key={item.value} className="gb-snapshot-stat">
+              <div className="gb-snapshot-stat__value">{item.value}</div>
+              <p className="gb-snapshot-stat__label">{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <SectionLabel>Our mission</SectionLabel>
       <ContentCard
@@ -174,12 +193,12 @@ export default function About() {
               style={{
                 background: "var(--gb-bg-panel)",
                 border: "1px solid var(--gb-border-subtle)",
-                borderRadius: 12,
+                borderRadius: "var(--gb-radius-md)",
                 padding: "14px 14px 16px",
               }}
             >
-              <div style={{ fontSize: 20, marginBottom: 8 }} aria-hidden>
-                {feature.icon}
+              <div style={{ marginBottom: 10 }} aria-hidden>
+                <Icon name={feature.icon} size={20} color="var(--gb-accent)" />
               </div>
               <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
                 {feature.title}

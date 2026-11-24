@@ -1,69 +1,102 @@
 /**
- * Typography: Lexend for h1 and h2, Syne for other display type,
- * DM Mono for labels, DM Sans for body. Load fonts in index.html.
+ * Typography: Plus Jakarta Sans everywhere (UI, headings, labels, meta).
+ * Loaded in index.html.
  */
+const FONT_SANS = '"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
+
 export const font = {
-  h1: "Lexend, sans-serif",
-  h2: "Lexend, sans-serif",
-  display: "Syne, sans-serif",
-  mono: "DM Mono, monospace",
-  body: "DM Sans, sans-serif",
+  sans: FONT_SANS,
+  h1: FONT_SANS,
+  h2: FONT_SANS,
+  display: FONT_SANS,
+  body: FONT_SANS,
+  /** Same family — use size/weight/letter-spacing for “mono” labels, not a second typeface */
+  mono: FONT_SANS,
 }
 
-/** Primary neon lime — button fills & highlights */
-export const accentNeon = "#b8ff57"
+/** Primary accent — aerospace lime (readable on charcoal, not neon) */
+export const accentNeon = "#9dce5c"
 
-/** RGB tuple for the neon accent (184, 255, 87) */
+/** RGB tuple for the accent (157, 206, 92) */
 export function neonAlpha(a) {
-  return `rgba(184, 255, 87, ${a})`
+  return `rgba(157, 206, 92, ${a})`
 }
 
 export const COLOR_SCHEMES = ["dark", "light"]
 
 const DARK_VARS = {
-  "--gb-bg": "#0a0a0f",
-  "--gb-bg-elevated": "#111118",
-  "--gb-bg-panel": "#0d0d14",
-  "--gb-bg-input": "#0a0a0f",
-  "--gb-header-bg": "#0a0a0f",
-  "--gb-text": "#f0f0f5",
-  "--gb-text-strong": "rgba(240,240,245,0.85)",
-  "--gb-text-secondary": "rgba(240,240,245,0.75)",
-  "--gb-text-subtle": "rgba(240,240,245,0.55)",
-  "--gb-text-muted": "rgba(240,240,245,0.45)",
-  "--gb-text-faint": "rgba(240,240,245,0.35)",
-  "--gb-text-dim": "rgba(240,240,245,0.3)",
-  "--gb-border": "rgba(255,255,255,0.12)",
-  "--gb-border-subtle": "rgba(255,255,255,0.08)",
-  "--gb-border-strong": "rgba(255,255,255,0.1)",
-  "--gb-surface-hover": "rgba(255,255,255,0.04)",
-  "--gb-surface-muted": "rgba(255,255,255,0.05)",
-  "--gb-surface-active": "rgba(255,255,255,0.06)",
-  "--gb-accent": "#b8ff57",
-  "--gb-accent-bright": "#b8ff57",
-  "--gb-accent-muted": "rgba(184,255,87,0.75)",
-  "--gb-accent-soft": "rgba(184,255,87,0.14)",
-  "--gb-accent-border": "rgba(184,255,87,0.35)",
-  "--gb-accent-text-on": "#0a0f09",
-  "--gb-logo-stroke": "#b8ff57",
-  "--gb-logo-fill": "rgba(184,255,87,0.28)",
+  "--gb-font-sans": FONT_SANS,
+  "--gb-font-display": FONT_SANS,
+  "--gb-font-mono": FONT_SANS,
+  "--gb-bg-sky": "#0a0a0a",
+  "--gb-bg": "#050505",
+  "--gb-bg-deep": "#000000",
+  "--gb-bg-mist": "#141414",
+  "--gb-bg-canvas": "#000000",
+  "--gb-bg-elevated": "rgba(12, 12, 12, 0.96)",
+  "--gb-bg-panel": "rgba(255, 255, 255, 0.04)",
+  "--gb-bg-input": "rgba(255, 255, 255, 0.06)",
+  "--gb-bg-card-start": "rgba(255, 255, 255, 0.05)",
+  "--gb-bg-card-end": "rgba(255, 255, 255, 0.02)",
+  "--gb-overlay": "rgba(0, 0, 0, 0.72)",
+  "--gb-header-bg": "rgba(0, 0, 0, 0.85)",
+  "--gb-text": "#ffffff",
+  "--gb-text-strong": "rgba(236,236,238,0.9)",
+  "--gb-text-secondary": "rgba(236,236,238,0.78)",
+  "--gb-text-subtle": "rgba(236,236,238,0.58)",
+  "--gb-text-muted": "rgba(236,236,238,0.48)",
+  "--gb-text-faint": "rgba(236,236,238,0.38)",
+  "--gb-text-dim": "rgba(236,236,238,0.32)",
+  "--gb-border": "rgba(255,255,255,0.14)",
+  "--gb-border-subtle": "rgba(255,255,255,0.09)",
+  "--gb-border-strong": "rgba(255,255,255,0.11)",
+  "--gb-surface-hover": "rgba(255,255,255,0.05)",
+  "--gb-surface-muted": "rgba(255,255,255,0.06)",
+  "--gb-surface-active": "rgba(255,255,255,0.08)",
+  "--gb-accent": "#9dce5c",
+  "--gb-accent-bright": "#b8e07a",
+  "--gb-accent-muted": "rgba(184, 220, 140, 0.82)",
+  "--gb-accent-soft": "rgba(157, 206, 92, 0.11)",
+  "--gb-accent-border": "rgba(157, 206, 92, 0.34)",
+  "--gb-accent-glow": "rgba(157, 206, 92, 0.22)",
+  "--gb-accent-text-on": "#1a1c18",
+  "--gb-logo-stroke": "#9dce5c",
+  "--gb-logo-fill": "rgba(157,206,92,0.24)",
   "--gb-logo-ghost": "#ffffff",
   "--gb-logo-ghost-stroke": "rgba(255,255,255,0.92)",
-  "--gb-logo-ghost-feature": "#0a0f09",
-  "--gb-logo-envelope": "#b8ff57",
-  "--gb-logo-envelope-deep": "#8fd636",
+  "--gb-logo-ghost-feature": "#2a2a2e",
+  "--gb-logo-envelope": "#b8e07a",
+  "--gb-logo-envelope-deep": "#7ab844",
   "--gb-danger": "#ff6b6b",
   "--gb-warning": "#ffc96b",
-  "--gb-shadow-panel": "0 16px 48px rgba(0,0,0,0.45)",
-  "--gb-inset-highlight": "0 1px 0 rgba(255,255,255,0.04) inset",
+  "--gb-shadow-panel": "0 1px 0 rgba(255, 255, 255, 0.04) inset",
+  "--gb-shadow-accent": "none",
+  "--gb-inset-highlight": "0 1px 0 rgba(255,255,255,0.06) inset",
+  "--gb-glass-blur": "20px",
+  "--gb-radius-sm": "2px",
+  "--gb-radius-md": "4px",
+  "--gb-radius-lg": "8px",
+  "--gb-radius-xl": "10px",
 }
 
 const LIGHT_VARS = {
+  "--gb-font-sans": FONT_SANS,
+  "--gb-font-display": FONT_SANS,
+  "--gb-font-mono": FONT_SANS,
   "--gb-bg": "#ffffff",
-  "--gb-bg-elevated": "#f7f8fa",
-  "--gb-bg-panel": "#f1f3f6",
-  "--gb-bg-input": "#ffffff",
-  "--gb-header-bg": "#ffffff",
+  "--gb-bg-deep": "#f6f7f9",
+  "--gb-bg-elevated": "#ffffff",
+  "--gb-bg-panel": "#ffffff",
+  "--gb-bg-sky": "#ffffff",
+  "--gb-bg-mist": "#ffffff",
+  "--gb-bg-canvas": "#ffffff",
+  "--gb-bg-card-start": "#ffffff",
+  "--gb-bg-card-end": "#fafbfc",
+  "--gb-overlay": "rgba(24, 27, 34, 0.08)",
+  "--gb-bg-input": "#fafbfc",
+  "--gb-header-bg": "rgba(255, 255, 255, 0.92)",
+  "--gb-divider": "rgba(24, 27, 34, 0.08)",
+  "--gb-divider-subtle": "rgba(24, 27, 34, 0.06)",
   "--gb-text": "#181b22",
   "--gb-text-strong": "rgba(24,27,34,0.88)",
   "--gb-text-secondary": "rgba(24,27,34,0.78)",
@@ -92,8 +125,15 @@ const LIGHT_VARS = {
   "--gb-logo-envelope-deep": "#4d8c18",
   "--gb-danger": "#c93434",
   "--gb-warning": "#b8740a",
-  "--gb-shadow-panel": "0 16px 48px rgba(24,27,34,0.12)",
+  "--gb-shadow-panel": "0 1px 0 rgba(24, 27, 34, 0.04) inset",
+  "--gb-shadow-accent": "0 0 24px -6px rgba(109, 184, 50, 0.35), 0 8px 24px -8px rgba(77, 140, 24, 0.2)",
+  "--gb-accent-glow": "rgba(109, 184, 50, 0.38)",
   "--gb-inset-highlight": "0 1px 0 rgba(255,255,255,0.8) inset",
+  "--gb-glass-blur": "20px",
+  "--gb-radius-sm": "2px",
+  "--gb-radius-md": "4px",
+  "--gb-radius-lg": "8px",
+  "--gb-radius-xl": "10px",
 }
 
 export const THEME_VARS = {

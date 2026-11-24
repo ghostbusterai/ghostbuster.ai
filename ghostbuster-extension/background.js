@@ -87,7 +87,7 @@ function openPermissionWindow(params) {
   })
 }
 
-/** Inject the filler into one frame of a job tab, or ask once per site for permission. */
+/** Inject scripts into one frame of a job tab, or ask once per site for permission. */
 async function ensureFiller(tabId, frameId, url) {
   const jobs = await getJobs()
   const job = jobs[tabId]
@@ -96,8 +96,9 @@ async function ensureFiller(tabId, frameId, url) {
   if (!pattern) return
 
   if (await hasAccess(url)) {
+    const files = job.mode === "portal" ? ["portal-reader.js"] : ["resume-picker.js", "filler.js"]
     await chrome.scripting
-      .executeScript({ target: { tabId, frameIds: [frameId] }, files: ["resume-picker.js", "filler.js"] })
+      .executeScript({ target: { tabId, frameIds: [frameId] }, files })
       .catch(() => {
         /* frame went away or is a browser page */
       })
@@ -144,6 +145,17 @@ async function injectInto(tabId) {
 
 async function handle(msg, sender) {
   switch (msg?.type) {
+    case "START_PORTAL_SYNC": {
+      const url = msg.job?.application?.portalUrl || msg.job?.application?.url
+      if (!url || !/^https?:\/\//i.test(url)) return { ok: false, error: "Add a status portal or application link first." }
+      const tab = await chrome.tabs.create({ url: "about:blank" })
+      const jobs = await getJobs()
+      jobs[tab.id] = { ...msg.job, mode: "portal", appTabId: sender.tab?.id ?? null, hops: 0, promptedOrigins: [] }
+      await setJobs(jobs)
+      await chrome.tabs.update(tab.id, { url })
+      return { ok: true }
+    }
+
     case "START_FILL": {
       const url = msg.job?.application?.url
       if (!url || !/^https?:\/\//i.test(url)) return { ok: false, error: "This application has no link." }
@@ -151,7 +163,7 @@ async function handle(msg, sender) {
       if (msg.job.profile) await chrome.storage.local.set({ lastProfile: msg.job.profile })
       const tab = await chrome.tabs.create({ url: "about:blank" })
       const jobs = await getJobs()
-      jobs[tab.id] = { ...msg.job, appTabId: sender.tab?.id ?? null, hops: 0, promptedOrigins: [] }
+      jobs[tab.id] = { ...msg.job, mode: "fill", appTabId: sender.tab?.id ?? null, hops: 0, promptedOrigins: [] }
       await setJobs(jobs)
       await chrome.tabs.update(tab.id, { url })
       return { ok: true }
@@ -195,6 +207,27 @@ async function handle(msg, sender) {
       const tabId = sender.tab?.id
       const job = await updateJob(tabId, (j) => (j.hops >= MAX_APPLY_HOPS ? j : { ...j, hops: (j.hops || 0) + 1 }))
       return { ok: Boolean(job) && job.hops <= MAX_APPLY_HOPS }
+    }
+
+    case "PORTAL_STATUS": {
+      const tabId = sender.tab?.id
+      const jobs = await getJobs()
+      const job = tabId != null ? jobs[tabId] : null
+      const applicationId = job?.application?.id
+      if (applicationId == null) return { ok: false }
+      const report = {
+        kind: "portal",
+        ...msg.report,
+        applicationId,
+        reportId: `portal-${applicationId}-${Date.now()}`,
+      }
+      const pending = (await getPending()).filter((r) => r.reportId !== report.reportId)
+      pending.push(report)
+      await chrome.storage.local.set({ pendingReports: pending })
+      if (job.appTabId != null) {
+        chrome.tabs.sendMessage(job.appTabId, { type: "PORTAL_SYNC", report }).catch(() => {})
+      }
+      return { ok: true }
     }
 
     case "FILL_REPORT": {

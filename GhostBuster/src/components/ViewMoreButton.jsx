@@ -1,5 +1,5 @@
 import React from "react"
-import { font } from "../theme"
+import { secondaryBtn } from "../uiStyles"
 
 export default function ViewMoreButton({
   hiddenCount,
@@ -12,25 +12,10 @@ export default function ViewMoreButton({
   const pluralLabel = plural || `${singular}s`
   if (hiddenCount <= 0 && !showAll) return null
 
+  const btn = secondaryBtn({ sm: true, style })
+
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      style={{
-        alignSelf: "flex-start",
-        background: "var(--gb-surface-hover)",
-        border: "1px solid var(--gb-border)",
-        color: "var(--gb-text-secondary)",
-        padding: "10px 16px",
-        borderRadius: 9,
-        fontFamily: font.body,
-        fontWeight: 600,
-        fontSize: 13,
-        cursor: "pointer",
-        boxShadow: "none",
-        ...style,
-      }}
-    >
+    <button type="button" onClick={onToggle} className={btn.className} style={btn.style}>
       {showAll
         ? "Show less"
         : hiddenCount > 0

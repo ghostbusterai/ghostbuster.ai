@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from "react"
-import { font, accentNeon } from "../theme"
 import GhostBusterLogo from "./GhostBusterLogo"
 import BrandName from "./BrandName"
+import CinematicBackground from "./CinematicBackground"
+import NetworkingSuccessReel from "./NetworkingSuccessReel"
+import { font, accentNeon } from "../theme"
 import { BASE, api } from "../api"
+import { SUCCESS_REEL_VIDEO } from "../cinemaAssets"
+import { Icon } from "../icons"
 
-// Shown on the sign-in page for application reviewers. Must match DEMO_ACCESS_CODE on the server.
 const REVIEWER_DEMO_CODE = "app-reviewer"
 
 export default function Login({ error, onDemoLogin }) {
   const loginHref = `${BASE}/api/auth/google`
-  const apiDown = typeof error === "string" && /API isn't running/i.test(error)
+  const apiDown =
+    typeof error === "string" &&
+    /connection failed|API isn't running|Can't reach API|not reachable|timed out/i.test(error)
   const [demoEnabled, setDemoEnabled] = useState(false)
   const [demoOpen, setDemoOpen] = useState(false)
   const [demoCode, setDemoCode] = useState("")
@@ -39,274 +44,112 @@ export default function Login({ error, onDemoLogin }) {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 20px",
-        background: `
-          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(184,255,87,0.14), transparent 55%),
-          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(110,181,255,0.08), transparent 50%),
-          #0a0a0f
-        `,
-        color: "#f0f0f5",
-        fontFamily: font.body,
-        boxSizing: "border-box",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          textAlign: "center",
-        }}
-      >
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 28,
-          }}
-        >
-          <span
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: accentNeon,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <GhostBusterLogo size={28} />
-          </span>
-          <BrandName variant="login" />
-        </div>
+    <div className="gb-app gb-app--fullscreen gb-app--cinema" style={{ color: "var(--gb-text)", fontFamily: font.body }}>
+      <CinematicBackground />
+      <div className="gb-app-content gb-login-scroll">
+        <section className="gb-login-hero gb-login-hero--mission" aria-label="Sign in to GhostBuster">
+          <div className="gb-login-mission">
+            <div className="gb-login-mission__brand">
+              <GhostBusterLogo size={32} />
+              <BrandName variant="login" />
+            </div>
 
-        <h1
-          style={{
-            margin: "0 0 12px",
-            fontFamily: font.display,
-            fontWeight: 800,
-            fontSize: "clamp(22px, 4vw, 28px)",
-            letterSpacing: "-0.4px",
-            lineHeight: 1.25,
-          }}
-        >
-          Your networking assistant
-        </h1>
-        <p
-          style={{
-            margin: "0 0 32px",
-            fontSize: 15,
-            lineHeight: 1.55,
-            color: "rgba(240,240,245,0.55)",
-          }}
-        >
-          Sign in to save contacts, draft outreach, and keep follow-ups on track, all private to your account.
-        </p>
+            <p className="gb-mission-eyebrow">Networking assistant · Beta</p>
+            <h1 className="gb-mission-title">Turn intros into offers</h1>
+            <p className="gb-mission-lede">
+              Save contacts, draft outreach, and keep follow-ups on track — private to your account.
+            </p>
 
-        {error && (
-          <p
-            style={{
-              margin: "0 0 20px",
-              padding: "12px 14px",
-              borderRadius: 10,
-              background: "rgba(255,107,107,0.12)",
-              border: "1px solid rgba(255,107,107,0.28)",
-              color: "#ff8a8a",
-              fontSize: 13,
-              lineHeight: 1.45,
-              textAlign: "left",
-            }}
-          >
-            {error}
-          </p>
-        )}
+            {error && (
+              <p className="gb-login-alert" role="alert">
+                {error}
+              </p>
+            )}
 
-        {apiDown ? (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "14px 20px",
-              borderRadius: 10,
-              background: "rgba(255,255,255,0.08)",
-              color: "rgba(240,240,245,0.4)",
-              fontWeight: 600,
-              fontSize: 15,
-              border: "1px solid rgba(255,255,255,0.12)",
-            }}
-          >
-            <GoogleMark />
-            Continue with Google
-          </div>
-        ) : (
-          <a
-            href={loginHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "14px 20px",
-              borderRadius: 10,
-              background: "#fff",
-              color: "#1f1f1f",
-              textDecoration: "none",
-              fontWeight: 600,
-              fontSize: 15,
-              border: "1px solid rgba(255,255,255,0.12)",
-              boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
-            }}
-          >
-            <GoogleMark />
-            Continue with Google
-          </a>
-        )}
-
-        {demoEnabled && !apiDown && (
-          <div style={{ marginTop: 14, textAlign: "left" }}>
-            {demoOpen ? (
-              <form onSubmit={startDemo} style={{ display: "flex", gap: 8 }}>
-                <input
-                  value={demoCode}
-                  onChange={(e) => setDemoCode(e.target.value)}
-                  placeholder="Demo access code"
-                  aria-label="Demo access code"
-                  autoFocus
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: "11px 12px",
-                    borderRadius: 10,
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "#f0f0f5",
-                    fontSize: 14,
-                    fontFamily: font.body,
-                  }}
-                />
-                <button
-                  type="submit"
-                  disabled={demoBusy}
-                  style={{
-                    padding: "11px 16px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: accentNeon,
-                    color: "#0a0a0f",
-                    fontWeight: 700,
-                    fontSize: 14,
-                    cursor: demoBusy ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {demoBusy ? "Starting…" : "Try demo"}
-                </button>
-              </form>
+            {apiDown ? (
+              <div className="gb-btn gb-btn--outline gb-btn--outline-light gb-btn--disabled" aria-disabled="true">
+                <GoogleMark />
+                Continue with Google
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setDemoCode((c) => c || REVIEWER_DEMO_CODE)
-                  setDemoOpen(true)
-                }}
-                style={{
-                  width: "100%",
-                  padding: "12px 20px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  background: "transparent",
-                  color: "#f0f0f5",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                Have a demo code? Try GhostBuster without Google
-              </button>
+              <a href={loginHref} className="gb-btn gb-btn--outline gb-btn--outline-light">
+                <GoogleMark />
+                Continue with Google
+                <Icon name="chevron-right" size={14} className="gb-btn__arrow" />
+              </a>
             )}
-            {demoError && (
-              <p style={{ margin: "8px 0 0", fontSize: 13, color: "#ff8a8a" }}>{demoError}</p>
+
+            {demoEnabled && !apiDown && (
+              <div className="gb-login-demo" style={{ marginTop: 14, textAlign: "left", width: "100%" }}>
+                {demoOpen ? (
+                  <form onSubmit={startDemo} style={{ display: "flex", gap: 8 }}>
+                    <input
+                      value={demoCode}
+                      onChange={(e) => setDemoCode(e.target.value)}
+                      placeholder="Demo access code"
+                      aria-label="Demo access code"
+                      autoFocus
+                      className="gb-input gb-input--glass"
+                      style={{ flex: 1, minWidth: 0 }}
+                    />
+                    <button type="submit" disabled={demoBusy} className="gb-btn gb-btn--primary" style={{ flexShrink: 0 }}>
+                      {demoBusy ? "Starting…" : "Try demo"}
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="gb-btn gb-btn--ghost gb-btn--block"
+                    onClick={() => {
+                      setDemoCode((c) => c || REVIEWER_DEMO_CODE)
+                      setDemoOpen(true)
+                    }}
+                  >
+                    Have a demo code? Try GhostBuster without Google
+                  </button>
+                )}
+                {demoError && <p className="gb-login-alert" style={{ marginTop: 8 }}>{demoError}</p>}
+                <p className="gb-mission-footnote" style={{ marginTop: 10, textAlign: "center" }}>
+                  Application reviewers: use demo code{" "}
+                  <code
+                    style={{
+                      color: accentNeon,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      padding: "1px 6px",
+                      borderRadius: 6,
+                      background: "rgba(184,255,87,0.12)",
+                    }}
+                  >
+                    {REVIEWER_DEMO_CODE}
+                  </code>
+                </p>
+              </div>
             )}
-            <p style={{ margin: "10px 0 0", fontSize: 13, color: "rgba(240,240,245,0.75)", textAlign: "center" }}>
-              Application reviewers: use demo code{" "}
-              <code
-                style={{
-                  color: accentNeon,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  padding: "1px 6px",
-                  borderRadius: 6,
-                  background: "rgba(184,255,87,0.12)",
-                }}
-              >
-                {REVIEWER_DEMO_CODE}
-              </code>
+
+            <div className="gb-login-glass" role="note">
+              <div className="gb-login-glass__label">Beta privacy notice</div>
+              <p className="gb-login-glass__body">
+                GhostBuster stores account info from Google sign-in (name, email, profile photo) plus the data you add:
+                contacts, notes, reminders, outreach logs, résumés, applications, and Ghostwriter transcripts/summaries. If you connect
+                Gmail or Calendar, we store tokens so we can save drafts, schedule sends, and sync reminders. AI features
+                may send relevant text you provide to our AI provider to generate drafts and summaries. Your data stays in
+                your account and is intended only for beta testing.
+              </p>
+            </div>
+
+            <p className="gb-mission-footnote">
+              After signing in you can optionally connect Gmail & Calendar for drafts and reminders.
             </p>
           </div>
-        )}
 
-        <div
-          role="note"
-          style={{
-            marginTop: 20,
-            padding: "14px 16px",
-            borderRadius: 12,
-            textAlign: "left",
-            background: "rgba(255,201,107,0.08)",
-            border: "1px solid rgba(255,201,107,0.28)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              fontFamily: font.mono,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "rgba(255,201,107,0.9)",
-              marginBottom: 8,
-            }}
-          >
-            Beta privacy notice
-          </div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 12,
-              lineHeight: 1.55,
-              color: "rgba(240,240,245,0.65)",
-            }}
-          >
-            GhostBuster stores account info from Google sign-in (name, email, profile photo) plus the data you add:
-            contacts, notes, reminders, outreach logs, résumés, applications, and Ghostwriter transcripts/summaries. If you connect
-            Gmail or Calendar, we store tokens so we can save drafts, schedule sends, and sync reminders. AI features
-            may send relevant text you provide to our AI provider to generate drafts and summaries. Your data stays in
-            your account and is intended only for beta testing.
-          </p>
-        </div>
+          <a href="#networking-wins" className="gb-login-scroll-hint">
+            Real students, real offers — scroll
+            <Icon name="chevron-down" size={16} className="gb-login-scroll-hint__arrow" />
+          </a>
+        </section>
 
-        <p
-          style={{
-            margin: "16px 0 0",
-            fontSize: 12,
-            color: "rgba(240,240,245,0.35)",
-            lineHeight: 1.45,
-          }}
-        >
-          After signing in you can optionally connect Gmail & Calendar for drafts and reminders.
-        </p>
+        <NetworkingSuccessReel id="networking-wins" variant="scroll" videoSrc={SUCCESS_REEL_VIDEO} />
       </div>
     </div>
   )

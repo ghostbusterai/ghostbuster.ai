@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { api } from "../api"
-import PeopleFinder from "./PeopleFinder"
 import { font } from "../theme"
-import { inputStyle } from "../uiStyles"
+import { inputStyle, uiClass, primaryBtn, secondaryBtn } from "../uiStyles"
 import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
-import { PageShell, PageHero, ContentCard, CardTitle } from "../layout"
+import { PageShell, PageHero, ContentCard, CardTitle, EmptyState, ListDivider } from "../layout"
+import { formatContactName, formatLastTouch } from "../formatters"
 import MessageComposer from "./MessageComposer"
+import { Icon } from "../icons"
 import FirstContactCelebration from "./FirstContactCelebration"
 import ViewMoreButton from "./ViewMoreButton"
+import DiscoverConnections from "./DiscoverConnections"
+import PeopleFinder from "./PeopleFinder"
 import { previewHiddenCount, previewSlice } from "../listPreview"
 import { AUTOFILL_EVENT } from "../autofillBridge"
 
@@ -44,6 +47,7 @@ function contactRecencyMs(c) {
 }
 
 export default function ContactHub({
+  setPage,
   composeOpen = false,
   onComposeOpenChange = () => {},
   composePrefill = null,
@@ -134,13 +138,13 @@ export default function ContactHub({
     setLocalComposePrefill(null)
   }
 
-  // Clicking anywhere outside the Compose window closes it. The composer stays mounted while closed,
-  // so a draft (or AI-generated message) is still there when it's reopened.
+  const activePrefill = composePrefill || localComposePrefill
+
   useEffect(() => {
     if (!composeOpen) return
     const onPointerDown = (e) => {
       if (composeAreaRef.current?.contains(e.target)) return
-      if (e.target.closest?.("[role='dialog']")) return // other floating windows
+      if (e.target.closest?.("[role='dialog']")) return
       closeCompose()
     }
     document.addEventListener("pointerdown", onPointerDown)
@@ -148,9 +152,6 @@ export default function ContactHub({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composeOpen])
 
-  const activePrefill = composePrefill || localComposePrefill
-
-  // LinkedIn profiles saved from the extension show up without a refresh.
   useEffect(() => {
     async function onAutofill(e) {
       if (e.detail?.type !== "contact" || e.detail.duplicate) return
@@ -161,7 +162,6 @@ export default function ContactHub({
         /* shown on next load */
       }
     }
-    // Also refresh when returning to this tab, in case a save landed while it was hidden.
     function onVisible() {
       if (document.visibilityState === "visible") onAutofill({ detail: { type: "contact" } })
     }
@@ -400,191 +400,80 @@ export default function ContactHub({
   const isEditing = showForm && editId
 
   function renderContactCard(c) {
+    const displayName = formatContactName(c.name)
+    const initials = displayName.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?"
+    const lastTouch = formatLastTouch(c.lastContacted)
+    const rowClass = [
+      "gb-contact-row",
+      "gb-contact-row--hub",
+      c.pinned ? "gb-contact-row--pinned" : "",
+    ]
+      .filter(Boolean)
+      .join(" ")
+
     return (
-      <div
-        style={{
-          background: c.pinned ? "rgba(255,201,107,0.04)" : "var(--gb-bg-elevated)",
-          border: c.pinned ? "1px solid rgba(255,201,107,0.22)" : "1px solid var(--gb-surface-active)",
-          borderRadius: 14,
-          padding: "18px 22px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          transition: "border-color 0.15s",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = c.pinned ? "rgba(255,201,107,0.35)" : "var(--gb-border-subtle)"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = c.pinned ? "rgba(255,201,107,0.22)" : "var(--gb-surface-active)"
-        }}
-      >
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: "50%",
-                background: c.pinned ? "rgba(255,201,107,0.12)" : "rgba(184,255,87,0.1)",
-                color: c.pinned ? "var(--gb-warning)" : "var(--gb-accent)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontFamily: font.h1,
-                fontWeight: 700,
-                fontSize: 16,
-                flexShrink: 0,
-              }}
-            >
-              {c.name?.[0]?.toUpperCase() || "?"}
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 15 }}>{c.name}</div>
-                {c.pinned && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontFamily: font.mono,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,201,107,0.85)",
-                      background: "rgba(255,201,107,0.1)",
-                      border: "1px solid rgba(255,201,107,0.25)",
-                      borderRadius: 6,
-                      padding: "2px 7px",
-                    }}
-                  >
-                    Pinned
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 2, fontFamily: font.body }}>
-                {[c.role, c.company].filter(Boolean).join(" @ ")}
-              </div>
-              {bucketNameForContact(c, resumeBuckets) && (
-                <div style={{ fontSize: 11, color: "rgba(91,228,216,0.65)", marginTop: 4, fontFamily: font.mono }}>
-                  Résumé: {bucketNameForContact(c, resumeBuckets)}
-                </div>
-              )}
-              {(c.linkedin || c.website) && (
-                <div style={{ fontSize: 12, marginTop: 6, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  {c.linkedin && (
-                    <a
-                      href={hrefFromUrl(c.linkedin)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: "var(--gb-accent)", textDecoration: "none" }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      LinkedIn
-                    </a>
-                  )}
-                  {c.website && (
-                    <a
-                      href={hrefFromUrl(c.website)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: "#5be4d8", textDecoration: "none" }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Website
-                    </a>
-                  )}
-                </div>
-              )}
-              {c.notes && (
-                <div style={{ fontSize: 12, color: "var(--gb-text-dim)", marginTop: 4, maxWidth: 400, fontFamily: font.body }}>
-                  {c.notes}
-                </div>
-              )}
-            </div>
+      <article className={rowClass}>
+        <div className="gb-contact-row__avatar" aria-hidden>
+          {initials}
+        </div>
+        <div className="gb-contact-row__body">
+          <div className="gb-contact-row__top">
+            <span className="gb-contact-row__name">{displayName}</span>
+            {lastTouch && <span className="gb-contact-row__date">{lastTouch}</span>}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            {c.lastContacted && (
-              <div
-                style={{
-                  fontSize: 11,
-                  fontFamily: font.mono,
-                  fontVariantNumeric: "tabular-nums",
-                  color: "var(--gb-text-dim)",
-                }}
-              >
-                {new Date(c.lastContacted).toLocaleDateString()}
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => openCompose(c)}
-                style={{
-                  background: "var(--gb-accent-soft)",
-                  border: "1px solid var(--gb-accent-border)",
-                  boxShadow: "none",
-                  color: "var(--gb-accent)",
-                  padding: "6px 14px",
-                  borderRadius: 7,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  fontFamily: font.mono,
-                }}
-              >
-                Message
-              </button>
-              <button
-                type="button"
-                onClick={() => togglePin(c)}
-                aria-label={c.pinned ? `Unpin ${c.name}` : `Pin ${c.name} to top`}
-                title={c.pinned ? "Unpin" : "Pin to top"}
-                style={{
-                  background: c.pinned ? "rgba(255,201,107,0.12)" : "var(--gb-surface-muted)",
-                  border: c.pinned ? "1px solid rgba(255,201,107,0.3)" : "1px solid var(--gb-border-subtle)",
-                  boxShadow: "none",
-                  color: c.pinned ? "var(--gb-warning)" : "var(--gb-text-subtle)",
-                  padding: "6px 12px",
-                  borderRadius: 7,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  fontFamily: font.mono,
-                }}
-              >
-                {c.pinned ? "Unpin" : "Pin"}
-              </button>
-              <button
-                onClick={() => edit(c)}
-                style={{
-                  background: "var(--gb-surface-muted)",
-                  border: "1px solid var(--gb-border-subtle)",
-                  boxShadow: "none",
-                  color: "var(--gb-text-subtle)",
-                  padding: "6px 14px",
-                  borderRadius: 7,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  fontFamily: font.mono,
-                }}
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => remove(c.id)}
-                style={{
-                  background: "rgba(255,107,107,0.08)",
-                  border: "1px solid rgba(255,107,107,0.15)",
-                  boxShadow: "none",
-                  color: "var(--gb-danger)",
-                  padding: "6px 14px",
-                  borderRadius: 7,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  fontFamily: font.mono,
-                }}
-              >
-                Delete
-              </button>
+          <div className="gb-contact-row__meta">
+            {[c.role, c.company].filter(Boolean).join(" · ") || "No role or company yet"}
+          </div>
+          {c.pinned && <span className="gb-badge gb-badge--warn">Pinned</span>}
+          {bucketNameForContact(c, resumeBuckets) && (
+            <div className="gb-contact-row__meta" style={{ marginTop: 4 }}>
+              Résumé · {bucketNameForContact(c, resumeBuckets)}
             </div>
+          )}
+          {(c.linkedin || c.website) && (
+            <div className="gb-contact-row__links">
+              {c.linkedin && (
+                <a href={hrefFromUrl(c.linkedin)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                  LinkedIn
+                </a>
+              )}
+              {c.website && (
+                <a href={hrefFromUrl(c.website)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                  Website
+                </a>
+              )}
+            </div>
+          )}
+          {c.notes && <p className="gb-contact-row__notes">{c.notes}</p>}
+        </div>
+        <div className="gb-contact-row__side">
+          <div className="gb-contact-row__toolbar">
+            <button type="button" onClick={() => openCompose(c)} {...primaryBtn({ sm: true })}>
+              Message
+            </button>
+            <button
+              type="button"
+              onClick={() => togglePin(c)}
+              aria-label={c.pinned ? `Unpin ${c.name}` : `Pin ${c.name} to top`}
+              title={c.pinned ? "Unpin" : "Pin to top"}
+              {...secondaryBtn({ sm: true })}
+            >
+              {c.pinned ? "Unpin" : "Pin"}
+            </button>
+            <button type="button" onClick={() => edit(c)} className={`${uiClass.btnGhost} ${uiClass.btnSm}`}>
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(c.id)}
+              className={`${uiClass.btnGhost} ${uiClass.btnSm}`}
+              style={{ color: "var(--gb-danger)" }}
+            >
+              Delete
+            </button>
           </div>
         </div>
+      </article>
     )
   }
 
@@ -594,7 +483,7 @@ export default function ContactHub({
       <PageHero
         eyebrow="Network"
         title="Contact Hub"
-        subtitle="Save people you've already met: career fairs, coffee chats, referrals. Draft outreach from the compose button, then track touchpoints on Tracker."
+        subtitle="Save people you've met — or discover new leads to reach out to. Draft outreach from compose, then track touchpoints on Tracker."
       >
         <p style={{ color: "var(--gb-text-muted)", fontSize: 15, fontFamily: font.body, marginTop: 10, marginBottom: 0 }}>
           {listLoading ? (
@@ -612,7 +501,7 @@ export default function ContactHub({
           )}
           {loadError && (
             <span style={{ display: "block", marginTop: 8, color: "var(--gb-warning)", fontSize: 13 }}>
-              API unavailable. Using local copy. Start the server and refresh to sync.
+              API unavailable — using local copy. Start the server and refresh to sync.
             </span>
           )}
         </p>
@@ -644,7 +533,7 @@ export default function ContactHub({
               helper={
                 isAdding
                   ? "Fill in their details in the form below. Role and notes help GhostBuster match résumé updates later."
-                  : "Met someone worth staying in touch with? Add their profile. You can't message or track them until they're saved here."
+                  : "Met someone worth staying in touch with? Add their profile — you can't message or track them until they're saved here."
               }
             >
               {isAdding ? "Add someone you met" : "Add someone to your network"}
@@ -674,14 +563,6 @@ export default function ContactHub({
           )}
         </div>
           </ContentCard>
-          <PeopleFinder
-            onContactAdded={() =>
-              api
-                .getContacts()
-                .then(({ contacts: list }) => setContacts(list))
-                .catch(() => {})
-            }
-          />
         </>
       )}
 
@@ -763,64 +644,8 @@ export default function ContactHub({
         </>
       )}
 
-      {/* Search */}
-      <ContentCard
-        style={{
-          background: "var(--gb-bg-elevated)",
-          border: "1px solid var(--gb-border)",
-        }}
-        padding="18px 20px"
-        marginBottom={16}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-            marginBottom: 14,
-          }}
-        >
-          <CardTitle helper="Find a contact by name, role, or links">Search</CardTitle>
-          {hasActiveSearch && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "rgba(184,255,87,0.75)",
-                fontSize: 12,
-                fontFamily: font.mono,
-                cursor: "pointer",
-                padding: 0,
-                boxShadow: "none",
-              }}
-            >
-              Clear search
-            </button>
-          )}
-        </div>
-        <input
-          id="contact-search"
-          placeholder="Name, role, email, links…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ ...inputStyle(), width: "100%", maxWidth: 480 }}
-        />
-      </ContentCard>
-
-      {/* Filter by company */}
-      {contacts.length > 0 && (
-        <>
-          <ContentCard
-            style={{
-              background: "var(--gb-bg-elevated)",
-              border: "1px solid var(--gb-border)",
-            }}
-            padding="18px 20px"
-          >
+      {/* Search + company filter */}
+      <ContentCard className="gb-contacts-toolbar" padding="18px 20px" marginBottom={20}>
           <div
             style={{
               display: "flex",
@@ -831,28 +656,23 @@ export default function ContactHub({
               marginBottom: 14,
             }}
           >
-            <CardTitle helper="Show only contacts from one company">Filter by company</CardTitle>
-            {hasCompanyFilter && (
-              <button
-                type="button"
-                onClick={clearCompanyFilter}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "rgba(184,255,87,0.75)",
-                  fontSize: 12,
-                  fontFamily: font.mono,
-                  cursor: "pointer",
-                  padding: 0,
-                  boxShadow: "none",
-                }}
-              >
-                Show all companies
+            <CardTitle helper="Search your saved contacts or narrow by company">Find in your network</CardTitle>
+            {(hasActiveSearch || hasCompanyFilter) && (
+              <button type="button" className="gb-link-btn" onClick={clearFilters}>
+                Clear filters
               </button>
             )}
           </div>
 
-          {companyOptions.withCompany.length > 0 || companyOptions.noCompany > 0 ? (
+        <input
+          id="contact-search"
+          placeholder="Name, role, email, links…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ ...inputStyle(), width: "100%", marginBottom: contacts.length > 0 ? 14 : 0 }}
+        />
+
+          {contacts.length > 0 && (companyOptions.withCompany.length > 0 || companyOptions.noCompany > 0) ? (
             <>
               <select
                 id="contact-company-filter"
@@ -915,12 +735,10 @@ export default function ContactHub({
             </>
           ) : (
             <p style={{ margin: 0, fontSize: 13, color: "var(--gb-text-faint)", fontFamily: font.body }}>
-              No companies yet. Add a company when you create or edit a contact.
+              No companies yet — add a company when you create or edit a contact.
             </p>
           )}
-          </ContentCard>
-        </>
-      )}
+      </ContentCard>
 
       {hasActiveFilters && contacts.length > 0 && (
         <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gb-text-muted)", fontFamily: font.body }}>
@@ -943,69 +761,35 @@ export default function ContactHub({
       {/* Contact List */}
       <CardTitle>Your contacts</CardTitle>
       {filtered.length === 0 ? (
-        <div style={{
-          background: "var(--gb-bg-elevated)", border: "1px solid var(--gb-surface-active)",
-          borderRadius: 14, padding: 48, textAlign: "center",
-          color: "var(--gb-text-dim)", fontSize: 14, fontFamily: font.body
-        }}>
-          {contacts.length === 0 ? (
-            <>
-              <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.45 }}>👋</div>
-              <div style={{ fontFamily: font.h2, fontWeight: 700, fontSize: 17, color: "var(--gb-text-secondary)", marginBottom: 8 }}>
-                Your network starts with one contact
-              </div>
-              <p style={{ margin: "0 0 20px", maxWidth: 420, marginLeft: "auto", marginRight: "auto", lineHeight: 1.55, fontFamily: font.body }}>
-                Add someone from a career fair, intro, or coffee chat, then use Compose and Tracker to stay in touch.
-              </p>
-              {!isAdding && (
-                <button
-                  type="button"
-                  onClick={openAddForm}
-                  style={{
-                    background: "var(--gb-accent-bright)",
-                    color: "var(--gb-accent-text-on)",
-                    border: "1px solid rgba(10,15,9,0.22)",
-                    boxShadow: "none",
-                    padding: "12px 24px",
-                    borderRadius: 10,
-                    fontFamily: font.h1,
-                    fontWeight: 700,
-                    fontSize: 14,
-                    cursor: "pointer",
-                  }}
-                >
-                  + Add
+        contacts.length === 0 ? (
+          <EmptyState
+            align="left"
+            icon={<Icon name="users" size={32} color="currentColor" />}
+            title="Your network starts with one contact"
+            lede="Add someone from a career fair, intro, or coffee chat — then use Compose and Tracker to stay in touch."
+            action={
+              !isAdding ? (
+                <button type="button" onClick={openAddForm} {...primaryBtn()}>
+                  Add contact
                 </button>
-              )}
-            </>
-          ) : (
-            <>
-              No contacts match your filters.
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  style={{
-                    display: "block",
-                    margin: "16px auto 0",
-                    background: "var(--gb-surface-active)",
-                    border: "1px solid var(--gb-border)",
-                    color: "var(--gb-text-secondary)",
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    boxShadow: "none",
-                  }}
-                >
+              ) : null
+            }
+          />
+        ) : (
+          <EmptyState
+            title="No matches"
+            lede="No contacts match your filters."
+            action={
+              hasActiveFilters ? (
+                <button type="button" onClick={clearFilters} {...secondaryBtn()}>
                   Clear filters
                 </button>
-              )}
-            </>
-          )}
-        </div>
+              ) : null
+            }
+          />
+        )
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="gb-contact-list gb-contact-list--hub">
           {visibleContacts.map((c, index) => {
             const hasPinned = visibleContacts.some((x) => x.pinned)
             const hasUnpinned = visibleContacts.some((x) => !x.pinned)
@@ -1013,35 +797,8 @@ export default function ContactHub({
             const showAllHeader = hasPinned && hasUnpinned && index > 0 && c.pinned === false && visibleContacts[index - 1]?.pinned
             return (
               <React.Fragment key={c.id}>
-                {showPinnedHeader && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontFamily: font.mono,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,201,107,0.7)",
-                      marginBottom: 2,
-                    }}
-                  >
-                    Pinned
-                  </div>
-                )}
-                {showAllHeader && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontFamily: font.mono,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: "var(--gb-text-dim)",
-                      marginTop: 8,
-                      marginBottom: 2,
-                    }}
-                  >
-                    All contacts
-                  </div>
-                )}
+                {showPinnedHeader && <ListDivider tone="warn">Pinned</ListDivider>}
+                {showAllHeader && <ListDivider>All contacts</ListDivider>}
                 {renderContactCard(c)}
               </React.Fragment>
             )
@@ -1054,6 +811,28 @@ export default function ContactHub({
           />
         </div>
       )}
+
+      <PeopleFinder
+        onContactAdded={() =>
+          api
+            .getContacts()
+            .then(({ contacts: list }) => setContacts(list))
+            .catch(() => {})
+        }
+      />
+
+      <DiscoverConnections
+        setPage={setPage}
+        onSaved={async () => {
+          try {
+            const { contacts: list } = await api.getContacts()
+            setContacts(list)
+          } catch (e) {
+            setActionError(e.message)
+          }
+        }}
+      />
+
       </div>
 
       {showFirstContactCelebration && (
@@ -1062,7 +841,6 @@ export default function ContactHub({
 
       {/* Compose FAB / expandable panel */}
       <div
-        ref={composeAreaRef}
         style={{
           position: "fixed",
           right: 20,
@@ -1074,7 +852,9 @@ export default function ContactHub({
           gap: 12,
         }}
       >
-        <div
+        {composeOpen ? (
+          <div
+            ref={composeAreaRef}
             style={{
               position: "relative",
               width: composeSize.width,
@@ -1086,7 +866,7 @@ export default function ContactHub({
               borderRadius: 20,
               boxShadow: "var(--gb-shadow-panel)",
               overflow: "hidden",
-              display: composeOpen ? "flex" : "none",
+              display: "flex",
               flexDirection: "column",
             }}
           >
@@ -1133,43 +913,15 @@ export default function ContactHub({
               onClose={closeCompose}
             />
           </div>
-        {!composeOpen && (
+        ) : (
           <button
             type="button"
+            className="gb-compose-fab"
             onClick={() => openCompose()}
             aria-label="Compose a message"
             title="Compose a message"
-            style={{
-              height: 56,
-              padding: "0 18px 0 14px",
-              borderRadius: 999,
-              border: "1px solid rgba(10,15,9,0.22)",
-              background: "var(--gb-accent-bright)",
-              color: "var(--gb-accent-text-on)",
-              cursor: "pointer",
-              boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              fontFamily: font.h1,
-              fontWeight: 700,
-              fontSize: 15,
-              letterSpacing: "-0.02em",
-              transition: "transform 0.15s ease, box-shadow 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)"
-              e.currentTarget.style.boxShadow = "0 14px 32px rgba(0,0,0,0.34)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 28px rgba(0,0,0,0.28)"
-            }}
           >
-            <span style={{ fontSize: 28, lineHeight: 1, display: "flex" }} aria-hidden>
-              ✉
-            </span>
+            <Icon name="mail" size={18} color="var(--gb-accent-text-on)" />
             Compose
           </button>
         )}

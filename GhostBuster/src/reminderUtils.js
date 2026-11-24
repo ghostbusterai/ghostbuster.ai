@@ -13,6 +13,16 @@ export function todayDay() {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
+/** YYYY-MM-DD in local time */
+export function formatDayIso(date) {
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return ""
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
 /** Pending reminder due status — never implies done; user must check off manually. */
 export function getReminderDueStatus(reminder) {
   if (!reminder || reminder.done) {

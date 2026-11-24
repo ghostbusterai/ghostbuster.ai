@@ -18,7 +18,10 @@
       post({ type: "READY", version: VERSION, allSites: Boolean(status?.allSites) })
     })
     chrome.runtime.sendMessage({ type: "APP_READY" }, (resp) => {
-      for (const report of resp?.pending || []) post({ type: "FILL_REPORT", report })
+      for (const report of resp?.pending || []) {
+        if (report?.kind === "portal") post({ type: "PORTAL_SYNC", report })
+        else post({ type: "FILL_REPORT", report })
+      }
       for (const contact of resp?.contacts || []) post({ type: "SAVE_CONTACT", contact })
       if (resp?.ghostwriter) post({ type: "GHOSTWRITER_START", meeting: resp.ghostwriter })
     })
@@ -34,6 +37,15 @@
 
     if (m.type === "PING") {
       announce()
+    } else if (m.type === "START_PORTAL_SYNC") {
+      chrome.runtime.sendMessage({ type: "START_PORTAL_SYNC", job: m.job }, (resp) => {
+        post({
+          type: "PORTAL_SYNC_STARTED",
+          applicationId: m.job?.application?.id,
+          ok: Boolean(resp?.ok),
+          error: resp?.error || (chrome.runtime.lastError ? "Extension unavailable — reload the page." : ""),
+        })
+      })
     } else if (m.type === "START_FILL") {
       chrome.runtime.sendMessage({ type: "START_FILL", job: m.job }, (resp) => {
         post({
@@ -58,6 +70,7 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === "FILL_REPORT") post({ type: "FILL_REPORT", report: msg.report })
+    else if (msg?.type === "PORTAL_SYNC") post({ type: "PORTAL_SYNC", report: msg.report })
     else if (msg?.type === "GHOSTWRITER_START") {
       post({ type: "GHOSTWRITER_START", meeting: msg.meeting })
       sendResponse({ app: true })

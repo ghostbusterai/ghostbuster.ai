@@ -32,45 +32,52 @@ export const FOUNDERS = [
 
 export const PRODUCT_FEATURES = [
   {
-    icon: "👥",
+    icon: "users",
     title: "Contacts",
     description: "Save everyone you meet: roles, companies, notes, and how you know them.",
   },
   {
-    icon: "✨",
+    icon: "spark",
     title: "AI Compose",
     description: "Draft warm outreach for any contact from the compose button on Contacts.",
   },
   {
-    icon: "📄",
+    icon: "file",
     title: "Resume",
     description: "Upload résumés, track updates, and get AI suggestions tied to your career goals.",
   },
   {
-    icon: "📋",
+    icon: "clipboard",
     title: "Applications",
     description: "Save application links to complete or already submitted, and get AI search suggestions from your résumé and goals.",
   },
   {
-    icon: "🔔",
+    icon: "bell",
     title: "Reminders",
     description: "Never let a connection go cold. Sync follow-ups to Google Calendar.",
   },
   {
-    icon: "📊",
+    icon: "chart",
     title: "Tracker",
     description: "Log outreach and see who needs a check-in before relationships fade.",
   },
   {
-    icon: "✉",
+    icon: "mail",
     title: "Gmail",
     description: "Save drafts or schedule sends from compose when Google is connected.",
   },
   {
-    icon: "🎙",
+    icon: "mic",
     title: "Ghostwriter",
     description: "Take live notes during online meetings with speaker labels, then get an AI summary.",
   },
+]
+
+/** Greenhouse-style proof points for About (product capabilities, not user counts). */
+export const PRODUCT_PROOF_STATS = [
+  { value: "7+", detail: "Workflows in one place — contacts, compose, tracker, applications, reminders, résumé, and Ghostwriter" },
+  { value: "AI", detail: "Draft outreach and meeting summaries while you stay in control of what gets sent" },
+  { value: "2", detail: "Google connections for Gmail drafts and Calendar reminders when you opt in" },
 ]
 
 export const PRODUCT_TAGLINE =
