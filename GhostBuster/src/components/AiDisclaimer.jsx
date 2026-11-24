@@ -5,7 +5,7 @@ import { font } from "../theme"
 export const AI_DISCLAIMER_TEXT =
   "This message is AI-generated and may contain errors or outdated details. Proofread carefully and edit anything that does not sound like you before copying or sending."
 
-/** Shared AI disclaimer used on Compose and Ghostwriter. */
+/** Shared AI disclaimer for AI-assisted flows in the app. */
 export default function AiDisclaimer({ style, text = AI_DISCLAIMER_TEXT } = {}) {
   return (
     <p

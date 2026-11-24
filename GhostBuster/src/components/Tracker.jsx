@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { inputStyle } from "../uiStyles"
+import { dangerBtn, inputStyle, primaryBtn, secondaryBtn, uiClass } from "../uiStyles"
 import { PageShell, PageHero, ContentCard, CardTitle, EmptyState } from "../layout"
 import ViewMoreButton from "./ViewMoreButton"
 import { LIST_PREVIEW_LIMIT, previewHiddenCount, previewSlice } from "../listPreview"
@@ -109,23 +109,133 @@ function countInWindow(logs, contactId, days) {
   ).length
 }
 
+function formatWeekRange(startMs, endMs) {
+  const opts = { month: "short", day: "numeric" }
+  return `${new Date(startMs).toLocaleDateString(undefined, opts)} – ${new Date(endMs).toLocaleDateString(undefined, opts)}`
+}
+
 /** Oldest week first (left); each bucket is 7 days ending at `now`. */
-function weekTouchFlags(logs, contactId, weeks = 12) {
+function weekTouchBuckets(logs, contactId, weeks = 12) {
   const weekMs = 7 * 24 * 60 * 60 * 1000
   const now = Date.now()
-  const flags = []
+  const buckets = []
   for (let i = weeks - 1; i >= 0; i--) {
     const end = now - i * weekMs
     const start = end - weekMs
-    const touched = logs.some(
-      (l) =>
-        l.contactId === contactId &&
-        parseDay(l.contactedAt) >= start &&
-        parseDay(l.contactedAt) < end
+    const hits = logs.filter(
+      (l) => l.contactId === contactId && parseDay(l.contactedAt) >= start && parseDay(l.contactedAt) < end
     )
-    flags.push(touched)
+    buckets.push({
+      active: hits.length > 0,
+      count: hits.length,
+      start,
+      end: end - 1,
+      edgeLabel: null,
+    })
   }
-  return flags
+  if (buckets.length > 0) {
+    buckets[0].edgeLabel = "12 wk"
+    buckets[buckets.length - 1].edgeLabel = "Now"
+  }
+  return buckets
+}
+
+function weekTouchTitle(bucket) {
+  const range = formatWeekRange(bucket.start, bucket.end)
+  if (!bucket.active) return `${range} · No touches`
+  return `${range} · ${bucket.count} touch${bucket.count !== 1 ? "es" : ""}`
+}
+
+function TrackerRhythmChart({ buckets, compact = false }) {
+  const maxCount = Math.max(1, ...buckets.map((b) => b.count))
+  return (
+    <div className={`gb-tracker-rhythm${compact ? " gb-tracker-rhythm--compact" : ""}`}>
+      <div className="gb-tracker-rhythm__header">
+        <span className="gb-tracker-rhythm__title">12-week rhythm</span>
+        <span className="gb-tracker-rhythm__hint">Hover a bar for that week</span>
+      </div>
+      <div
+        className="gb-tracker-rhythm__bars"
+        role="img"
+        aria-label="Weekly outreach: each bar is one week, left is oldest, right is this week"
+      >
+        {buckets.map((b, i) => {
+          const heightPct = b.active ? Math.max(32, Math.round((b.count / maxCount) * 100)) : 16
+          return (
+            <div key={i} className="gb-tracker-rhythm__col" title={weekTouchTitle(b)}>
+              <div
+                className={`gb-tracker-rhythm__bar${b.active ? " gb-tracker-rhythm__bar--on" : ""}`}
+                style={{ height: `${heightPct}%` }}
+              />
+              <span className="gb-tracker-rhythm__edge">{b.edgeLabel || "\u00a0"}</span>
+            </div>
+          )
+        })}
+      </div>
+      <div className="gb-tracker-rhythm__axis">
+        <span>Older weeks</span>
+        <span>This week</span>
+      </div>
+    </div>
+  )
+}
+
+function ChannelLegend() {
+  return (
+    <div className="gb-channel-legend" aria-label="Colors by outreach channel">
+      {Object.keys(CHANNEL_TIMELINE).map((ch) => {
+        const meta = CHANNEL_TIMELINE[ch]
+        return (
+          <span key={ch} className="gb-channel-legend__item">
+            <span className="gb-channel-legend__swatch" style={{ background: meta.stroke }} aria-hidden />
+            {ch}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+function TimelineRelationshipChart({ markers, axis }) {
+  if (!axis || !markers.length) return null
+  return (
+    <div className="gb-timeline-viz">
+      <h3 className="gb-timeline-viz__title">Relationship over time</h3>
+      <p className="gb-timeline-viz__lede">
+        Each dot is a day you logged outreach. Colors match how you reached out (see legend below).
+      </p>
+      <div className="gb-timeline-viz__track">
+        <div className="gb-timeline-viz__line" aria-hidden />
+        <span className="gb-timeline-viz__today" title="Today" aria-hidden />
+        <span className="gb-timeline-viz__today-label">Today</span>
+        {markers.map((marker) => (
+          <div
+            key={marker.ms}
+            className="gb-timeline-viz__dot-wrap"
+            style={{ left: `calc(8px + (100% - 36px) * ${marker.pct / 100})` }}
+            title={marker.tip}
+          >
+            <div
+              className="gb-timeline-viz__dot"
+              style={{
+                background: marker.meta.fill,
+                borderColor: marker.meta.stroke,
+                boxShadow: `0 0 14px ${marker.meta.glow}`,
+              }}
+            />
+            {marker.entries.length > 1 ? (
+              <span className="gb-timeline-viz__dot-count">{marker.entries.length}</span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <div className="gb-timeline-viz__axis">
+        <span>{formatTouchDate(axis.t0)}</span>
+        <span>Today</span>
+      </div>
+      <ChannelLegend />
+    </div>
+  )
 }
 
 function avgDaysBetweenTouches(logs, contactId) {
@@ -180,12 +290,6 @@ function formatDaysAgo(days) {
   if (days === 0) return "today"
   if (days === 1) return "1 day ago"
   return `${days} days ago`
-}
-
-function formatOutreachWindow(count, windowDays) {
-  const label = windowDays === 7 ? "7 days" : windowDays === 30 ? "30 days" : `${windowDays} days`
-  const touch = count === 1 ? "touch" : "touches"
-  return `${count} ${touch} in last ${label}`
 }
 
 function warmthDetail(daysSinceTouch) {
@@ -483,7 +587,7 @@ export default function Tracker() {
 
       {/* Per-contact warmth */}
       <section className="gb-reveal-block" aria-labelledby="tracker-warmth-title">
-        <CardTitle helper="Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each week for the past 12 weeks.">
+        <CardTitle helper="Open a contact for the full timeline. Taller bars mean more logged touches that week — hover any bar for the exact dates.">
           <span id="tracker-warmth-title">Connection warmth</span>
         </CardTitle>
       <div className="gb-legend-grid gb-reveal-stagger">
@@ -523,149 +627,63 @@ export default function Tracker() {
             const n30 = countInWindow(logs, c.id, 30)
             const n90 = countInWindow(logs, c.id, 90)
             const avgGap = avgDaysBetweenTouches(logs, c.id)
-            const weeks = weekTouchFlags(logs, c.id, 12)
+            const rhythmBuckets = weekTouchBuckets(logs, c.id, 12)
+            const cardWarmthClass =
+              w.key === "yellow"
+                ? " gb-tracker-card--yellow"
+                : w.key === "red"
+                  ? " gb-tracker-card--red"
+                  : w.key === "green"
+                    ? " gb-tracker-card--green"
+                    : ""
             return (
-              <div
-                key={c.id}
-                className="gb-reveal-block"
-                style={{
-                  background: "var(--gb-bg-elevated)",
-                  border: `1px solid ${w.key === "yellow" ? "rgba(255,201,107,0.25)" : w.key === "red" ? "rgba(255,107,107,0.25)" : "var(--gb-surface-active)"}`,
-                  borderRadius: 14,
-                  padding: "18px 20px",
-                }}
-              >
-                <div
-                  role="button"
-                  tabIndex={0}
+              <div key={c.id} className={`gb-reveal-block gb-tracker-card${cardWarmthClass}`}>
+                <button
+                  type="button"
+                  className="gb-tracker-card__open"
                   onClick={() => setTimelineContactId(c.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      setTimelineContactId(c.id)
-                    }
-                  }}
-                  style={{
-                    display: "flex",
-                    gap: 14,
-                    alignItems: "flex-start",
-                    flex: 1,
-                    minWidth: 200,
-                    cursor: "pointer",
-                    borderRadius: 10,
-                    margin: "-6px",
-                    padding: "6px",
-                    outline: "none",
-                  }}
                 >
-                  <div
-                    style={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: "50%",
-                      background: w.color,
-                      marginTop: 4,
-                      boxShadow: `0 0 12px ${w.color}66`,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div>
-                    <div style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 16 }}>{c.name}</div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontFamily: font.mono,
-                        color: "var(--gb-accent-muted)",
-                        marginTop: 4,
-                        letterSpacing: 0.3,
-                      }}
-                    >
-                      View outreach history →
-                    </div>
-                    <div style={{ fontSize: 13, color: "var(--gb-text-muted)", marginTop: 2, fontFamily: font.body }}>
-                      {[c.role, c.company].filter(Boolean).join(" @ ")}
-                    </div>
-                    <div style={{ fontSize: 13, color: "var(--gb-text-subtle)", marginTop: 10, fontFamily: font.body, lineHeight: 1.5 }}>
-                      {lastMs
-                        ? `Last outreach: ${new Date(lastMs).toLocaleDateString()} (${formatDaysAgo(d)})`
-                        : "Last outreach: none logged yet"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--gb-text-faint)", marginTop: 4, fontFamily: font.body, lineHeight: 1.5 }}>
-                      {formatOutreachWindow(n7, 7)} · {formatOutreachWindow(n30, 30)} · {formatOutreachWindow(n90, 90)}
-                      {avgGap != null && ` · about ${avgGap} days between touches on average`}
-                    </div>
-                    <div style={{ marginTop: 12 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontFamily: font.mono,
-                          letterSpacing: "0.06em",
-                          textTransform: "uppercase",
-                          color: "var(--gb-text-faint)",
-                          marginBottom: 6,
-                        }}
-                      >
-                        Outreach rhythm: last 12 weeks
+                  <div className="gb-tracker-card__top">
+                    <span
+                      className="gb-tracker-card__dot"
+                      style={{ background: w.color, color: w.color }}
+                      aria-hidden
+                    />
+                    <div className="gb-tracker-card__head">
+                      <div>
+                        <h3 className="gb-tracker-card__name">{c.name}</h3>
+                        {[c.role, c.company].filter(Boolean).length > 0 ? (
+                          <p className="gb-tracker-card__sub">{[c.role, c.company].filter(Boolean).join(" @ ")}</p>
+                        ) : null}
+                        <p className="gb-tracker-card__cta">View outreach history →</p>
                       </div>
-                      <div
-                        title="Each bar is one week. Bright = at least one logged touch that week."
-                        style={{
-                          display: "flex",
-                          gap: 4,
-                          maxWidth: 420,
-                          alignItems: "stretch",
-                        }}
-                      >
-                        {weeks.map((on, i) => (
-                          <div
-                            key={i}
-                            title={on ? "Outreach logged this week" : "No outreach logged this week"}
-                            style={{
-                              flex: 1,
-                              height: 22,
-                              borderRadius: 4,
-                              background: on ? "var(--gb-accent-muted)" : "var(--gb-surface-active)",
-                              border: on ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-surface-active)",
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          maxWidth: 420,
-                          fontSize: 10,
-                          color: "var(--gb-text-dim)",
-                          marginTop: 4,
-                          fontFamily: font.mono,
-                        }}
-                      >
-                        <span>12 weeks ago</span>
-                        <span>This week</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--gb-text-faint)", marginTop: 4, fontFamily: font.body }}>
-                        Bright bar = you logged outreach that week. Dim bar = no logged outreach.
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: "inline-block",
-                        marginTop: 10,
-                        padding: "5px 11px",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontFamily: font.body,
-                        color: w.color,
-                        background: w.bg,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      <strong>{w.label}</strong>
-                      <span style={{ color: "var(--gb-text-subtle)", fontWeight: 400 }}> · {warmthDetail(d)}</span>
+                      <span className="gb-tracker-warmth-pill" data-warmth={w.key}>
+                        {w.label}
+                      </span>
                     </div>
                   </div>
-                </div>
+                  <div className="gb-tracker-metrics" aria-label="Touches in rolling windows">
+                    <div className="gb-tracker-metric">
+                      <span className="gb-tracker-metric__val">{n7}</span>
+                      <span className="gb-tracker-metric__lbl">7 days</span>
+                    </div>
+                    <div className="gb-tracker-metric">
+                      <span className="gb-tracker-metric__val">{n30}</span>
+                      <span className="gb-tracker-metric__lbl">30 days</span>
+                    </div>
+                    <div className="gb-tracker-metric">
+                      <span className="gb-tracker-metric__val">{n90}</span>
+                      <span className="gb-tracker-metric__lbl">90 days</span>
+                    </div>
+                  </div>
+                  <p className="gb-tracker-card__detail">
+                    {lastMs
+                      ? `Last outreach ${new Date(lastMs).toLocaleDateString()} (${formatDaysAgo(d)}). ${warmthDetail(d)}`
+                      : warmthDetail(d)}
+                    {avgGap != null ? ` Typical gap between touches: ~${avgGap} days.` : ""}
+                  </p>
+                  <TrackerRhythmChart buckets={rhythmBuckets} />
+                </button>
               </div>
             )
           })}
@@ -719,19 +737,7 @@ export default function Tracker() {
                     <td style={{ padding: 12, color: "var(--gb-text-subtle)" }}>{l.channel || "—"}</td>
                     <td style={{ padding: 12, color: "var(--gb-text-muted)", maxWidth: 280 }}>{l.note || "—"}</td>
                     <td style={{ padding: 12 }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => deleteLog(l.id)}
-                        style={{
-                          background: "transparent",
-                          border: "1px solid rgba(255,107,107,0.3)",
-                          color: "var(--gb-danger)",
-                          padding: "4px 10px",
-                          borderRadius: 6,
-                          fontSize: 12,
-                          cursor: "pointer",
-                        }}
-                      >
+                      <button type="button" onClick={() => deleteLog(l.id)} {...dangerBtn({ sm: true })}>
                         Delete
                       </button>
                     </td>
@@ -819,19 +825,7 @@ export default function Tracker() {
                 type="button"
                 onClick={() => setLogPanelOpen(false)}
                 aria-label="Close log touchpoint"
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  border: "1px solid var(--gb-border)",
-                  background: "var(--gb-surface-muted)",
-                  color: "var(--gb-text-muted)",
-                  cursor: "pointer",
-                  fontSize: 18,
-                  lineHeight: 1,
-                  flexShrink: 0,
-                  boxShadow: "none",
-                }}
+                className={`${uiClass.iconBtn} gb-icon-btn--round`}
               >
                 ×
               </button>
@@ -942,22 +936,7 @@ export default function Tracker() {
               <button
                 type="submit"
                 disabled={!logContactId || savingLog}
-                style={{
-                  background: logContactId && !savingLog ? "var(--gb-accent-bright)" : "var(--gb-accent-soft)",
-                  color: logContactId && !savingLog ? "var(--gb-accent-text-on)" : "var(--gb-accent-muted)",
-                  border:
-                    logContactId && !savingLog
-                      ? "1px solid rgba(10,15,9,0.22)"
-                      : "1px solid var(--gb-border-subtle)",
-                  boxShadow: "none",
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  fontFamily: font.h1,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  cursor: logContactId && !savingLog ? "pointer" : "not-allowed",
-                  marginTop: 4,
-                }}
+                {...primaryBtn({ fullWidth: true, style: { marginTop: 4 } })}
               >
                 {savingLog ? "Saving…" : "Add touchpoint"}
               </button>
@@ -966,39 +945,13 @@ export default function Tracker() {
         ) : (
           <button
             type="button"
+            className="gb-compose-fab gb-tracker-fab"
             onClick={() => {
               if (filterContactId) setLogContactId(filterContactId)
               setLogPanelOpen(true)
             }}
             aria-label="Log a touchpoint"
             title="Log a touchpoint"
-            style={{
-              height: 56,
-              padding: "0 18px 0 14px",
-              borderRadius: 999,
-              border: "1px solid rgba(10,15,9,0.22)",
-              background: "var(--gb-accent-bright)",
-              color: "var(--gb-accent-text-on)",
-              cursor: "pointer",
-              boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              fontFamily: font.h1,
-              fontWeight: 700,
-              fontSize: 15,
-              letterSpacing: "-0.02em",
-              transition: "transform 0.15s ease, box-shadow 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)"
-              e.currentTarget.style.boxShadow = "0 14px 32px rgba(0,0,0,0.34)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 28px rgba(0,0,0,0.28)"
-            }}
           >
             <span style={{ fontSize: 26, lineHeight: 1, display: "flex", fontWeight: 700 }} aria-hidden>
               +
@@ -1114,18 +1067,7 @@ export default function Tracker() {
                 type="button"
                 onClick={() => setTimelineContactId(null)}
                 aria-label="Close timeline"
-                style={{
-                  flexShrink: 0,
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  border: "1px solid var(--gb-border)",
-                  background: "var(--gb-surface-muted)",
-                  color: "var(--gb-text)",
-                  fontSize: 20,
-                  lineHeight: 1,
-                  cursor: "pointer",
-                }}
+                className={`${uiClass.iconBtn} gb-icon-btn--round gb-icon-btn--round-lg`}
               >
                 ×
               </button>
@@ -1141,14 +1083,7 @@ export default function Tracker() {
               ) : (
                 <>
                   {timelineSummary && (
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                        gap: 10,
-                        marginBottom: 22,
-                      }}
-                    >
+                    <div className="gb-tracker-summary-grid">
                       {[
                         {
                           label: "Touchpoints",
@@ -1168,144 +1103,24 @@ export default function Tracker() {
                                 : "—",
                         },
                       ].map((item) => (
-                        <div
-                          key={item.label}
-                          style={{
-                            padding: "12px 14px",
-                            borderRadius: 12,
-                            background: "var(--gb-surface-muted)",
-                            border: "1px solid var(--gb-border-subtle)",
-                          }}
-                        >
-                          <div style={{ fontFamily: font.h1, fontSize: 11, color: "var(--gb-text-muted)", marginBottom: 4 }}>
-                            {item.label}
-                          </div>
-                          <div style={{ fontFamily: font.h1, fontSize: 16, fontWeight: 700, color: "var(--gb-text)" }}>
-                            {item.value}
-                          </div>
+                        <div key={item.label} className="gb-tracker-summary-tile">
+                          <div className="gb-tracker-summary-tile__label">{item.label}</div>
+                          <div className="gb-tracker-summary-tile__value">{item.value}</div>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {timelineAxis && timelineEntries.length >= 2 && (
-                    <div
-                      style={{
-                        marginBottom: 24,
-                        padding: "16px 14px",
-                        borderRadius: 14,
-                        background: "var(--gb-surface-muted)",
-                        border: "1px solid var(--gb-border-subtle)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontFamily: font.h1,
-                          fontSize: 13,
-                          fontWeight: 700,
-                          color: "var(--gb-text)",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Relationship over time
-                      </div>
-                      <div style={{ fontFamily: font.h1, fontSize: 12, color: "var(--gb-text-muted)", marginBottom: 14 }}>
-                        Each dot is one day you logged outreach. Hover a dot to see how you reached out. Left is earliest, right is today.
-                      </div>
-                      <div style={{ position: "relative", height: 36, marginTop: 4, paddingRight: 32, marginBottom: 8 }}>
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: 8,
-                            right: 32,
-                            top: 16,
-                            height: 4,
-                            borderRadius: 4,
-                            background: "var(--gb-border-subtle)",
-                          }}
-                        />
-                        <div
-                          title="Today"
-                          aria-hidden
-                          style={{
-                            position: "absolute",
-                            right: 28,
-                            top: 10,
-                            width: 2,
-                            height: 16,
-                            borderRadius: 2,
-                            background: "var(--gb-text-muted)",
-                          }}
-                        />
-                        {timelineDayMarkers.map((marker) => (
-                          <div
-                            key={marker.ms}
-                            title={marker.tip}
-                            style={{
-                              position: "absolute",
-                              left: `calc(8px + (100% - 40px) * ${marker.pct / 100})`,
-                              top: 8,
-                              transform: "translateX(-50%)",
-                              width: 18,
-                              height: 18,
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: 16,
-                                height: 16,
-                                borderRadius: "50%",
-                                background: marker.meta.fill,
-                                border: `2px solid ${marker.meta.stroke}`,
-                                boxShadow: `0 0 10px ${marker.meta.glow}`,
-                              }}
-                            />
-                            {marker.entries.length > 1 && (
-                              <span
-                                style={{
-                                  position: "absolute",
-                                  top: -5,
-                                  right: -7,
-                                  minWidth: 16,
-                                  height: 16,
-                                  padding: "0 4px",
-                                  borderRadius: 999,
-                                  background: "var(--gb-bg-elevated)",
-                                  border: "1px solid var(--gb-border)",
-                                  color: "var(--gb-text)",
-                                  fontFamily: font.h1,
-                                  fontSize: 9,
-                                  fontWeight: 700,
-                                  lineHeight: "14px",
-                                  textAlign: "center",
-                                }}
-                              >
-                                {marker.entries.length}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 16,
-                          fontSize: 11,
-                          fontFamily: font.h1,
-                          color: "var(--gb-text-muted)",
-                        }}
-                      >
-                        <span style={{ minWidth: 0 }}>{formatTouchDate(timelineAxis.t0)}</span>
-                        <span style={{ flexShrink: 0 }}>Today</span>
-                      </div>
-                      {timelineDayMarkers.some((m) => m.entries.length > 1) && (
-                        <div style={{ fontFamily: font.h1, fontSize: 11, color: "var(--gb-text-muted)", marginTop: 10 }}>
-                          Number badges show multiple touchpoints logged on the same day.
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {timelineContactId != null && timelineEntries.length > 0 ? (
+                    <TrackerRhythmChart
+                      buckets={weekTouchBuckets(logs, timelineContactId, 12)}
+                      compact
+                    />
+                  ) : null}
+
+                  {timelineAxis && timelineDayMarkers.length > 0 ? (
+                    <TimelineRelationshipChart markers={timelineDayMarkers} axis={timelineAxis} />
+                  ) : null}
 
                   <div style={{ marginBottom: 12 }}>
                     <div
@@ -1438,21 +1253,7 @@ export default function Tracker() {
               <span style={{ fontSize: 12, fontFamily: font.h1, color: "var(--gb-text-muted)" }}>
                 {timelineEntries.length} touchpoint{timelineEntries.length !== 1 ? "s" : ""} logged
               </span>
-              <button
-                type="button"
-                onClick={() => setTimelineContactId(null)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 10,
-                  border: "1px solid var(--gb-border)",
-                  background: "var(--gb-surface-muted)",
-                  color: "var(--gb-text)",
-                  fontFamily: font.h1,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
+              <button type="button" onClick={() => setTimelineContactId(null)} {...secondaryBtn()}>
                 Close
               </button>
             </div>

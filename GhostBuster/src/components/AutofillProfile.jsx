@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { inputStyle } from "../uiStyles"
+import { accentSoftBtn, inputStyle, primaryBtn } from "../uiStyles"
 import { ContentCard, CardTitle } from "../layout"
 import { syncProfileToExtension } from "../autofillBridge"
 
@@ -104,7 +104,7 @@ export default function AutofillProfile() {
       <CardTitle helper="What the GhostBuster Autofill extension types into Workday, Greenhouse, Lever, and Ashby forms. Written questions are left for you.">
         Autofill profile
       </CardTitle>
-      <button type="button" onClick={() => setOpen((v) => !v)} style={toggleBtn()}>
+      <button type="button" onClick={() => setOpen((v) => !v)} {...accentSoftBtn()}>
         {open ? "Hide profile" : "Edit autofill profile"}
       </button>
 
@@ -160,7 +160,7 @@ export default function AutofillProfile() {
           </div>
 
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 18 }}>
-            <button type="button" onClick={save} disabled={saving} style={saveBtn(saving)}>
+            <button type="button" onClick={save} disabled={saving} {...primaryBtn()}>
               {saving ? "Saving…" : "Save profile"}
             </button>
           </div>
@@ -195,32 +195,3 @@ function selectLabel() {
   return { display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "var(--gb-text-muted)", fontFamily: font.body }
 }
 
-function toggleBtn() {
-  return {
-    background: "var(--gb-accent-soft)",
-    border: "1px solid var(--gb-border-subtle)",
-    color: "var(--gb-accent)",
-    padding: "10px 16px",
-    borderRadius: 9,
-    fontFamily: font.body,
-    fontWeight: 600,
-    fontSize: 13,
-    cursor: "pointer",
-    boxShadow: "none",
-  }
-}
-
-function saveBtn(disabled) {
-  return {
-    background: "var(--gb-accent-bright)",
-    color: "var(--gb-accent-text-on)",
-    border: "1px solid rgba(10,15,9,0.22)",
-    boxShadow: "none",
-    padding: "10px 24px",
-    borderRadius: 9,
-    fontFamily: font.h1,
-    fontWeight: 700,
-    fontSize: 14,
-    cursor: disabled ? "not-allowed" : "pointer",
-  }
-}

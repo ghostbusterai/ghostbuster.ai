@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { inputStyle, uiClass, primaryBtn, secondaryBtn } from "../uiStyles"
+import { accentSoftBtn, chipBtn, dangerBtn, inputStyle, linkBtn, primaryBtn, secondaryBtn, uiClass } from "../uiStyles"
 import { suggestResumeBucket, bucketNameForContact } from "../resumeBucketMatch"
 import { PageShell, PageHero, ContentCard, CardTitle, EmptyState, ListDivider } from "../layout"
 import { formatContactName, formatLastTouch } from "../formatters"
@@ -481,15 +481,10 @@ export default function ContactHub({
             >
               {c.pinned ? "Unpin" : "Pin"}
             </button>
-            <button type="button" onClick={() => edit(c)} className={`${uiClass.btnGhost} ${uiClass.btnSm}`}>
+            <button type="button" onClick={() => edit(c)} {...secondaryBtn({ sm: true })}>
               Edit
             </button>
-            <button
-              type="button"
-              onClick={() => remove(c.id)}
-              className={`${uiClass.btnGhost} ${uiClass.btnSm}`}
-              style={{ color: "var(--gb-danger)" }}
-            >
+            <button type="button" onClick={() => remove(c.id)} {...dangerBtn({ sm: true })}>
               Delete
             </button>
           </div>
@@ -564,20 +559,7 @@ export default function ContactHub({
             <button
               type="button"
               onClick={openAddForm}
-              style={{
-                background: "var(--gb-accent-bright)",
-                color: "var(--gb-accent-text-on)",
-                border: "1px solid rgba(10,15,9,0.22)",
-                boxShadow: "none",
-                padding: "13px 26px",
-                borderRadius: 10,
-                fontFamily: font.h1,
-                fontWeight: 700,
-                fontSize: 15,
-                cursor: "pointer",
-                flexShrink: 0,
-                whiteSpace: "nowrap",
-              }}
+              {...primaryBtn({ style: { flexShrink: 0, whiteSpace: "nowrap" } })}
             >
               + Add
             </button>
@@ -650,16 +632,8 @@ export default function ContactHub({
             style={{ ...inputStyle(), marginTop: 14, height: 80, resize: "vertical" }}
           />
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-            <button onClick={save} style={{
-              background: "var(--gb-accent-bright)", color: "var(--gb-accent-text-on)", border: "1px solid rgba(10,15,9,0.22)", boxShadow: "none",
-              padding: "10px 24px", borderRadius: 9, fontFamily: font.h1,
-              fontWeight: 700, fontSize: 14, cursor: "pointer",
-            }}>Save</button>
-            <button onClick={closeForm} style={{
-              background: "transparent", color: "var(--gb-text-muted)", border: "1px solid var(--gb-border-subtle)", boxShadow: "none",
-              padding: "10px 24px", borderRadius: 9, fontFamily: font.body,
-              fontSize: 14, cursor: "pointer",
-            }}>Cancel</button>
+            <button type="button" onClick={save} {...primaryBtn()}>Save</button>
+            <button type="button" onClick={closeForm} {...secondaryBtn()}>Cancel</button>
           </div>
           </ContentCard>
         </>
@@ -679,7 +653,7 @@ export default function ContactHub({
           >
             <CardTitle helper="Search your saved contacts or narrow by company">Find in your network</CardTitle>
             {(hasActiveSearch || hasCompanyFilter) && (
-              <button type="button" className="gb-link-btn" onClick={clearFilters}>
+              <button type="button" onClick={clearFilters} {...linkBtn({ sm: true, className: "gb-link-btn" })}>
                 Clear filters
               </button>
             )}
@@ -717,17 +691,7 @@ export default function ContactHub({
                   <button
                     type="button"
                     onClick={() => setFilterCompany("All")}
-                    style={{
-                      background: filterCompany === "All" ? "rgba(184,255,87,0.14)" : "var(--gb-surface-hover)",
-                      border: filterCompany === "All" ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-strong)",
-                      color: filterCompany === "All" ? "var(--gb-accent)" : "var(--gb-text-subtle)",
-                      padding: "6px 12px",
-                      borderRadius: 20,
-                      fontSize: 12,
-                      fontFamily: font.body,
-                      cursor: "pointer",
-                      boxShadow: "none",
-                    }}
+                    {...(filterCompany === "All" ? accentSoftBtn({ sm: true }) : chipBtn({ sm: true }))}
                   >
                     All
                   </button>
@@ -736,17 +700,7 @@ export default function ContactHub({
                       key={name}
                       type="button"
                       onClick={() => setFilterCompany(name)}
-                      style={{
-                        background: filterCompany === name ? "rgba(184,255,87,0.14)" : "var(--gb-surface-hover)",
-                        border: filterCompany === name ? "1px solid var(--gb-border-strong)" : "1px solid var(--gb-border-strong)",
-                        color: filterCompany === name ? "var(--gb-accent)" : "var(--gb-text-subtle)",
-                        padding: "6px 12px",
-                        borderRadius: 20,
-                        fontSize: 12,
-                        fontFamily: font.body,
-                        cursor: "pointer",
-                        boxShadow: "none",
-                      }}
+                      {...(filterCompany === name ? accentSoftBtn({ sm: true }) : chipBtn({ sm: true }))}
                     >
                       {name} ({count})
                     </button>

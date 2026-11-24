@@ -195,20 +195,8 @@ export const api = {
   undoGmailContactImport: () => request("/api/gmail/contact-import/undo", { method: "POST", body: "{}" }),
   syncReminderToCalendar: (id) =>
     request(`/api/reminders/${id}/sync-calendar`, { method: "POST", body: JSON.stringify({}) }),
-  getGhostwriters: () => request("/api/ghostwriter"),
-  getGhostwriter: (id) => request(`/api/ghostwriter/${id}`),
-  createGhostwriter: (body) =>
-    request("/api/ghostwriter", { method: "POST", body: JSON.stringify(body || {}) }),
-  patchGhostwriter: (id, body) =>
-    request(`/api/ghostwriter/${id}`, { method: "PATCH", body: JSON.stringify(body || {}) }),
-  deleteGhostwriter: (id) => request(`/api/ghostwriter/${id}`, { method: "DELETE" }),
   ask: (question, history) =>
     request("/api/ask", { method: "POST", body: JSON.stringify({ question, history }) }),
-  summarizeGhostwriter: (id, body) =>
-    request(`/api/ghostwriter/${id}/summarize`, {
-      method: "POST",
-      body: JSON.stringify(body || {}),
-    }),
 }
 
 export { BASE }

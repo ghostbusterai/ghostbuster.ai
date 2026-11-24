@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { api } from "../api"
 import { font } from "../theme"
-import { inputStyle } from "../uiStyles"
+import { accentSoftBtn, inputStyle, primaryBtn, secondaryBtn } from "../uiStyles"
 import { ContentCard, CardTitle } from "../layout"
 import ViewMoreButton from "./ViewMoreButton"
 import { previewHiddenCount, previewSlice } from "../listPreview"
@@ -80,7 +80,7 @@ export default function JobSearch({ onSave, savedUrls }) {
           onChange={(e) => setQuery(e.target.value)}
           style={{ ...inputStyle(), margin: 0 }}
         />
-        <button type="submit" disabled={searching || !company.trim()} style={searchBtn(searching || !company.trim())}>
+        <button type="submit" disabled={searching || !company.trim()} {...primaryBtn()}>
           {searching ? "Searching…" : "Search"}
         </button>
       </form>
@@ -115,17 +115,22 @@ export default function JobSearch({ onSave, savedUrls }) {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <a href={job.url} target="_blank" rel="noreferrer" style={smallBtn()}>
+                  <a
+                    href={job.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    {...secondaryBtn({ style: { textDecoration: "none" } })}
+                  >
                     Open
                   </a>
                   {saved ? (
-                    <span style={{ ...smallBtn(), opacity: 0.7 }}>Saved</span>
+                    <span {...secondaryBtn({ style: { opacity: 0.7, pointerEvents: "none" } })}>Saved</span>
                   ) : (
                     <>
-                      <button type="button" disabled={busy} onClick={() => save(job, false)} style={smallBtn()}>
+                      <button type="button" disabled={busy} onClick={() => save(job, false)} {...secondaryBtn()}>
                         Save
                       </button>
-                      <button type="button" disabled={busy} onClick={() => save(job, true)} style={smallBtn(true)}>
+                      <button type="button" disabled={busy} onClick={() => save(job, true)} {...primaryBtn()}>
                         {busy ? "Working…" : "Save & fill"}
                       </button>
                     </>
@@ -145,34 +150,3 @@ function msg(color) {
   return { margin: "10px 0 0", fontSize: 13, color, fontFamily: font.body }
 }
 
-function searchBtn(disabled) {
-  return {
-    background: "var(--gb-accent-bright)",
-    color: "var(--gb-accent-text-on)",
-    border: "1px solid rgba(10,15,9,0.22)",
-    boxShadow: "none",
-    padding: "10px 18px",
-    borderRadius: 9,
-    fontFamily: font.h1,
-    fontWeight: 700,
-    fontSize: 14,
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.7 : 1,
-  }
-}
-
-function smallBtn(accent = false) {
-  return {
-    background: accent ? "var(--gb-accent-bright)" : "transparent",
-    color: accent ? "var(--gb-accent-text-on)" : "var(--gb-accent)",
-    border: accent ? "1px solid rgba(10,15,9,0.22)" : "1px solid var(--gb-border)",
-    padding: "7px 12px",
-    borderRadius: 8,
-    fontSize: 12,
-    fontWeight: accent ? 700 : 500,
-    fontFamily: font.body,
-    textDecoration: "none",
-    cursor: "pointer",
-    boxShadow: "none",
-  }
-}

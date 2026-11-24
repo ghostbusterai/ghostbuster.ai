@@ -61,7 +61,7 @@ export default function PeopleFinder({ onContactAdded }) {
               Describe who you're looking for and GhostBuster searches the public web for people who fit.
             </div>
           </div>
-          <button type="button" onClick={() => setOpen(true)} style={secondaryBtn()}>
+          <button type="button" onClick={() => setOpen(true)} {...secondaryBtn()}>
             Find people
           </button>
         </div>
@@ -79,7 +79,7 @@ export default function PeopleFinder({ onContactAdded }) {
         <div style={{ fontFamily: font.h1, fontWeight: 700, color: "var(--gb-text-strong)", flex: 1 }}>
           Find people to reach out to
         </div>
-        <button type="button" onClick={() => setOpen(false)} style={{ ...secondaryBtn(), padding: "6px 12px" }}>
+        <button type="button" onClick={() => setOpen(false)} {...secondaryBtn({ sm: true })}>
           Close
         </button>
       </div>
@@ -88,7 +88,7 @@ export default function PeopleFinder({ onContactAdded }) {
         {field("role", "Role or team (e.g. software engineer)")}
         {field("school", "School / alumni (optional)")}
         {field("keywords", "Interests (e.g. payments, ML)")}
-        <button type="submit" disabled={!canSearch || loading} style={{ ...primaryBtn(), opacity: !canSearch || loading ? 0.6 : 1 }}>
+        <button type="submit" disabled={!canSearch || loading} {...primaryBtn()}>
           {loading ? "Searching the web…" : "Find people"}
         </button>
       </form>
@@ -121,7 +121,7 @@ export default function PeopleFinder({ onContactAdded }) {
                     type="button"
                     disabled={added[k]}
                     onClick={() => add(p)}
-                    style={{ ...secondaryBtn(), padding: "6px 12px", opacity: added[k] ? 0.6 : 1 }}
+                    {...(added[k] ? secondaryBtn({ sm: true }) : primaryBtn({ sm: true }))}
                   >
                     {added[k] ? "Added" : "Add to contacts"}
                   </button>

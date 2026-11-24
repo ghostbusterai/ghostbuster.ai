@@ -66,17 +66,12 @@ export const PRODUCT_FEATURES = [
     title: "Gmail",
     description: "Save drafts or schedule sends from compose when Google is connected.",
   },
-  {
-    icon: "mic",
-    title: "Ghostwriter",
-    description: "Take live notes during online meetings with speaker labels, then get an AI summary.",
-  },
 ]
 
 /** Greenhouse-style proof points for About (product capabilities, not user counts). */
 export const PRODUCT_PROOF_STATS = [
-  { value: "7+", detail: "Workflows in one place — contacts, compose, tracker, applications, reminders, résumé, and Ghostwriter" },
-  { value: "AI", detail: "Draft outreach and meeting summaries while you stay in control of what gets sent" },
+  { value: "6+", detail: "Workflows in one place — contacts, compose, tracker, applications, reminders, and résumé" },
+  { value: "AI", detail: "Draft outreach and résumé suggestions while you stay in control of what gets sent" },
   { value: "2", detail: "Google connections for Gmail drafts and Calendar reminders when you opt in" },
 ]
 

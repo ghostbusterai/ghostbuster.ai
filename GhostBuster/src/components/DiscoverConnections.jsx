@@ -193,22 +193,11 @@ export default function DiscoverConnections({ onSaved, setPage }) {
             </p>
           )}
           <div className="gb-discover-profile-band__actions">
-            <button
-              type="button"
-              disabled={searching}
-              className={primaryBtn({ sm: true }).className}
-              style={primaryBtn({ sm: true }).style}
-              onClick={loadProfileSuggestions}
-            >
+            <button type="button" disabled={searching} onClick={loadProfileSuggestions} {...primaryBtn({ sm: true })}>
               {searching ? "Updating…" : "Refresh suggestions"}
             </button>
             {!profileSummary?.hasGoals && typeof setPage === "function" && (
-              <button
-                type="button"
-                className={secondaryBtn({ sm: true }).className}
-                style={secondaryBtn({ sm: true }).style}
-                onClick={() => setPage("settings")}
-              >
+              <button type="button" onClick={() => setPage("settings")} {...secondaryBtn({ sm: true })}>
                 Add goals in Settings
               </button>
             )}
@@ -301,21 +290,15 @@ export default function DiscoverConnections({ onSaved, setPage }) {
           )}
 
           <div className="gb-discover-actions">
-            <button
-              type="submit"
-              disabled={searching || !canSearch}
-              className={primaryBtn({ sm: true }).className}
-              style={primaryBtn({ sm: true }).style}
-            >
+            <button type="submit" disabled={searching || !canSearch} {...primaryBtn({ sm: true })}>
               {searching ? "Searching…" : "Search"}
             </button>
             {searchMode === "role" && (
               <button
                 type="button"
-                className={secondaryBtn({ sm: true }).className}
-                style={secondaryBtn({ sm: true }).style}
                 onClick={() => setShowAdvanced((v) => !v)}
                 aria-expanded={showAdvanced}
+                {...secondaryBtn({ sm: true })}
               >
                 {showAdvanced ? "Fewer filters" : "More filters"}
               </button>

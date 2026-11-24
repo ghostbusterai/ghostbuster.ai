@@ -4,9 +4,12 @@ import {
   getReminderUrgency,
   getReminderUrgencyStyle,
   reminderDueLabel,
+  reminderContactInitial,
   summarizePendingReminders,
 } from "../reminderUtils"
+import { isAutoReminder } from "../autoReminders"
 import { font } from "../theme"
+import { secondaryBtn } from "../uiStyles"
 import { readLocalProfile } from "../profile"
 import { buildSortedReminderFeed } from "../autoReminders"
 
@@ -176,49 +179,50 @@ export default function NotificationBell({ setPage, currentPage }) {
                 No pending reminders. Set one from Reminders when you want a follow-up nudge.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              <div className="gb-notif-reminder-list">
                 {pending.map((r) => {
                   const urgency = getReminderUrgency(r)
                   const style = getReminderUrgencyStyle(urgency)
+                  const auto = isAutoReminder(r)
                   const reason = r.customReason || r.reason || "General check-in"
+                  const cardStyle = !auto
+                    ? { background: style.cardBg, borderColor: style.border, boxShadow: style.shadow }
+                    : undefined
                   return (
                     <div
                       key={r.id}
-                      style={{
-                        background: "var(--gb-bg-panel)",
-                        border: `1px solid ${style.border}`,
-                        borderRadius: 10,
-                        padding: "12px 14px",
-                      }}
+                      className={[
+                        "gb-reminder-row",
+                        "gb-reminder-row--compact",
+                        auto ? "gb-reminder-row--suggested" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      style={cardStyle}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                        <span
-                          style={{
-                            fontSize: 10,
-                            fontFamily: font.mono,
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            color: style.color,
-                            background: style.bg,
-                            border: `1px solid ${style.border}`,
-                            padding: "2px 7px",
-                            borderRadius: 6,
-                          }}
-                        >
-                          {style.label}
+                      <div className="gb-reminder-row__body">
+                        <span className="gb-reminder-avatar" aria-hidden="true">
+                          {reminderContactInitial(r.contactName)}
                         </span>
-                        <span style={{ fontFamily: font.h1, fontWeight: 700, fontSize: 14 }}>{r.contactName}</span>
-                      </div>
-                      <div style={{ fontSize: 13, color: "var(--gb-text-subtle)", lineHeight: 1.45 }}>{reason}</div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontFamily: font.mono,
-                          color: style.color,
-                          marginTop: 6,
-                        }}
-                      >
-                        {reminderDueLabel(r)}
+                        <div className="gb-reminder-row__main">
+                          <div className="gb-reminder-row__title-line">
+                            <span className="gb-reminder-row__name">{r.contactName}</span>
+                            {auto && <span className="gb-reminder-chip gb-reminder-chip--suggested">Suggested</span>}
+                            <span
+                              className="gb-reminder-chip"
+                              style={{ color: style.color, borderColor: style.border, background: style.bg }}
+                            >
+                              {style.label}
+                            </span>
+                          </div>
+                          <p className="gb-reminder-row__reason">{reason}</p>
+                          <p
+                            className="gb-reminder-row__due"
+                            style={{ color: style.color, borderColor: style.border, background: style.bg }}
+                          >
+                            {reminderDueLabel(r)}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )
@@ -231,23 +235,7 @@ export default function NotificationBell({ setPage, currentPage }) {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={goToNotifications}
-              style={{
-                width: "100%",
-                background: "var(--gb-surface-active)",
-                color: "var(--gb-text-strong)",
-                border: "1px solid var(--gb-border)",
-                padding: "10px 16px",
-                borderRadius: 9,
-                fontFamily: font.body,
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: "pointer",
-                boxShadow: "none",
-              }}
-            >
+            <button type="button" onClick={goToNotifications} {...secondaryBtn({ fullWidth: true })}>
               Manage notifications
             </button>
           </div>
