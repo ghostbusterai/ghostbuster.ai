@@ -344,6 +344,7 @@ export default function Reminders({ googleNotice = null, onConsumeGoogleNotice =
         className={[
           "gb-record-row",
           "gb-reminder-row",
+          "gb-reveal-block",
           r.done ? "gb-record-row--done" : "",
           auto ? "gb-record-row--suggested gb-reminder-row--suggested" : "",
         ]

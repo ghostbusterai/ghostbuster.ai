@@ -454,11 +454,11 @@ export default function Dashboard({ setPage }) {
 
   return (
     <PageShell className="gb-dashboard">
-      <section className="gb-spacex-hero gb-spacex-hero--intro" aria-labelledby="dashboard-hero-title">
-        <div className="gb-spacex-hero__content">
+      <section className="gb-spacex-hero gb-spacex-hero--intro gb-scroll-reveal" aria-labelledby="dashboard-hero-title">
+        <div className="gb-spacex-hero__content gb-reveal-stagger">
           <p className="gb-spacex-hero__eyebrow">GhostBuster</p>
-          <h1 id="dashboard-hero-title" className="gb-spacex-hero__title">
-            {greeting}
+          <h1 id="dashboard-hero-title" className="gb-spacex-hero__title gb-reveal-line">
+            <span>{greeting}</span>
           </h1>
           <p className="gb-spacex-hero__lede">
             Nurture the relationships that turn intros into interviews — contacts, outreach, and follow-ups in one
@@ -475,7 +475,7 @@ export default function Dashboard({ setPage }) {
         </div>
       </section>
 
-      <section className="gb-spacex-reel-section" aria-label="Networking success stories">
+      <section className="gb-spacex-reel-section gb-scroll-reveal" aria-label="Networking success stories">
         <p className="gb-spacex-reel-section__label">Students who landed roles through consistent networking</p>
         <NetworkingSuccessReel id="networking-wins" variant="scroll" />
       </section>
@@ -485,7 +485,7 @@ export default function Dashboard({ setPage }) {
           <CardTitle helper="GhostBuster helps you nurture relationships with people you've already met — career fairs, coffee chats, LinkedIn, interviews.">
             Welcome — here's how to connect
           </CardTitle>
-          <div className="gb-steps">
+          <div className="gb-steps gb-reveal-stagger">
             {GETTING_STARTED_STEPS.map((s) => (
               <button key={s.step} type="button" className="gb-step-tile" onClick={() => setPage(s.page)}>
                 <span className="gb-step-tile__num">{String(s.step).padStart(2, "0")}</span>
@@ -509,14 +509,14 @@ export default function Dashboard({ setPage }) {
         </ContentCard>
       )}
 
-      <section className="gb-snapshot-wrap gb-stat-showcase" aria-labelledby="dashboard-stats-title">
+      <section className="gb-snapshot-wrap gb-stat-showcase gb-scroll-reveal" aria-labelledby="dashboard-stats-title">
         <header className="gb-stat-showcase__intro">
           <h2 id="dashboard-stats-title" className="gb-stat-showcase__title">
             Your network, measured
           </h2>
           <p className="gb-stat-showcase__lede">Tap a metric to open the right workspace — live counts from your account.</p>
         </header>
-        <div className="gb-snapshot-grid gb-stat-showcase__grid">
+        <div className="gb-snapshot-grid gb-stat-showcase__grid gb-reveal-stagger">
           {stats.map((s) => {
             const interactive = Boolean(s.page)
             const className = `gb-snapshot-stat${interactive ? " gb-snapshot-stat--interactive" : ""}`
@@ -556,7 +556,7 @@ export default function Dashboard({ setPage }) {
 
       <ContentCard marginBottom={24} className="gb-quick-actions-card" padding="22px 24px 0">
         <CardTitle helper="Jump straight into a workflow.">Quick actions</CardTitle>
-        <div className="gb-quick-actions-grid" role="list">
+        <div className="gb-quick-actions-grid gb-reveal-stagger" role="list">
           {QUICK_ACTIONS.map((action) => (
             <button
               key={action.page}
@@ -636,7 +636,7 @@ export default function Dashboard({ setPage }) {
             <button
               key={item.id}
               type="button"
-              className="gb-activity-row"
+              className="gb-activity-row gb-reveal-block"
               onClick={() => setPage(item.page)}
             >
               <span className="gb-activity-row__dot" style={{ background: item.accent }} aria-hidden />
@@ -693,7 +693,7 @@ export default function Dashboard({ setPage }) {
 
               return (
                 <li key={c.id}>
-                  <button type="button" className="gb-contact-row" onClick={() => setPage("contacts")}>
+                  <button type="button" className="gb-contact-row gb-reveal-block" onClick={() => setPage("contacts")}>
                     <span className="gb-contact-row__avatar" aria-hidden>
                       {displayName.charAt(0).toUpperCase()}
                     </span>

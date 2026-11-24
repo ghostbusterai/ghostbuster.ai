@@ -364,7 +364,7 @@ export default function DiscoverConnections({ onSaved, setPage }) {
               (s.matchType === "github" ? "GitHub" : s.matchType === "profile" ? "For you" : "Search")
 
             return (
-              <li key={s.id} className="gb-discover-result">
+              <li key={s.id} className="gb-discover-result gb-reveal-block">
                 <div className="gb-discover-result__main">
                   <div className="gb-discover-result__title-row">
                     <h3 className="gb-discover-result__title">{title}</h3>

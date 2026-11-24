@@ -195,6 +195,7 @@
   flex-direction: column;
   align-items: stretch;
   gap: 0;
+  padding: 18px 18px 16px;
 }
 
 .gb-record-row:last-child,
@@ -233,47 +234,148 @@
 .gb-application-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 14px 0 4px;
-  margin-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 0 2px;
+  margin-top: 12px;
+  border-top: 1px solid var(--gb-border-subtle);
 }
 
 .gb-application-actions__cluster {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--gb-bg-elevated) 82%, transparent);
+  border: 1px solid var(--gb-border-subtle);
 }
 
 .gb-application-actions__cluster--end {
-  padding-top: 4px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  padding: 8px 0 0;
+  border: none;
+  background: transparent;
+  border-top: 1px dashed var(--gb-border-subtle);
+  border-radius: 0;
 }
 
 .gb-application-actions__label {
   flex: 0 0 100%;
   font-family: var(--gb-font-mono);
   font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--gb-text-faint);
-  margin-bottom: 2px;
+  color: var(--gb-text-subtle);
+  margin-bottom: 4px;
+}
+
+/* Toolbar buttons — same clusters & order, pill controls */
+.gb-application-actions .gb-btn {
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  min-height: 32px;
+}
+
+.gb-application-actions .gb-btn--primary {
+  box-shadow: none;
+  background: var(--gb-accent-bright);
+  border-color: color-mix(in srgb, var(--gb-accent-text-on) 14%, transparent);
+}
+
+.gb-application-actions .gb-btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -8px var(--gb-accent-glow);
+}
+
+.gb-application-actions .gb-btn--secondary {
+  background: color-mix(in srgb, var(--gb-surface-muted) 55%, transparent);
+  border-color: var(--gb-border);
+  color: var(--gb-text-secondary);
+}
+
+.gb-application-actions .gb-btn--secondary:hover {
+  background: var(--gb-surface-active);
+  color: var(--gb-text);
+}
+
+.gb-application-actions .gb-btn--danger-soft {
+  color: var(--gb-danger);
+  border-color: color-mix(in srgb, var(--gb-danger) 32%, var(--gb-border));
+  background: color-mix(in srgb, var(--gb-danger) 8%, transparent);
+}
+
+.gb-application-actions .gb-btn--danger-soft:hover {
+  background: color-mix(in srgb, var(--gb-danger) 14%, transparent);
+  color: var(--gb-danger);
+}
+
+.gb-application-row__stage {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-family: var(--gb-font-mono);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gb-border);
+}
+
+.gb-application-row__links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.gb-application-row__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-family: var(--gb-font-body);
+  color: var(--gb-text-secondary);
+  text-decoration: none;
+  border: 1px solid var(--gb-border-subtle);
+  background: color-mix(in srgb, var(--gb-surface-muted) 40%, transparent);
+  word-break: break-all;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.gb-application-row__link:hover {
+  color: var(--gb-accent);
+  border-color: color-mix(in srgb, var(--gb-accent-border) 45%, var(--gb-border));
+  background: var(--gb-accent-soft);
+}
+
+.gb-application-row__link--apply {
+  color: var(--gb-accent);
+  border-color: color-mix(in srgb, var(--gb-accent-border) 35%, var(--gb-border));
 }
 
 @media (min-width: 720px) {
   .gb-application-actions {
     flex-direction: row;
     flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 16px 20px;
+    align-items: stretch;
+    gap: 10px 12px;
   }
 
   .gb-application-actions__cluster {
     flex: 1 1 auto;
-    min-width: min(100%, 220px);
+    min-width: min(100%, 200px);
     align-content: flex-start;
   }
 
@@ -283,8 +385,9 @@
 
   .gb-application-actions__cluster--end {
     flex: 1 1 100%;
+    flex-direction: row;
     justify-content: flex-end;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 8px;
     padding-top: 10px;
     margin-top: 2px;
   }

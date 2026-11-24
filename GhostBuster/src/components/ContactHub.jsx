@@ -407,6 +407,7 @@ export default function ContactHub({
     const rowClass = [
       "gb-contact-row",
       "gb-contact-row--hub",
+      "gb-reveal-block",
       c.pinned ? "gb-contact-row--pinned" : "",
     ]
       .filter(Boolean)

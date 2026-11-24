@@ -482,10 +482,11 @@ export default function Tracker() {
       )}
 
       {/* Per-contact warmth */}
-      <CardTitle helper="Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each week for the past 12 weeks.">
-        Connection warmth
-      </CardTitle>
-      <div className="gb-legend-grid">
+      <section className="gb-reveal-block" aria-labelledby="tracker-warmth-title">
+        <CardTitle helper="Click a contact to open their full outreach timeline. The bar chart shows whether you logged outreach each week for the past 12 weeks.">
+          <span id="tracker-warmth-title">Connection warmth</span>
+        </CardTitle>
+      <div className="gb-legend-grid gb-reveal-stagger">
         {[
           { c: "var(--gb-accent)", label: "Warm", detail: "Last touch within 21 days" },
           { c: "#ffc96b", label: "Check in soon", detail: "22–45 days since last touch" },
@@ -526,6 +527,7 @@ export default function Tracker() {
             return (
               <div
                 key={c.id}
+                className="gb-reveal-block"
                 style={{
                   background: "var(--gb-bg-elevated)",
                   border: `1px solid ${w.key === "yellow" ? "rgba(255,201,107,0.25)" : w.key === "red" ? "rgba(255,107,107,0.25)" : "var(--gb-surface-active)"}`,
@@ -669,12 +671,11 @@ export default function Tracker() {
           })}
         </div>
       )}
+      </section>
 
       {/* Recent logs table */}
-      <CardTitle
-        helper="A log of every outreach you record. Newest first. Click a row to open that contact's timeline."
-        style={{ marginTop: 26 }}
-      >
+      <section className="gb-reveal-block" style={{ marginTop: 26 }}>
+      <CardTitle helper="A log of every outreach you record. Newest first. Click a row to open that contact's timeline.">
         Touchpoint history
       </CardTitle>
       {filteredLogs.length === 0 ? (
@@ -697,6 +698,7 @@ export default function Tracker() {
                 return (
                   <tr
                     key={l.id}
+                    className="gb-reveal-block"
                     onClick={() => setTimelineContactId(l.contactId)}
                     style={{
                       borderTop: "1px solid var(--gb-surface-active)",
@@ -747,6 +749,7 @@ export default function Tracker() {
           />
         </div>
       )}
+      </section>
 
       </div>
 

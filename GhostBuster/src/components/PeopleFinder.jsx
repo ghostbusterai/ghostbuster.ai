@@ -109,6 +109,7 @@ export default function PeopleFinder({ onContactAdded }) {
             return (
               <div
                 key={k}
+                className="gb-reveal-block"
                 style={{ border: "1px solid var(--gb-border-subtle)", borderRadius: 12, padding: 12, background: "var(--gb-bg-panel)" }}
               >
                 <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>

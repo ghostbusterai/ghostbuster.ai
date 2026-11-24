@@ -122,7 +122,7 @@ export default function Notifications({ setPage }) {
         <>
           <ContentCard padding="14px 14px 12px" marginBottom={24}>
           <CardTitle style={{ marginBottom: 12 }}>Summary</CardTitle>
-          <div className="gb-summary-chips">
+          <div className="gb-summary-chips gb-reveal-stagger">
           {summaryPills.map((pill) => {
             const style = getReminderUrgencyStyle(pill.key)
             return (
@@ -145,6 +145,7 @@ export default function Notifications({ setPage }) {
         </>
       )}
 
+      <ContentCard padding="8px 0 4px">
       <CardTitle helper="Includes auto-suggested follow-ups from Tracker warmth and your résumé date.">
         Pending feed
       </CardTitle>
@@ -165,7 +166,7 @@ export default function Notifications({ setPage }) {
             return (
               <div
                 key={r.id}
-                className="gb-record-row"
+                className="gb-record-row gb-reveal-block"
                 style={{
                   borderLeft: `2px solid ${style.border}`,
                   paddingLeft: 10,
@@ -216,8 +217,9 @@ export default function Notifications({ setPage }) {
           })}
         </div>
       )}
+      </ContentCard>
 
-      <div style={{ marginTop: 28 }}>
+      <div style={{ marginTop: 28 }} className="gb-reveal-block">
         <button type="button" onClick={() => setPage("reminders")} {...secondaryBtn()}>
           Manage all reminders →
         </button>
