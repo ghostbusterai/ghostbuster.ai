@@ -122,6 +122,8 @@ export default function Applications() {
   const [fillingId, setFillingId] = useState(null)
   const [portalSyncId, setPortalSyncId] = useState(null)
   const [emailSyncing, setEmailSyncing] = useState(false)
+  const [emailApplying, setEmailApplying] = useState(false)
+  const [emailReview, setEmailReview] = useState(null)
   const [googleConnected, setGoogleConnected] = useState(false)
   const [syncMeta, setSyncMeta] = useState(null)
 
@@ -298,19 +300,22 @@ export default function Applications() {
     setEmailSyncing(true)
     setActionError(null)
     setNotice(null)
+    setEmailReview(null)
     try {
-      const result = await api.syncApplicationsFromEmail()
-      await refresh()
-      const { profile } = await api.getProfile()
-      setSyncMeta(profile?.applicationSync || null)
-      const n = result.updated?.length || 0
-      setNotice({
-        type: "success",
-        text:
-          n > 0
-            ? `Updated ${n} application${n === 1 ? "" : "s"} from Gmail (${result.scanned} messages scanned).`
-            : `No new matches in the last scan (${result.scanned} recruiting emails checked).`,
-      })
+      const result = await api.syncApplicationsFromEmail({ dryRun: true })
+      const proposed = result.proposed || []
+      if (proposed.length > 0) {
+        setEmailReview({ scanned: result.scanned, proposed, unmatched: result.unmatched || [] })
+        setNotice({
+          type: "success",
+          text: `Found ${proposed.length} possible update${proposed.length === 1 ? "" : "s"} from ${result.scanned || 0} recruiting emails. Review below.`,
+        })
+      } else {
+        setNotice({
+          type: "success",
+          text: `No new matches (${result.scanned || 0} recruiting emails checked).`,
+        })
+      }
     } catch (e) {
       setActionError(
         e.needsReconnect
@@ -322,6 +327,70 @@ export default function Applications() {
     } finally {
       setEmailSyncing(false)
     }
+  }
+
+  async function applyEmailReview(acceptAll) {
+    if (!emailReview?.proposed?.length) return
+    setEmailApplying(true)
+    setActionError(null)
+    setNotice(null)
+    try {
+      const updates = acceptAll ? emailReview.proposed : []
+      if (!updates.length) {
+        setEmailReview(null)
+        setNotice({ type: "success", text: "Dismissed Gmail suggestions." })
+        return
+      }
+      const result = await api.applyEmailSyncUpdates(updates)
+      await refresh()
+      const { profile } = await api.getProfile()
+      setSyncMeta(profile?.applicationSync || null)
+      const n = result.count ?? result.updated?.length ?? 0
+      setEmailReview(null)
+      setNotice({
+        type: "success",
+        text: `Applied ${n} update${n === 1 ? "" : "s"} to your pipeline.`,
+      })
+    } catch (e) {
+      setActionError(e.message || "Could not apply updates")
+    } finally {
+      setEmailApplying(false)
+    }
+  }
+
+  async function applySingleEmailReview(item) {
+    if (!item) return
+    setEmailApplying(true)
+    setActionError(null)
+    try {
+      await api.applyEmailSyncUpdates([item])
+      await refresh()
+      const { profile } = await api.getProfile()
+      setSyncMeta(profile?.applicationSync || null)
+      setEmailReview((prev) => {
+        if (!prev) return null
+        const next = prev.proposed.filter(
+          (p) => !(p.applicationId === item.applicationId && p.messageId === item.messageId)
+        )
+        if (next.length === 0) return null
+        return { ...prev, proposed: next }
+      })
+    } catch (e) {
+      setActionError(e.message || "Could not apply update")
+    } finally {
+      setEmailApplying(false)
+    }
+  }
+
+  function dismissSingleEmailReview(item) {
+    setEmailReview((prev) => {
+      if (!prev) return null
+      const next = prev.proposed.filter(
+        (p) => !(p.applicationId === item.applicationId && p.messageId === item.messageId)
+      )
+      if (next.length === 0) return null
+      return { ...prev, proposed: next }
+    })
   }
 
   async function syncPortal(application) {
@@ -698,7 +767,7 @@ export default function Applications() {
               },
             })}
           >
-            {emailSyncing ? "Syncing Gmail…" : "Update from Gmail"}
+            {emailSyncing ? "Checking Gmail…" : "Check Gmail for updates"}
           </button>
           {!googleConnected && (
             <span style={{ fontSize: 12, color: "var(--gb-text-faint)", fontFamily: font.body }}>
@@ -706,6 +775,68 @@ export default function Applications() {
             </span>
           )}
         </div>
+        {emailReview?.proposed?.length > 0 && (
+          <div className="gb-email-sync-review" role="region" aria-label="Gmail sync review">
+            <p className="gb-email-sync-review__lede">
+              Accept updates you agree with. Skipped rows stay unchanged.
+            </p>
+            <ul className="gb-email-sync-review__list">
+              {emailReview.proposed.map((item) => (
+                <li key={`${item.applicationId}-${item.messageId}`} className="gb-email-sync-review__row">
+                  <div className="gb-email-sync-review__main">
+                    <strong className="gb-email-sync-review__job">
+                      {[item.role, item.company].filter(Boolean).join(" @ ") || "Application"}
+                    </strong>
+                    <span className="gb-email-sync-review__shift">
+                      {pipelineMeta(item.previousPipeline)?.label || item.previousPipeline || "—"}
+                      <span aria-hidden> → </span>
+                      {pipelineMeta(item.pipelineStatus)?.label || item.pipelineStatus}
+                    </span>
+                    <span className="gb-email-sync-review__subject" title={item.subject}>
+                      {item.subject || "Recruiting email"}
+                    </span>
+                  </div>
+                  <div className="gb-email-sync-review__actions">
+                    <button
+                      type="button"
+                      disabled={emailApplying}
+                      onClick={() => applySingleEmailReview(item)}
+                      {...primaryBtn({ sm: true })}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      disabled={emailApplying}
+                      onClick={() => dismissSingleEmailReview(item)}
+                      {...secondaryBtn({ sm: true })}
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="gb-email-sync-review__footer">
+              <button
+                type="button"
+                disabled={emailApplying}
+                onClick={() => applyEmailReview(true)}
+                {...primaryBtn({ sm: true })}
+              >
+                {emailApplying ? "Applying…" : "Accept all"}
+              </button>
+              <button
+                type="button"
+                disabled={emailApplying}
+                onClick={() => applyEmailReview(false)}
+                {...secondaryBtn({ sm: true })}
+              >
+                Dismiss all
+              </button>
+            </div>
+          </div>
+        )}
         {syncMeta?.lastEmailSyncAt && (
           <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--gb-text-muted)", fontFamily: font.mono }}>
             Last Gmail sync: {new Date(syncMeta.lastEmailSyncAt).toLocaleString()}

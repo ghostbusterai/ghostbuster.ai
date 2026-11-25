@@ -1050,6 +1050,94 @@
   color: var(--gb-text);
 }
 
+/* —— Gmail application sync review —— */
+
+.gb-email-sync-review {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--gb-surface-muted) 80%, transparent);
+  border: 1px solid var(--gb-border-subtle);
+}
+
+.gb-email-sync-review__lede {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gb-text-muted);
+}
+
+.gb-email-sync-review__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gb-email-sync-review__row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--gb-bg-elevated);
+  border: 1px solid var(--gb-border-subtle);
+}
+
+@media (min-width: 640px) {
+  .gb-email-sync-review__row {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.gb-email-sync-review__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gb-email-sync-review__job {
+  font-size: 14px;
+  color: var(--gb-text);
+}
+
+.gb-email-sync-review__shift {
+  font-size: 12px;
+  font-family: var(--gb-font-mono);
+  color: var(--gb-accent-muted);
+}
+
+.gb-email-sync-review__subject {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--gb-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.gb-email-sync-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gb-email-sync-review__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--gb-border-subtle);
+}
+
 /* —— Settings (embedded) —— */
 
 .gb-ui-spacex .gb-settings-group__label {

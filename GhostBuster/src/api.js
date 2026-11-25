@@ -110,7 +110,16 @@ export const api = {
     request(`/api/applications/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteApplication: (id) => request(`/api/applications/${id}`, { method: "DELETE" }),
   suggestApplications: () => request("/api/applications/suggest", { method: "POST", body: JSON.stringify({}) }),
-  syncApplicationsFromEmail: () => request("/api/applications/sync/email", { method: "POST", body: JSON.stringify({}) }),
+  syncApplicationsFromEmail: (opts = {}) =>
+    request("/api/applications/sync/email", {
+      method: "POST",
+      body: JSON.stringify({ dryRun: opts.dryRun !== false }),
+    }),
+  applyEmailSyncUpdates: (updates) =>
+    request("/api/applications/sync/email/apply", {
+      method: "POST",
+      body: JSON.stringify({ updates: updates || [] }),
+    }),
   syncApplicationPortal: (body) =>
     request("/api/applications/sync/portal", { method: "POST", body: JSON.stringify(body || {}) }),
   reportApplicationFill: (id, body) =>

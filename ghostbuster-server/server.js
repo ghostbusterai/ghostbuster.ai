@@ -1102,7 +1102,7 @@ async function start() {
         needsGoogle: true,
       })
     }
-    const dryRun = Boolean(req.body?.dryRun)
+    const dryRun = req.body?.dryRun !== false
     try {
       const result = await applicationSync.syncApplicationsFromEmail(store, userId(req), refreshToken, { dryRun })
       res.json(result)
@@ -1116,6 +1116,17 @@ async function start() {
         })
       }
       res.status(500).json({ error: msg || "Email sync failed" })
+    }
+  })
+
+  app.post("/api/applications/sync/email/apply", async (req, res) => {
+    try {
+      const updates = req.body?.updates
+      const result = await applicationSync.applyEmailSyncUpdates(store, userId(req), updates)
+      res.json(result)
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: e.message || "Failed to apply email sync" })
     }
   })
 
