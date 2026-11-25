@@ -17,6 +17,9 @@ import ViewMoreButton from "./ViewMoreButton"
 import { previewHiddenCount, previewSlice } from "../listPreview"
 import AiDisclaimer from "./AiDisclaimer"
 import AutofillProfile from "./AutofillProfile"
+import ApplicationKits from "./ApplicationKits"
+import ApplicationMaterialsEditor from "./ApplicationMaterialsEditor"
+import { suggestKitId } from "../applicationMaterials"
 import JobSearch, { ATS_LABELS } from "./JobSearch"
 import {
   AUTOFILL_EVENT,
@@ -126,6 +129,8 @@ export default function Applications() {
   const [emailReview, setEmailReview] = useState(null)
   const [googleConnected, setGoogleConnected] = useState(false)
   const [syncMeta, setSyncMeta] = useState(null)
+  const [applicationKits, setApplicationKits] = useState([])
+  const [materialsSavingId, setMaterialsSavingId] = useState(null)
 
   useEffect(() => {
     function onAutofill(e) {
@@ -154,6 +159,7 @@ export default function Applications() {
         if (cancelled) return
         setGoogleConnected(Boolean(g?.connected))
         setSyncMeta(prof?.profile?.applicationSync || null)
+        setApplicationKits(prof?.profile?.applicationKits || [])
       } catch {
         /* optional */
       }
@@ -204,6 +210,20 @@ export default function Applications() {
     return (list || []).map(withPipelineDefaults)
   }
 
+  async function saveMaterials(id, body) {
+    setMaterialsSavingId(id)
+    setActionError(null)
+    try {
+      await api.patchApplication(id, body)
+      await refresh()
+      setNotice({ type: "success", text: "Saved application materials." })
+    } catch (e) {
+      setActionError(e.message || "Could not save materials")
+    } finally {
+      setMaterialsSavingId(null)
+    }
+  }
+
   async function save() {
     if (!form.company.trim() && !form.role.trim() && !form.url.trim()) return
     setActionError(null)
@@ -219,6 +239,8 @@ export default function Applications() {
       pipelineStatus: submitted ? "applied" : form.pipelineStatus || "saved",
       source: "manual",
     }
+    const kitId = suggestKitId(payload.role, applicationKits)
+    if (kitId) payload.kitId = kitId
     try {
       await api.createApplication(payload)
       await refresh()
@@ -489,6 +511,8 @@ export default function Applications() {
       status: "todo",
       source: "ai",
     }
+    const kitId = suggestKitId(payload.role, applicationKits)
+    if (kitId) payload.kitId = kitId
     try {
       await api.createApplication(payload)
       await refresh()
@@ -535,14 +559,17 @@ export default function Applications() {
   }
 
   async function saveJob(job, { fill: fillNow }) {
-    const { application } = await api.createApplication({
+    const jobPayload = {
       company: job.company,
       role: job.title,
       url: job.url,
       notes: [job.location, ATS_LABELS[job.ats] ? `via ${ATS_LABELS[job.ats]}` : ""].filter(Boolean).join(" · "),
       status: "todo",
       source: "search",
-    })
+    }
+    const kitId = suggestKitId(jobPayload.role, applicationKits)
+    if (kitId) jobPayload.kitId = kitId
+    const { application } = await api.createApplication(jobPayload)
     await refresh()
     if (fillNow) await fill(application)
     else setNotice({ type: "success", text: "Saved to complete." })
@@ -661,6 +688,15 @@ export default function Applications() {
       <JobSearch onSave={saveJob} savedUrls={savedUrls} />
 
       <AutofillProfile />
+
+      <ApplicationKits
+        kits={applicationKits}
+        onKitsChange={setApplicationKits}
+        onNotice={(n) => {
+          if (n?.type === "error") setActionError(n.text)
+          else if (n) setNotice(n)
+        }}
+      />
 
       <ContentCard padding="18px 18px 16px" marginBottom={24}>
         <CardTitle helper="Uses your career goals, résumé, and contact companies. Results are search links, not live postings — listings change fast.">
@@ -960,6 +996,10 @@ export default function Applications() {
                 onPortalSync={extReady && portalHref(a) ? () => syncPortal(a) : null}
                 filling={fillingId === a.id}
                 portalSyncing={portalSyncId === a.id}
+                kits={applicationKits}
+                peerApplications={applications}
+                onSaveMaterials={(body) => saveMaterials(a.id, body)}
+                materialsSaving={materialsSavingId === a.id}
               />
             ))}
           </div>
@@ -997,6 +1037,10 @@ function ApplicationRow({
   onPortalSync,
   filling,
   portalSyncing,
+  kits,
+  peerApplications,
+  onSaveMaterials,
+  materialsSaving,
 }) {
   const pipeline = pipelineFromLegacy(a)
   const meta = pipelineMeta(pipeline)
@@ -1160,6 +1204,15 @@ function ApplicationRow({
               <li key={q}>{q}</li>
             ))}
           </ul>
+        ) : null}
+        {!done && onSaveMaterials ? (
+          <ApplicationMaterialsEditor
+            application={a}
+            kits={kits || []}
+            peerApplications={peerApplications}
+            onSave={onSaveMaterials}
+            saving={materialsSaving}
+          />
         ) : null}
       </div>
       {!editingUrl && (

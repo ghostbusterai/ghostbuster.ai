@@ -1,4 +1,5 @@
 import { api } from "./api"
+import { resolveMaterials } from "./applicationMaterials"
 
 /**
  * Talks to the GhostBuster Autofill browser extension (ghostbuster-extension/) through window.postMessage.
@@ -138,7 +139,9 @@ export function requestPendingFillReports() {
 export async function startFill(application) {
   if (!extensionInstalled()) throw new Error("Install the GhostBuster Autofill extension to fill applications.")
   if (!application?.url) throw new Error("Add the application link first.")
-  const { autofill } = await api.getAutofillProfile()
+  const [{ autofill }, { profile }] = await Promise.all([api.getAutofillProfile(), api.getProfile()])
+  const kits = profile?.applicationKits || []
+  const materials = resolveMaterials(application, kits)
   post({
     type: "START_FILL",
     job: {
@@ -148,7 +151,11 @@ export async function startFill(application) {
         company: application.company || "",
         role: application.role || "",
       },
-      profile: autofill,
+      profile: {
+        ...autofill,
+        coverLetter: materials.coverLetter,
+        writtenAnswers: materials.writtenAnswers,
+      },
     },
   })
 }

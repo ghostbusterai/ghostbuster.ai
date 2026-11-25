@@ -1138,6 +1138,113 @@
   border-top: 1px dashed var(--gb-border-subtle);
 }
 
+/* —— Application role kits —— */
+
+.gb-application-kits__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gb-application-kits__item {
+  border-radius: 12px;
+  border: 1px solid var(--gb-border-subtle);
+  background: var(--gb-bg-elevated);
+  overflow: hidden;
+}
+
+.gb-application-kits__head {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--gb-font-sans);
+}
+
+.gb-application-kits__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gb-text);
+}
+
+.gb-application-kits__meta {
+  font-size: 12px;
+  color: var(--gb-text-faint);
+  font-family: var(--gb-font-mono);
+}
+
+.gb-application-kits__body {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px dashed var(--gb-border-subtle);
+}
+
+.gb-application-kits__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gb-text-muted);
+  font-family: var(--gb-font-sans);
+}
+
+.gb-application-kits__answer-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--gb-border-subtle);
+}
+
+.gb-application-kits__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gb-app-materials {
+  margin-top: 10px;
+}
+
+.gb-app-materials__toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed var(--gb-border-subtle);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--gb-surface-muted) 60%, transparent);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--gb-font-sans);
+  color: var(--gb-text);
+}
+
+.gb-app-materials__badge {
+  font-size: 11px;
+  font-family: var(--gb-font-mono);
+  color: var(--gb-text-faint);
+}
+
+.gb-app-materials__panel {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--gb-border-subtle);
+  background: var(--gb-surface-hover);
+}
+
 /* —— Settings (embedded) —— */
 
 .gb-ui-spacex .gb-settings-group__label {

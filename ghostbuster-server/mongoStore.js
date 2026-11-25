@@ -3,6 +3,7 @@ const { ObjectId } = require("mongodb")
 const { getDb } = require("./db")
 const { suggestResumeBucket } = require("./resumeBucketMatch")
 const { sanitizeAutofill, fillStatus, fillQuestions } = require("./autofill")
+const { sanitizeApplicationKits, sanitizeAppMaterials } = require("./applicationMaterials")
 const { normalizePipelineStatus, pipelineFromLegacyStatus, isoDateOnly } = require("./applicationPipeline")
 
 function uid(userId) {
@@ -307,7 +308,14 @@ exports.createApplication = async (userId, body) => {
     portalUrl: typeof body?.portalUrl === "string" ? body.portalUrl.trim() : "",
     statusNote: typeof body?.statusNote === "string" ? body.statusNote.trim() : "",
     lastPortalCheck: typeof body?.lastPortalCheck === "string" ? body.lastPortalCheck.trim() : "",
+    kitId: typeof body?.kitId === "string" ? body.kitId.trim().slice(0, 64) : "",
+    coverLetter: typeof body?.coverLetter === "string" ? body.coverLetter.trim().slice(0, 12000) : "",
+    writtenAnswers: [],
   }
+  const extra = sanitizeAppMaterials(body)
+  if (extra.kitId !== undefined) application.kitId = extra.kitId
+  if (extra.coverLetter !== undefined) application.coverLetter = extra.coverLetter
+  if (extra.writtenAnswers?.length) application.writtenAnswers = extra.writtenAnswers
   if (!application.portalUrl && application.url) application.portalUrl = application.url
   if (!application.company && !application.role && !application.url) {
     throw new Error("empty")
@@ -352,6 +360,10 @@ exports.patchApplication = async (userId, id, body) => {
     next.fillUpdatedAt = new Date().toISOString()
   }
   if (body.fillQuestions !== undefined) next.fillQuestions = fillQuestions(body.fillQuestions)
+  const materials = sanitizeAppMaterials(body)
+  if (materials.kitId !== undefined) next.kitId = materials.kitId
+  if (materials.coverLetter !== undefined) next.coverLetter = materials.coverLetter
+  if (materials.writtenAnswers !== undefined) next.writtenAnswers = materials.writtenAnswers
   await col.updateOne({ _id: prev._id }, { $set: next })
   return { application: stripMongo({ ...prev, ...next }) }
 }
@@ -512,6 +524,7 @@ exports.getProfile = async (userId) => {
       autofill: sanitizeAutofill(p.autofill),
       applicationSync:
         p.applicationSync && typeof p.applicationSync === "object" ? p.applicationSync : {},
+      applicationKits: sanitizeApplicationKits(p.applicationKits),
     },
   }
 }
@@ -540,6 +553,9 @@ exports.patchProfile = async (userId, body) => {
       ...(existing?.applicationSync && typeof existing.applicationSync === "object" ? existing.applicationSync : {}),
       ...body.applicationSync,
     }
+  }
+  if (body.applicationKits !== undefined) {
+    $set.applicationKits = sanitizeApplicationKits(body.applicationKits)
   }
   if (Object.keys($set).length) {
     await getDb().collection("profiles").updateOne({ userId: uid(userId) }, { $set })

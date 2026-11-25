@@ -38,6 +38,9 @@ export function withPipelineDefaults(application) {
     portalUrl: typeof application.portalUrl === "string" ? application.portalUrl : "",
     statusNote: typeof application.statusNote === "string" ? application.statusNote : "",
     lastPortalCheck: typeof application.lastPortalCheck === "string" ? application.lastPortalCheck : "",
+    kitId: typeof application.kitId === "string" ? application.kitId : "",
+    coverLetter: typeof application.coverLetter === "string" ? application.coverLetter : "",
+    writtenAnswers: Array.isArray(application.writtenAnswers) ? application.writtenAnswers : [],
   }
 }
 

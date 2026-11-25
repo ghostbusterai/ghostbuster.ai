@@ -153,6 +153,43 @@
     }
   }
 
+  function isCoverLetterLabel(label) {
+    const t = String(label || "").toLowerCase()
+    return /cover letter/.test(t) && !/resume|résumé|\bcv\b/.test(t)
+  }
+
+  /** Saved cover letter + role-kit answers from the GhostBuster application */
+  function answerForWrittenQuestion(label) {
+    const p = state.profile
+    if (!p) return ""
+    if (isCoverLetterLabel(label) && p.coverLetter) return String(p.coverLetter)
+    const answers = Array.isArray(p.writtenAnswers) ? p.writtenAnswers : []
+    const n = norm(label)
+    if (!n || !answers.length) return ""
+    let best = ""
+    let bestScore = 0
+    for (const row of answers) {
+      const prompt = row?.prompt
+      const answer = row?.answer
+      if (!prompt || !answer) continue
+      const pn = norm(prompt)
+      let score = 0
+      if (pn === n) score = 100
+      else if (n.includes(pn) || pn.includes(n)) score = 72
+      else {
+        const pt = pn.split(" ").filter((w) => w.length > 3)
+        const nt = new Set(n.split(" ").filter((w) => w.length > 3))
+        const overlap = pt.filter((w) => nt.has(w)).length
+        if (overlap >= 2) score = 36 + overlap * 8
+      }
+      if (score > bestScore) {
+        bestScore = score
+        best = answer
+      }
+    }
+    return bestScore >= 36 ? best : ""
+  }
+
   function isVisible(el) {
     return el.offsetParent !== null || el.getClientRects().length > 0
   }
@@ -511,6 +548,15 @@
     }
 
     if (hasValue(el)) {
+      state.questions.delete(label)
+      state.review.delete(label)
+      return
+    }
+
+    const savedWritten = answerForWrittenQuestion(label)
+    if (savedWritten && fillElement(el, savedWritten, null)) {
+      state.touched.add(el)
+      state.filledCount++
       state.questions.delete(label)
       state.review.delete(label)
       return

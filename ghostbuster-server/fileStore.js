@@ -1,6 +1,7 @@
 const { read, write } = require("./store")
 const { suggestResumeBucket } = require("./resumeBucketMatch")
 const { sanitizeAutofill, fillStatus, fillQuestions } = require("./autofill")
+const { sanitizeApplicationKits, sanitizeAppMaterials } = require("./applicationMaterials")
 const { normalizePipelineStatus, pipelineFromLegacyStatus, isoDateOnly } = require("./applicationPipeline")
 
 /** Single-tenant JSON file store (no user id). */
@@ -198,7 +199,14 @@ exports.createApplication = async (_userId, body) => {
     portalUrl: typeof body?.portalUrl === "string" ? body.portalUrl.trim() : "",
     statusNote: typeof body?.statusNote === "string" ? body.statusNote.trim() : "",
     lastPortalCheck: typeof body?.lastPortalCheck === "string" ? body.lastPortalCheck.trim() : "",
+    kitId: typeof body?.kitId === "string" ? body.kitId.trim().slice(0, 64) : "",
+    coverLetter: typeof body?.coverLetter === "string" ? body.coverLetter.trim().slice(0, 12000) : "",
+    writtenAnswers: [],
   }
+  const extra = sanitizeAppMaterials(body)
+  if (extra.kitId !== undefined) application.kitId = extra.kitId
+  if (extra.coverLetter !== undefined) application.coverLetter = extra.coverLetter
+  if (extra.writtenAnswers?.length) application.writtenAnswers = extra.writtenAnswers
   if (!application.portalUrl && application.url) application.portalUrl = application.url
   if (!application.company && !application.role && !application.url) {
     throw new Error("empty")
@@ -266,6 +274,10 @@ exports.patchApplication = async (_userId, id, body) => {
   if (body.fillQuestions !== undefined) {
     data.applications[idx].fillQuestions = fillQuestions(body.fillQuestions)
   }
+  const materials = sanitizeAppMaterials(body)
+  if (materials.kitId !== undefined) data.applications[idx].kitId = materials.kitId
+  if (materials.coverLetter !== undefined) data.applications[idx].coverLetter = materials.coverLetter
+  if (materials.writtenAnswers !== undefined) data.applications[idx].writtenAnswers = materials.writtenAnswers
   write(data)
   return { application: data.applications[idx] }
 }
@@ -420,6 +432,7 @@ exports.getProfile = async () => {
       autofill: sanitizeAutofill(p.autofill),
       applicationSync:
         p.applicationSync && typeof p.applicationSync === "object" ? p.applicationSync : {},
+      applicationKits: sanitizeApplicationKits(p.applicationKits),
     },
   }
 }
@@ -450,6 +463,9 @@ exports.patchProfile = async (_userId, body) => {
         : {}),
       ...body.applicationSync,
     }
+  }
+  if (body.applicationKits !== undefined) {
+    data.profile.applicationKits = sanitizeApplicationKits(body.applicationKits)
   }
   write(data)
   return exports.getProfile()
